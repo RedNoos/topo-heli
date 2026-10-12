@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#9cc3dc" />
+    <title>Topo Heli</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚁</text></svg>" />
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+
+    <div id="hud" hidden>
+      <div class="hud-top">
+        <div class="pill" id="timer">3:00</div>
+        <div class="target-card">
+          <div class="target-label">Fly to</div>
+          <div class="target-name" id="target-name">—</div>
+          <div class="target-hint" id="target-hint"></div>
+        </div>
+        <div class="pill stats">
+          <span><b id="score">0</b> found</span>
+          <span class="lvl">Level <b id="level">1</b></span>
+        </div>
+      </div>
+      <div class="hud-bottom">
+        <button class="btn small ghost" id="btn-pause" title="Pause (P)">Pause</button>
+        <button class="btn small ghost" id="btn-skip" title="Skip city (N)">Skip −10s</button>
+        <button class="btn small ghost" id="btn-mute" title="Sound (M)">Sound on</button>
+      </div>
+      <canvas id="minimap"></canvas>
+      <div class="toast" id="toast" hidden></div>
+    </div>
+
+    <div class="overlay" id="menu">
+      <div class="panel">
+        <div class="logo">🚁</div>
+        <h1>Topo Heli</h1>
+        <p class="sub">Fly your helicopter to as many cities as you can before time runs out.</p>
+        <div class="map-select" id="map-select"></div>
+        <p class="best" id="best"></p>
+        <button class="btn primary" id="btn-start">Start</button>
+        <ul class="howto">
+          <li><b>Fly</b> with the arrow keys / WASD, or drag anywhere on a touch screen.</li>
+          <li>Get close and the city starts <b>flashing</b>. Fly right over it.</li>
+          <li>Every <b>10 cities</b>: +1:00, but smaller towns and less help.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="overlay" id="pause" hidden>
+      <div class="panel">
+        <h2>Paused</h2>
+        <button class="btn primary" id="btn-resume">Resume</button>
+        <button class="btn ghost" id="btn-quit">Quit to menu</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="over" hidden>
+      <div class="panel">
+        <h2>Time's up!</h2>
+        <div class="final"><b id="final-score">0</b> cities found</div>
+        <p class="best" id="final-best"></p>
+        <p class="missed" id="final-missed"></p>
+        <div class="found-list" id="found-list"></div>
+        <button class="btn primary" id="btn-again">Play again</button>
+        <button class="btn ghost" id="btn-menu">Menu</button>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
