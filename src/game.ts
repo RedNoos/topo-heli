@@ -94,14 +94,21 @@ export class Game {
   }
 
   private nextTarget() {
-    let pool = this.cities.slice(0, CONFIG.poolSize(this.level)).filter((c) => !this.asked.has(c));
+    const poolFor = (level: number) => {
+      const size = CONFIG.poolSize(level);
+      return this.cities.filter(
+        (c, rank) => (rank < size || (c.level ?? Infinity) <= level) && !this.asked.has(c),
+      );
+    };
+    // When this level's pool is used up (e.g. by skipping), widen one level at a time.
+    let pool = poolFor(this.level);
+    for (let l = this.level + 1; pool.length === 0 && CONFIG.poolSize(l - 1) < this.cities.length; l++) {
+      pool = poolFor(l);
+    }
     if (pool.length === 0) {
-      // Pool exhausted: widen to every city not asked yet, or start over.
-      pool = this.cities.filter((c) => !this.asked.has(c));
-      if (pool.length === 0) {
-        this.asked.clear();
-        pool = this.cities.filter((c) => c !== this.target);
-      }
+      // Every city has been asked: start over.
+      this.asked.clear();
+      pool = this.cities.filter((c) => c !== this.target);
     }
     const farEnough = pool.filter(
       (c) => dist(c.x, c.y, this.heli.x, this.heli.y) >= CONFIG.minTargetDistance * this.distScale,

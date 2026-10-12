@@ -19,6 +19,8 @@ export interface City {
   lon: number;
   /** Approximate population; used to rank how well-known a city is. */
   pop: number;
+  /** Optional: in play from this level on, regardless of population (e.g. capitals). */
+  level?: number;
 }
 
 export interface MapData {
