@@ -25,13 +25,18 @@ Tuning lives in [src/config.ts](src/config.ts).
    borders.
 2. Run `npm run build:map -- <id>`. This downloads Natural Earth data into `.cache/` and writes
    `src/maps/<id>/geo.json`.
-3. Add `src/maps/<id>/cities.json`: `{ name, lat, lon, pop }`. Population decides which cities
-   appear at which level.
+   Optional settings there: `projection` (equal-area, for large regions), `colorCountries`
+   (a colour per country with clear borders) and `merge` (draw a territory as part of a country).
+3. Add `src/maps/<id>/cities.json`: `{ name, lat, lon, pop, level? }`. Population decides which
+   cities appear at which level; `level` puts a city in play from that level regardless of size
+   (used for capitals).
 4. Register the map in [src/maps/index.ts](src/maps/index.ts) (`viewKm` sets the zoom level:
    larger regions want a larger value).
 
 ## Data
 
 - Borders, rivers and lakes: [Natural Earth](https://www.naturalearthdata.com/) (public domain).
+  The Europe map uses the internationally recognised borders (Natural Earth's German point of
+  view), with Kosovo drawn as part of Serbia on every map.
 - City coordinates: [GeoNames](https://www.geonames.org/) (CC BY 4.0). Populations are rounded
   approximations.

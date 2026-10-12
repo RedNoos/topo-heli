@@ -11,6 +11,12 @@ export interface GeoData {
   /** r = Natural Earth scalerank (lower = bigger river), l = line. */
   rivers: { r: number; l: LonLat[] }[];
   lakes: LonLat[][][];
+  /** Default: equirectangular around the bbox centre. */
+  projection?: { type: 'laea'; lon0: number; lat0: number; /** [minX, minY, maxX, maxY] km, y up. */ rect: number[] };
+  /** Multi-country maps: each country with a colour index (neighbours differ). */
+  countries?: { c: number; p: LonLat[][][] }[];
+  /** Borders between the countries above. */
+  borders?: LonLat[][];
 }
 
 export interface City {

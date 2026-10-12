@@ -49,10 +49,16 @@ export class Game {
       .map((c) => ({ ...c, ...this.projection.project(c.lon, c.lat) }))
       .sort((a, b) => b.pop - a.pop);
 
-    const [minLon, minLat, maxLon, maxLat] = data.geo.bbox;
-    const a = this.projection.project(minLon, maxLat);
-    const b = this.projection.project(maxLon, minLat);
-    this.bounds = { minX: a.x, minY: a.y, maxX: b.x, maxY: b.y };
+    const rect = data.geo.projection?.rect;
+    if (rect) {
+      const [minX, minY, maxX, maxY] = rect;
+      this.bounds = { minX, minY: -maxY, maxX, maxY: -minY };
+    } else {
+      const [minLon, minLat, maxLon, maxLat] = data.geo.bbox;
+      const a = this.projection.project(minLon, maxLat);
+      const b = this.projection.project(maxLon, minLat);
+      this.bounds = { minX: a.x, minY: a.y, maxX: b.x, maxY: b.y };
+    }
 
     // Start in the middle of the playable country.
     const xs = this.cities.map((c) => c.x);

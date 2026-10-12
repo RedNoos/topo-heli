@@ -22,4 +22,13 @@ export const MAPS: MapDefinition[] = [
       cities: (await import('./netherlands/cities.json')).default,
     }),
   },
+  {
+    id: 'europe',
+    name: 'Europe',
+    viewKm: 1300,
+    load: async () => ({
+      geo: (await import('./europe/geo.json')).default as never,
+      cities: (await import('./europe/cities.json')).default,
+    }),
+  },
 ];

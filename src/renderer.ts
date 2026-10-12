@@ -13,7 +13,11 @@ const COLORS = {
   water: '#5c9fd0',
   found: '#2f7d32',
   target: '#e53935',
+  countryBorder: 'rgba(70, 58, 40, 0.75)',
 };
+
+/** Fills for multi-country maps; neighbouring countries get different indexes. */
+const COUNTRY_COLORS = ['#f1d9a8', '#cfe2b4', '#f4c6b6', '#dccdea', '#f6eba6', '#bfe0d4'];
 
 interface Effect {
   x: number;
@@ -29,6 +33,9 @@ interface Layers {
   home: Path2D;
   lakes: Path2D;
   districts: Path2D;
+  /** One path per colour index (multi-country maps only). */
+  countries: { color: string; path: Path2D }[];
+  borders: Path2D;
   /** Rivers grouped by drawn width (px at default zoom). */
   rivers: { width: number; path: Path2D }[];
 }
@@ -63,6 +70,11 @@ function buildLayers(geo: GeoData, proj: Projection): Layers {
 
   return {
     neighbours: polygons(geo.neighbours),
+    countries: COUNTRY_COLORS.map((color, i) => ({
+      color,
+      path: polygons((geo.countries ?? []).filter((c) => c.c === i).flatMap((c) => c.p)),
+    })),
+    borders: lines(geo.borders ?? []),
     home: polygons(geo.home),
     lakes: polygons(geo.lakes),
     districts: lines(geo.districts),
@@ -180,8 +192,7 @@ export class Renderer {
     ctx.lineWidth = px(1);
     ctx.stroke(L.neighbours);
 
-    ctx.fillStyle = COLORS.home;
-    ctx.fill(L.home, 'evenodd');
+    this.fillHome(ctx);
 
     ctx.strokeStyle = COLORS.district;
     ctx.lineWidth = px(1.2);
@@ -189,13 +200,27 @@ export class Renderer {
     ctx.stroke(L.districts);
     ctx.setLineDash([]);
 
-    ctx.strokeStyle = COLORS.water;
-    for (const r of L.rivers) {
-      ctx.lineWidth = px(r.width * riverScale);
-      ctx.stroke(r.path);
-    }
-    ctx.fillStyle = COLORS.water;
-    ctx.fill(L.lakes, 'evenodd');
+    // Water: muted outside the playable area, full colour inside it.
+    const drawWater = () => {
+      ctx.strokeStyle = COLORS.water;
+      for (const r of L.rivers) {
+        ctx.lineWidth = px(r.width * riverScale);
+        ctx.stroke(r.path);
+      }
+      ctx.fillStyle = COLORS.water;
+      ctx.fill(L.lakes, 'evenodd');
+    };
+    ctx.globalAlpha = 0.35;
+    drawWater();
+    ctx.globalAlpha = 1;
+    ctx.save();
+    ctx.clip(L.home, 'evenodd');
+    drawWater();
+    ctx.restore();
+
+    ctx.strokeStyle = COLORS.countryBorder;
+    ctx.lineWidth = px(1.6);
+    ctx.stroke(L.borders);
 
     ctx.strokeStyle = 'rgba(94, 80, 56, 0.25)';
     ctx.lineWidth = px(7);
@@ -212,6 +237,16 @@ export class Renderer {
     this.drawHeli();
     if (joystick) this.drawJoystick(joystick);
     this.drawMinimap();
+  }
+
+  /** Fills the playable area: one colour, or a colour per country. */
+  private fillHome(ctx: CanvasRenderingContext2D) {
+    ctx.fillStyle = COLORS.home;
+    ctx.fill(this.layers.home, 'evenodd');
+    for (const c of this.layers.countries) {
+      ctx.fillStyle = c.color;
+      ctx.fill(c.path, 'evenodd');
+    }
   }
 
   private drawFoundCities() {
@@ -426,8 +461,10 @@ export class Renderer {
       o.setTransform(this.dpr * ms, 0, 0, this.dpr * ms, -b.minX * ms * this.dpr, -b.minY * ms * this.dpr);
       o.fillStyle = COLORS.neighbour;
       o.fill(this.layers.neighbours, 'evenodd');
-      o.fillStyle = COLORS.home;
-      o.fill(this.layers.home, 'evenodd');
+      this.fillHome(o);
+      o.strokeStyle = COLORS.countryBorder;
+      o.lineWidth = 0.6 / ms;
+      o.stroke(this.layers.borders);
       o.strokeStyle = COLORS.water;
       o.lineWidth = 1.2 / ms;
       for (const r of this.layers.rivers) if (r.width > 2) o.stroke(r.path);
