@@ -47,6 +47,13 @@ const MAPS = {
     },
     simplify: '45%',
   },
+  netherlands: {
+    home: ['NLD'],
+    bbox: [2.9, 50.6, 7.6, 53.75],
+    districtOf: (p) => p.name,
+    // Small country: Natural Earth is coarse already, so keep every point.
+    simplify: '100%',
+  },
 };
 
 async function source(name) {
@@ -105,7 +112,7 @@ async function buildMap(id, cfg) {
   const admin1 = await source(SOURCES.admin1);
   const homeAdmin = filterFeatures(admin1, (f) => cfg.home.includes(f.properties.adm0_a3));
   for (const f of homeAdmin.features) f.properties = { district: cfg.districtOf(f.properties) };
-  const districtLines = await shape(homeAdmin, `-dissolve district -simplify ${cfg.simplify} keep-shapes -innerlines`);
+  const districtLines = await shape(homeAdmin, `-dissolve district -clip bbox=${bbox} -simplify ${cfg.simplify} keep-shapes -innerlines`);
 
   const rivers = [];
   for (const src of [SOURCES.rivers, SOURCES.riversEurope]) {

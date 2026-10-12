@@ -39,7 +39,11 @@ export class Game {
   private asked = new Set<PlacedCity>();
   private listeners: ((e: GameEvent) => void)[] = [];
 
-  constructor(data: MapData) {
+  /** Scale for the distances in CONFIG (see CONFIG.referenceViewKm). */
+  readonly distScale: number;
+
+  constructor(data: MapData, viewKm: number) {
+    this.distScale = viewKm / CONFIG.referenceViewKm;
     this.projection = new Projection(data.geo);
     this.cities = data.cities
       .map((c) => ({ ...c, ...this.projection.project(c.lon, c.lat) }))
@@ -69,8 +73,12 @@ export class Game {
     return Math.floor(this.found.length / CONFIG.citiesPerLevel) + 1;
   }
 
+  get maxSpeed() {
+    return CONFIG.heli.maxSpeed * this.distScale;
+  }
+
   get revealRadius() {
-    return CONFIG.revealRadius(this.level);
+    return CONFIG.revealRadius(this.level) * this.distScale;
   }
 
   get targetDistance() {
@@ -96,7 +104,7 @@ export class Game {
       }
     }
     const farEnough = pool.filter(
-      (c) => dist(c.x, c.y, this.heli.x, this.heli.y) >= CONFIG.minTargetDistance,
+      (c) => dist(c.x, c.y, this.heli.x, this.heli.y) >= CONFIG.minTargetDistance * this.distScale,
     );
     if (farEnough.length > 0) pool = farEnough;
 
@@ -126,7 +134,8 @@ export class Game {
 
     // Velocity eases towards the stick direction: gives a bit of inertia.
     const h = this.heli;
-    const { maxSpeed, responsiveness, turnRate } = CONFIG.heli;
+    const { responsiveness, turnRate } = CONFIG.heli;
+    const maxSpeed = this.maxSpeed;
     const k = 1 - Math.exp(-responsiveness * dt);
     h.vx += (input.x * maxSpeed - h.vx) * k;
     h.vy += (input.y * maxSpeed - h.vy) * k;
@@ -141,8 +150,9 @@ export class Game {
 
     // Nose turns towards the flying direction (or the stick when hovering).
     const speed = Math.hypot(h.vx, h.vy);
-    const wantX = speed > 3 ? h.vx : input.x;
-    const wantY = speed > 3 ? h.vy : input.y;
+    const moving = speed > maxSpeed * 0.05;
+    const wantX = moving ? h.vx : input.x;
+    const wantY = moving ? h.vy : input.y;
     if (wantX !== 0 || wantY !== 0) {
       const want = Math.atan2(wantY, wantX);
       let diff = want - h.heading;
@@ -150,7 +160,7 @@ export class Game {
       h.heading += diff * (1 - Math.exp(-turnRate * dt));
     }
 
-    if (this.targetDistance <= CONFIG.catchRadius) {
+    if (this.targetDistance <= CONFIG.catchRadius * this.distScale) {
       const city = this.target;
       this.found.push(city);
       const levelUp = this.found.length % CONFIG.citiesPerLevel === 0;

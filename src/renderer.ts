@@ -296,7 +296,7 @@ export class Renderer {
     // Shadow on the ground.
     this.heliShape(p.x + 14 * size, p.y + 18 * size, h.heading, size * 0.95, true);
     // Slight forward pitch when flying fast (body looks shorter).
-    const pitch = 1 - Math.min(speed / 65, 1) * 0.08;
+    const pitch = 1 - Math.min(speed / this.game.maxSpeed, 1) * 0.08;
     ctx.save();
     ctx.translate(0, bob);
     this.heliShape(p.x, p.y, h.heading, size, false, pitch);

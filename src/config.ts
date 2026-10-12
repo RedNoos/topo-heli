@@ -1,5 +1,11 @@
-/** Gameplay tuning. Distances in km, times in seconds. */
+/**
+ * Gameplay tuning. Times in seconds. Distances (and speed) are in km for a map
+ * with viewKm = referenceViewKm; other maps scale them by viewKm / referenceViewKm
+ * so every map plays at the same on-screen pace.
+ */
 export const CONFIG = {
+  referenceViewKm: 260,
+
   startTime: 180,
   citiesPerLevel: 10,
   levelTimeBonus: 60,

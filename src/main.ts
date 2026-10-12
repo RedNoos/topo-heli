@@ -102,7 +102,7 @@ async function selectMap(def: MapDefinition) {
 
 function newGame(start: boolean) {
   if (!mapData) return;
-  game = new Game(mapData);
+  game = new Game(mapData, mapDef.viewKm);
   renderer = new Renderer(canvas, minimap, game, mapData.geo, mapDef.viewKm);
   wasVisible = false;
   lastWholeSecond = Math.ceil(game.timeLeft);
