@@ -67,6 +67,15 @@ function show(next: State) {
   ui.over.hidden = next !== 'over';
   ui.hud.hidden = next === 'menu';
   input.reset();
+  updateInsets();
+}
+
+/** Tells the renderer how much of the screen the HUD bars cover. */
+function updateInsets() {
+  if (!renderer || ui.hud.hidden) return;
+  const top = document.querySelector('.hud-top')!.getBoundingClientRect().bottom;
+  const bottom = window.innerHeight - document.querySelector('.hud-bottom')!.getBoundingClientRect().top;
+  renderer.setInsets(top + 8, bottom + 8);
 }
 
 function renderMapSelect() {
@@ -107,6 +116,7 @@ function newGame(start: boolean) {
         void ui.targetName.offsetWidth; // restart animation
         ui.targetName.classList.add('pop');
         wasVisible = false;
+        updateInsets(); // a long name may wrap and change the HUD height
         break;
       case 'found':
         renderer!.addFoundEffect(e.city, e.city.name);
@@ -216,7 +226,10 @@ window.addEventListener('keydown', (e) => {
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && state === 'playing') show('paused');
 });
-window.addEventListener('resize', () => renderer?.resize());
+window.addEventListener('resize', () => {
+  renderer?.resize();
+  updateInsets();
+});
 
 // ---------- Main loop ----------
 

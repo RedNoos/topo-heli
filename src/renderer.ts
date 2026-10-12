@@ -70,6 +70,8 @@ function buildLayers(geo: GeoData, proj: Projection): Layers {
   };
 }
 
+const MIN_VIEW_PX = 560;
+
 export class Renderer {
   private readonly ctx: CanvasRenderingContext2D;
   private readonly layers: Layers;
@@ -85,6 +87,8 @@ export class Renderer {
   private cam = { x: 0, y: 0 };
   private rotor = 0;
   private time = 0;
+  /** Screen space covered by HUD bars (px); the camera keeps the map clear of them. */
+  private insets = { top: 0, bottom: 0 };
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -108,8 +112,13 @@ export class Renderer {
     this.h = this.canvas.clientHeight;
     this.canvas.width = Math.round(this.w * this.dpr);
     this.canvas.height = Math.round(this.h * this.dpr);
-    this.scale = Math.min(this.w, this.h) / this.viewKm;
+    // Small screens (phones) are treated as at least MIN_VIEW_PX wide, so they zoom in further.
+    this.scale = Math.max(Math.min(this.w, this.h), MIN_VIEW_PX) / this.viewKm;
     this.minimapStatic = null;
+  }
+
+  setInsets(top: number, bottom: number) {
+    this.insets = { top, bottom };
   }
 
   addFoundEffect(city: PlacedCity, text: string) {
@@ -120,11 +129,12 @@ export class Renderer {
   private clampCamera() {
     const b = this.game.bounds;
     const halfW = this.w / 2 / this.scale;
-    const halfH = this.h / 2 / this.scale;
+    const top = (this.h / 2 - this.insets.top) / this.scale;
+    const bottom = (this.h / 2 - this.insets.bottom) / this.scale;
     const clamp = (v: number, min: number, max: number) =>
       min > max ? (min + max) / 2 : Math.min(max, Math.max(min, v));
     this.cam.x = clamp(this.cam.x, b.minX + halfW, b.maxX - halfW);
-    this.cam.y = clamp(this.cam.y, b.minY + halfH, b.maxY - halfH);
+    this.cam.y = clamp(this.cam.y, b.minY + top, b.maxY - bottom);
   }
 
   private toScreen(x: number, y: number) {
@@ -141,7 +151,9 @@ export class Renderer {
     const lead = 0.6;
     const k = 1 - Math.exp(-4 * dt);
     this.cam.x += (h.x + h.vx * lead - this.cam.x) * k;
-    this.cam.y += (h.y + h.vy * lead - this.cam.y) * k;
+    // Keep the helicopter centred in the area between the HUD bars.
+    const offsetY = (this.insets.top - this.insets.bottom) / 2 / this.scale;
+    this.cam.y += (h.y + h.vy * lead - offsetY - this.cam.y) * k;
     this.clampCamera();
 
     const s = this.scale;

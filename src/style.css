@@ -351,22 +351,63 @@ h1 {
 /* ---------- Small screens ---------- */
 
 @media (max-width: 640px) {
+  /* One compact row: timer | target | score. */
   .hud-top {
-    flex-wrap: wrap;
+    top: calc(8px + var(--safe-top));
+    left: 8px;
+    right: 8px;
+    gap: 6px;
+    align-items: stretch;
   }
-  .target-card {
-    order: 3;
-    flex-basis: 100%;
-    padding: 6px 12px 8px;
-  }
-  .target-name {
-    font-size: 24px;
+  .pill {
+    padding: 6px 8px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
   }
   #timer {
-    font-size: 20px;
-    min-width: 72px;
+    font-size: 17px;
+    min-width: 0;
+    justify-content: center;
+  }
+  .target-card {
+    flex: 1;
+    padding: 4px 8px 5px;
+    border-radius: 12px;
+  }
+  .target-label {
+    display: none;
+  }
+  .target-name {
+    font-size: 19px;
+    white-space: normal;
+    line-height: 1.15;
+  }
+  .target-hint {
+    font-size: 11px;
+    min-height: 1.2em;
+  }
+  .stats {
+    justify-content: center;
+    align-items: flex-end;
+    flex-direction: column;
+    font-size: 12px;
+    line-height: 1.2;
+  }
+  .stats b {
+    font-size: 15px;
+  }
+  .stats .lvl {
+    font-size: 11px;
+  }
+  .hud-bottom {
+    left: 8px;
+    bottom: calc(8px + var(--safe-bottom));
+    gap: 6px;
   }
   #minimap {
-    width: 110px;
+    width: 96px;
+    right: 8px;
+    bottom: calc(8px + var(--safe-bottom));
   }
 }

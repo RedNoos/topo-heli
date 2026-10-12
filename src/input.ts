@@ -14,7 +14,9 @@ export interface Joystick {
   knobY: number;
 }
 
-export const JOYSTICK_RADIUS = 60;
+export const JOYSTICK_RADIUS = 50;
+const JOYSTICK_DEAD_ZONE = 6;
+const JOYSTICK_FULL_SPEED = 30;
 
 export class Input {
   private pressed = new Set<string>();
@@ -66,9 +68,14 @@ export class Input {
   direction(): { x: number; y: number } {
     if (this.joystick) {
       const j = this.joystick;
-      const x = (j.knobX - j.baseX) / JOYSTICK_RADIUS;
-      const y = (j.knobY - j.baseY) / JOYSTICK_RADIUS;
-      return Math.hypot(x, y) < 0.15 ? { x: 0, y: 0 } : { x, y };
+      const dx = j.knobX - j.baseX;
+      const dy = j.knobY - j.baseY;
+      const len = Math.hypot(dx, dy);
+      if (len < JOYSTICK_DEAD_ZONE) return { x: 0, y: 0 };
+      // Full speed is reached after a short drag, so a finger near the
+      // screen edge can still fly at full speed.
+      const power = Math.min(1, (len - JOYSTICK_DEAD_ZONE) / (JOYSTICK_FULL_SPEED - JOYSTICK_DEAD_ZONE));
+      return { x: (dx / len) * power, y: (dy / len) * power };
     }
     let x = 0;
     let y = 0;
