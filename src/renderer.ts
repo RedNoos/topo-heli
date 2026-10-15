@@ -1,7 +1,8 @@
 import { JOYSTICK_RADIUS, type Joystick } from './input';
-import type { Game, PlacedCity } from './game';
-import type { GeoData } from './maps/types';
+import type { Found, Game } from './game';
+import type { GeoData, PhysicalData } from './maps/types';
 import type { Projection } from './projection';
+import type { Target } from './targets';
 
 const COLORS = {
   sea: '#9cc3dc',
@@ -13,6 +14,8 @@ const COLORS = {
   water: '#5c9fd0',
   found: '#2f7d32',
   target: '#e53935',
+  foundWater: '#1d5f9e',
+  mountain: '#7a5230',
   countryBorder: 'rgba(70, 58, 40, 0.75)',
 };
 
@@ -38,9 +41,13 @@ interface Layers {
   borders: Path2D;
   /** Rivers grouped by drawn width (px at default zoom). */
   rivers: { width: number; path: Path2D }[];
+  /** Everything except the playable area (clip for muted water outside it). */
+  outside: Path2D;
+  /** Detailed rivers/lakes inside the playable area (physical mode). */
+  physical?: { rivers: { width: number; path: Path2D }[]; lakes: Path2D };
 }
 
-function buildLayers(geo: GeoData, proj: Projection): Layers {
+function buildLayers(geo: GeoData, proj: Projection, physical?: PhysicalData): Layers {
   const ring = (path: Path2D, pts: [number, number][], close: boolean) => {
     pts.forEach(([lon, lat], i) => {
       const p = proj.project(lon, lat);
@@ -68,7 +75,25 @@ function buildLayers(geo: GeoData, proj: Projection): Layers {
     byWidth.get(w)!.push(r.l);
   }
 
+  const outside = polygons(geo.home);
+  outside.rect(-1e5, -1e5, 2e5, 2e5);
+
+  let phys: Layers['physical'];
+  if (physical) {
+    // Level 1 rivers are the big ones: draw them widest.
+    const widths = [3.6, 2.4, 1.6];
+    phys = {
+      rivers: widths.map((width, i) => ({
+        width,
+        path: lines(physical.rivers.filter((r) => Math.min(r.level, 3) === i + 1).flatMap((r) => r.lines)),
+      })),
+      lakes: polygons(physical.lakes.map((l) => l.rings)),
+    };
+  }
+
   return {
+    outside,
+    physical: phys,
     neighbours: polygons(geo.neighbours),
     countries: COUNTRY_COLORS.map((color, i) => ({
       color,
@@ -91,6 +116,7 @@ export class Renderer {
   private readonly minimapCtx: CanvasRenderingContext2D;
   private minimapStatic: HTMLCanvasElement | null = null;
   private effects: Effect[] = [];
+  private targetPaths = new Map<Target, Path2D>();
   private w = 0;
   private h = 0;
   private dpr = 1;
@@ -108,11 +134,12 @@ export class Renderer {
     private readonly game: Game,
     geo: GeoData,
     private readonly viewKm: number,
+    physical?: PhysicalData,
   ) {
     this.ctx = canvas.getContext('2d')!;
     this.minimap = minimap;
     this.minimapCtx = minimap.getContext('2d')!;
-    this.layers = buildLayers(geo, game.projection);
+    this.layers = buildLayers(geo, game.projection, physical);
     this.resize();
     this.cam = { x: game.heli.x, y: game.heli.y };
     this.clampCamera();
@@ -133,9 +160,24 @@ export class Renderer {
     this.insets = { top, bottom };
   }
 
-  addFoundEffect(city: PlacedCity, text: string) {
-    this.effects.push({ x: city.x, y: city.y, age: 0, life: 0.9, kind: 'ring' });
-    this.effects.push({ x: city.x, y: city.y, age: 0, life: 1.4, kind: 'text', text });
+  addFoundEffect(f: Found) {
+    this.effects.push({ x: f.x, y: f.y, age: 0, life: 0.9, kind: 'ring' });
+    this.effects.push({ x: f.x, y: f.y, age: 0, life: 1.4, kind: 'text', text: f.target.name });
+  }
+
+  /** Path2D (km coordinates) for a river or lake target, built once. */
+  private pathOf(t: Target): Path2D {
+    let p = this.targetPaths.get(t);
+    if (!p) {
+      const path = new Path2D();
+      for (const l of t.lines ?? t.rings ?? []) {
+        l.forEach((pt, i) => (i === 0 ? path.moveTo(pt.x, pt.y) : path.lineTo(pt.x, pt.y)));
+        if (t.rings) path.closePath();
+      }
+      this.targetPaths.set(t, path);
+      p = path;
+    }
+    return p;
   }
 
   private clampCamera() {
@@ -210,13 +252,27 @@ export class Renderer {
       ctx.fillStyle = COLORS.water;
       ctx.fill(L.lakes, 'evenodd');
     };
+    ctx.save();
+    ctx.clip(L.outside, 'evenodd');
     ctx.globalAlpha = 0.35;
     drawWater();
-    ctx.globalAlpha = 1;
+    ctx.restore();
     ctx.save();
     ctx.clip(L.home, 'evenodd');
-    drawWater();
+    if (L.physical) {
+      ctx.strokeStyle = COLORS.water;
+      for (const r of L.physical.rivers) {
+        ctx.lineWidth = px(r.width * riverScale);
+        ctx.stroke(r.path);
+      }
+      ctx.fillStyle = COLORS.water;
+      ctx.fill(L.physical.lakes, 'evenodd');
+    } else {
+      drawWater();
+    }
     ctx.restore();
+
+    this.drawWorldTargets(px);
 
     ctx.strokeStyle = COLORS.countryBorder;
     ctx.lineWidth = px(1.6);
@@ -249,30 +305,98 @@ export class Renderer {
     }
   }
 
-  private drawFoundCities() {
-    const ctx = this.ctx;
-    ctx.font = '600 12px system-ui, sans-serif';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    for (const c of this.game.found) {
-      const p = this.toScreen(c.x, c.y);
-      if (p.x < -100 || p.y < -20 || p.x > this.w + 20 || p.y > this.h + 20) continue;
+  /** Found rivers/lakes and the current river/lake target, drawn in km coordinates. */
+  private drawWorldTargets(px: (n: number) => number) {
+    const { ctx, game } = this;
+    for (const f of game.found) {
+      const t = f.target;
+      if (t.kind === 'river') {
+        ctx.strokeStyle = COLORS.foundWater;
+        ctx.lineWidth = px(3);
+        ctx.stroke(this.pathOf(t));
+      } else if (t.kind === 'lake') {
+        ctx.fillStyle = COLORS.foundWater;
+        ctx.fill(this.pathOf(t), 'evenodd');
+      }
+    }
+
+    const t = game.target;
+    if (!t || game.over || !game.targetVisible || (t.kind !== 'river' && t.kind !== 'lake')) return;
+    const pulse = 0.55 + 0.45 * Math.sin(this.time * 6);
+    if (t.kind === 'lake') {
+      ctx.fillStyle = `rgba(229, 57, 53, ${0.25 + 0.3 * pulse})`;
+      ctx.fill(this.pathOf(t), 'evenodd');
+      ctx.strokeStyle = COLORS.target;
+      ctx.lineWidth = px(2.5);
+      ctx.stroke(this.pathOf(t));
+      return;
+    }
+    // River: only the stretch within reveal range glows, so you still have to follow it.
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(game.heli.x, game.heli.y, game.revealRadius, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.strokeStyle = `rgba(229, 57, 53, ${0.35 + 0.4 * pulse})`;
+    ctx.lineWidth = px(9);
+    ctx.stroke(this.pathOf(t));
+    ctx.restore();
+    // Trail of the course covered so far.
+    ctx.fillStyle = '#ffd54f';
+    for (const p of game.coveredSamples) {
       ctx.beginPath();
-      ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
-      ctx.fillStyle = COLORS.found;
+      ctx.arc(p.x, p.y, px(3.2), 0, Math.PI * 2);
       ctx.fill();
-      ctx.lineWidth = 1.5;
-      ctx.strokeStyle = '#fff';
-      ctx.stroke();
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-      ctx.strokeText(c.name, p.x + 7, p.y);
-      ctx.fillStyle = '#24421f';
-      ctx.fillText(c.name, p.x + 7, p.y);
     }
   }
 
-  private drawTarget(c: PlacedCity) {
+  private drawFoundCities() {
+    const ctx = this.ctx;
+    ctx.textBaseline = 'middle';
+    for (const f of this.game.found) {
+      const p = this.toScreen(f.x, f.y);
+      if (p.x < -100 || p.y < -20 || p.x > this.w + 100 || p.y > this.h + 20) continue;
+      const kind = f.target.kind;
+      if (kind === 'city') {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+        ctx.fillStyle = COLORS.found;
+        ctx.fill();
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = '#fff';
+        ctx.stroke();
+      } else if (kind === 'mountain') {
+        this.mountainIcon(p.x, p.y, 6, COLORS.mountain);
+      }
+      // Water names are centred on the water, in italics (map convention).
+      const water = kind === 'river' || kind === 'lake';
+      ctx.font = water ? 'italic 600 12px system-ui, sans-serif' : '600 12px system-ui, sans-serif';
+      ctx.textAlign = water ? 'center' : 'left';
+      const x = water ? p.x : p.x + 8;
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+      ctx.strokeText(f.target.name, x, p.y);
+      ctx.fillStyle = water ? COLORS.foundWater : kind === 'mountain' ? '#5a3a1c' : '#24421f';
+      ctx.fillText(f.target.name, x, p.y);
+    }
+  }
+
+  private mountainIcon(x: number, y: number, r: number, fill: string, stroke = '#fff') {
+    const ctx = this.ctx;
+    ctx.beginPath();
+    ctx.moveTo(x, y - r * 1.2);
+    ctx.lineTo(x + r, y + r * 0.7);
+    ctx.lineTo(x - r, y + r * 0.7);
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = stroke;
+    ctx.stroke();
+  }
+
+  /** City or mountain target within reveal range: flashing marker. */
+  private drawTarget(c: Target) {
+    if (c.kind !== 'city' && c.kind !== 'mountain') return;
     const ctx = this.ctx;
     const p = this.toScreen(c.x, c.y);
     const t = this.time;
@@ -283,8 +407,12 @@ export class Renderer {
     ctx.strokeStyle = `rgba(229, 57, 53, ${0.7 * (1 - phase)})`;
     ctx.lineWidth = 2.5;
     ctx.stroke();
-    // Flashing dot.
     const on = Math.sin(t * 12) > -0.3;
+    if (c.kind === 'mountain') {
+      this.mountainIcon(p.x, p.y, on ? 10 : 8, on ? COLORS.target : '#fff', on ? '#fff' : COLORS.target);
+      return;
+    }
+    // Flashing dot.
     ctx.beginPath();
     ctx.arc(p.x, p.y, on ? 7 : 5, 0, Math.PI * 2);
     ctx.fillStyle = on ? COLORS.target : '#fff';

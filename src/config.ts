@@ -19,6 +19,15 @@ export const CONFIG = {
 
   /** How close the helicopter must be to the target to count as found. */
   catchRadius: 7,
+  /** Mountain ranges cover an area, so their (peak) target is easier to hit. */
+  mountainCatchFactor: 2,
+
+  /**
+   * Rivers are found by following them, not by crossing them: river length within
+   * `coverRadius` of the helicopter counts as covered, and the river is found once
+   * `followKm` (or `maxShare` of a short river) is covered. Crossing one covers ~8 km.
+   */
+  river: { followKm: 40, maxShare: 0.6, coverRadius: 4, sampleKm: 1 },
 
   /** Distance at which the target's flashing dot becomes visible, per level. */
   revealRadius: (level: number) => Math.max(12, 50 - (level - 1) * 7),

@@ -1,4 +1,4 @@
-type LonLat = [number, number];
+export type LonLat = [number, number];
 
 /** Geometry produced by scripts/build-map.mjs (all coordinates lon/lat). */
 export interface GeoData {
@@ -29,9 +29,19 @@ export interface City {
   level?: number;
 }
 
+/** Optional physical-geography targets (scripts/build-physical.mjs). */
+export interface PhysicalData {
+  rivers: { name: string; level: number; lines: LonLat[][] }[];
+  lakes: { name: string; level: number; rings: LonLat[][] }[];
+  /** Located at the range's main peak. */
+  mountains: { name: string; level: number; lat: number; lon: number; ele: number | null }[];
+}
+
 export interface MapData {
   geo: GeoData;
   cities: City[];
+  /** Present when the map supports the mountains/rivers/lakes mode. */
+  physical?: PhysicalData;
 }
 
 export interface MapDefinition {
@@ -41,4 +51,6 @@ export interface MapDefinition {
   viewKm: number;
   /** Lazily loaded so adding maps does not grow the initial bundle. */
   load: () => Promise<MapData>;
+  /** Mountains, rivers and lakes as extra targets (optional mode). */
+  loadPhysical?: () => Promise<PhysicalData>;
 }

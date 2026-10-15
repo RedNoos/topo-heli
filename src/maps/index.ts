@@ -12,6 +12,7 @@ export const MAPS: MapDefinition[] = [
       geo: (await import('./serbia/geo.json')).default as never,
       cities: (await import('./serbia/cities.json')).default,
     }),
+    loadPhysical: async () => (await import('./serbia/physical.json')).default as never,
   },
   {
     id: 'netherlands',

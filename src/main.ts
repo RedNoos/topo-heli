@@ -6,6 +6,7 @@ import { Input } from './input';
 import { MAPS } from './maps';
 import type { MapData, MapDefinition } from './maps/types';
 import { Renderer } from './renderer';
+import { KIND_LABEL, type Target } from './targets';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -17,8 +18,12 @@ const ui = {
   pause: $('pause'),
   over: $('over'),
   timer: $('timer'),
+  targetLabel: $('target-label'),
   targetName: $('target-name'),
   targetHint: $('target-hint'),
+  progress: $('river-progress'),
+  physicalToggle: $('physical-toggle'),
+  physicalOption: $<HTMLInputElement>('opt-physical'),
   score: $('score'),
   level: $('level'),
   toast: $('toast'),
@@ -39,10 +44,30 @@ let lastFrame = performance.now();
 let lastWholeSecond = 0;
 let wasVisible = false;
 let toastTimer = 0;
+/** "Mountains, rivers & lakes" option, remembered per map. */
+let physicalOn = false;
 
 // ---------- Best scores ----------
 
 const bestKey = (id: string) => `topo-heli:best:${id}`;
+/** Score key for the current map + mode. */
+const scoreId = () => (physicalOn ? `${mapDef.id}+physical` : mapDef.id);
+
+const optionKey = (id: string) => `topo-heli:physical:${id}`;
+function loadOption(id: string) {
+  try {
+    return localStorage.getItem(optionKey(id)) === '1';
+  } catch {
+    return false;
+  }
+}
+function saveOption(id: string, on: boolean) {
+  try {
+    localStorage.setItem(optionKey(id), on ? '1' : '0');
+  } catch {
+    /* not remembered */
+  }
+}
 function getBest(id: string): number {
   try {
     return Number(localStorage.getItem(bestKey(id))) || 0;
@@ -88,22 +113,30 @@ function renderMapSelect() {
     b.onclick = () => void selectMap(m);
     box.append(b);
   }
-  const best = getBest(mapDef.id);
-  ui.best.textContent = best > 0 ? `Best on ${mapDef.name}: ${best} cities` : '';
+  // The mode switch is only offered for maps that have physical data.
+  ui.physicalToggle.hidden = !mapDef.loadPhysical;
+  ui.physicalOption.checked = physicalOn;
+  $('howto-physical').hidden = !physicalOn;
+  const best = getBest(scoreId());
+  const mode = physicalOn ? ' (with mountains, rivers & lakes)' : '';
+  ui.best.textContent = best > 0 ? `Best on ${mapDef.name}${mode}: ${best} found` : '';
 }
 
 async function selectMap(def: MapDefinition) {
   mapDef = def;
+  physicalOn = !!def.loadPhysical && loadOption(def.id);
   renderMapSelect();
-  mapData = await def.load();
+  const [data, physical] = await Promise.all([def.load(), def.loadPhysical?.()]);
+  mapData = { ...data, physical };
   // A non-started game gives the menu a live map in the background.
   newGame(false);
 }
 
 function newGame(start: boolean) {
   if (!mapData) return;
-  game = new Game(mapData, mapDef.viewKm);
-  renderer = new Renderer(canvas, minimap, game, mapData.geo, mapDef.viewKm);
+  const physical = physicalOn ? mapData.physical : undefined;
+  game = new Game(mapData, mapDef.viewKm, { physical: !!physical });
+  renderer = new Renderer(canvas, minimap, game, mapData.geo, mapDef.viewKm, physical);
   wasVisible = false;
   lastWholeSecond = Math.ceil(game.timeLeft);
   ui.toast.hidden = true;
@@ -111,7 +144,7 @@ function newGame(start: boolean) {
   game.on((e) => {
     switch (e.type) {
       case 'target':
-        ui.targetName.textContent = e.city.name;
+        setTargetLabel(e.target);
         ui.targetName.classList.remove('pop');
         void ui.targetName.offsetWidth; // restart animation
         ui.targetName.classList.add('pop');
@@ -119,12 +152,12 @@ function newGame(start: boolean) {
         updateInsets(); // a long name may wrap and change the HUD height
         break;
       case 'found':
-        renderer!.addFoundEffect(e.city, e.city.name);
+        renderer!.addFoundEffect(e.found);
         if (e.levelUp) {
           sfx.levelUp();
           showToast(
             `Level ${game!.level}! +${CONFIG.levelTimeBonus / 60}:00`,
-            'Smaller towns, and the dot shows up later',
+            physicalOn ? 'Lesser-known places, and they show up later' : 'Smaller towns, and the dot shows up later',
           );
         } else {
           sfx.found();
@@ -145,6 +178,19 @@ function newGame(start: boolean) {
   }
 }
 
+/** Target card: name plus, for physical features, what kind of place it is. */
+function setTargetLabel(t: Target) {
+  ui.targetLabel.textContent = t.kind === 'city' ? 'Fly to' : `Fly to the ${KIND_LABEL[t.kind]}`;
+  ui.targetName.textContent = t.name;
+  if (t.kind !== 'city') {
+    const tag = document.createElement('span');
+    tag.className = `kind kind-${t.kind}`;
+    tag.textContent = KIND_LABEL[t.kind];
+    ui.targetName.append(' ', tag);
+  }
+  ui.progress.hidden = t.kind !== 'river';
+}
+
 function showToast(title: string, detail: string) {
   ui.toast.innerHTML = '';
   ui.toast.append(title);
@@ -160,8 +206,8 @@ function endGame() {
   if (!game) return;
   sfx.over();
   const score = game.found.length;
-  const prevBest = getBest(mapDef.id);
-  if (score > prevBest) setBest(mapDef.id, score);
+  const prevBest = getBest(scoreId());
+  if (score > prevBest) setBest(scoreId(), score);
 
   $('final-score').textContent = String(score);
   $('final-best').textContent =
@@ -170,7 +216,7 @@ function endGame() {
   const list = $('found-list');
   list.innerHTML = '';
   const all = [
-    ...game.found.map((c) => ({ c, skipped: false })),
+    ...game.found.map((f) => ({ c: f.target, skipped: false })),
     ...game.skipped.map((c) => ({ c, skipped: true })),
   ];
   for (const { c, skipped } of all) {
@@ -200,6 +246,12 @@ function toggleMute() {
 // ---------- Controls ----------
 
 $('btn-start').onclick = start;
+ui.physicalOption.onchange = () => {
+  physicalOn = ui.physicalOption.checked;
+  saveOption(mapDef.id, physicalOn);
+  renderMapSelect();
+  newGame(false); // redraw the menu background with/without the detailed water
+};
 $('btn-again').onclick = start;
 $('btn-menu').onclick = () => {
   newGame(false);
@@ -242,7 +294,21 @@ function updateHud() {
   ui.level.textContent = String(game.level);
 
   const visible = game.targetVisible;
-  ui.targetHint.textContent = visible ? 'Close! Find the flashing dot' : '';
+  const kind = game.target?.kind;
+  const progress = game.riverProgress;
+  (ui.progress.firstElementChild as HTMLElement).style.width = `${Math.round(progress * 100)}%`;
+  ui.targetHint.textContent =
+    kind === 'river' && progress > 0
+      ? `Follow the river: ${Math.round(progress * 100)}%`
+      : !visible
+        ? ''
+        : kind === 'river'
+          ? 'Close! Follow the glowing river'
+          : kind === 'lake'
+            ? 'Close! Fly over the flashing lake'
+            : kind === 'mountain'
+              ? 'Close! Find the flashing peak'
+              : 'Close! Find the flashing dot';
   if (visible && !wasVisible) sfx.reveal();
   wasVisible = visible;
 

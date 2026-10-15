@@ -14,9 +14,10 @@
       <div class="hud-top">
         <div class="pill" id="timer">3:00</div>
         <div class="target-card">
-          <div class="target-label">Fly to</div>
+          <div class="target-label" id="target-label">Fly to</div>
           <div class="target-name" id="target-name">—</div>
           <div class="target-hint" id="target-hint"></div>
+          <div class="progress" id="river-progress" hidden><div></div></div>
         </div>
         <div class="pill stats">
           <span><b id="score">0</b> found</span>
@@ -38,12 +39,18 @@
         <h1>Topo Heli</h1>
         <p class="sub">Fly your helicopter to as many cities as you can before time runs out.</p>
         <div class="map-select" id="map-select"></div>
+        <label class="toggle" id="physical-toggle" hidden>
+          <input type="checkbox" id="opt-physical" />
+          <span class="switch"></span>
+          <span>Mountains, rivers &amp; lakes</span>
+        </label>
         <p class="best" id="best"></p>
         <button class="btn primary" id="btn-start">Start</button>
         <ul class="howto">
           <li><b>Fly</b> with the arrow keys / WASD, or drag anywhere on a touch screen.</li>
           <li>Get close and the city starts <b>flashing</b>. Fly right over it.</li>
           <li>Every <b>10 cities</b>: +1:00, but smaller towns and less help.</li>
+          <li id="howto-physical" hidden><b>Rivers:</b> fly <i>along</i> the river until the bar is full. Lakes and mountains: fly over them.</li>
         </ul>
       </div>
     </div>

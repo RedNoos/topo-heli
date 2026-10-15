@@ -16,6 +16,11 @@ npm run build    # static site in dist/
   to the pool and the dot appears later (smaller reveal radius).
 - `N` skips a city (−10 s), `P`/`Esc` pauses, `M` toggles sound.
 
+**Mountains, rivers & lakes** (Serbia, switch on the start screen): physical features are mixed in
+with the cities. Lakes and mountains are found by flying over them. Rivers are found by *following*
+them: the bar fills with the length of river you have flown along (40 km, or 60% of a short river);
+simply crossing a river covers only ~8 km. Best scores are kept per map and mode.
+
 Tuning lives in [src/config.ts](src/config.ts).
 
 ## Adding a map
@@ -33,10 +38,17 @@ Tuning lives in [src/config.ts](src/config.ts).
 4. Register the map in [src/maps/index.ts](src/maps/index.ts) (`viewKm` sets the zoom level:
    larger regions want a larger value).
 
+## Physical features
+
+`npm run build:physical` queries OpenStreetMap (Overpass API) for the rivers, lakes and peaks
+listed in [scripts/build-physical.mjs](scripts/build-physical.mjs) and writes
+`src/maps/<id>/physical.json`. Each feature has a `level` that decides when it can be asked.
+
 ## Data
 
 - Borders, rivers and lakes: [Natural Earth](https://www.naturalearthdata.com/) (public domain).
   The Europe map uses the internationally recognised borders (Natural Earth's German point of
   view), with Kosovo drawn as part of Serbia on every map.
+- Rivers, lakes and peaks: [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors (ODbL).
 - City coordinates: [GeoNames](https://www.geonames.org/) (CC BY 4.0). Populations are rounded
   approximations.
