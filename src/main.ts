@@ -6,7 +6,8 @@ import { Input } from './input';
 import { MAPS } from './maps';
 import type { MapData, MapDefinition } from './maps/types';
 import { Renderer } from './renderer';
-import { KIND_LABEL, type Target } from './targets';
+import { flagSvg, getLang, LANGS, onLangChange, placeName, plural, setLang, setPlaceNames, t, type StringKey } from './i18n';
+import type { Target, TargetKind } from './targets';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -108,7 +109,7 @@ function renderMapSelect() {
   box.innerHTML = '';
   for (const m of MAPS) {
     const b = document.createElement('button');
-    b.textContent = m.name;
+    b.textContent = t(m.nameKey);
     b.classList.toggle('active', m === mapDef);
     b.onclick = () => void selectMap(m);
     box.append(b);
@@ -118,15 +119,16 @@ function renderMapSelect() {
   ui.physicalOption.checked = physicalOn;
   $('howto-physical').hidden = !physicalOn;
   const best = getBest(scoreId());
-  const mode = physicalOn ? ' (with mountains, rivers & lakes)' : '';
-  ui.best.textContent = best > 0 ? `Best on ${mapDef.name}${mode}: ${best} found` : '';
+  const params = { map: t(mapDef.nameKey), n: best };
+  ui.best.innerHTML = best > 0 ? t(physicalOn ? 'bestPhysical' : 'best', params) : '';
 }
 
 async function selectMap(def: MapDefinition) {
   mapDef = def;
   physicalOn = !!def.loadPhysical && loadOption(def.id);
   renderMapSelect();
-  const [data, physical] = await Promise.all([def.load(), def.loadPhysical?.()]);
+  const [data, physical, serbianNames] = await Promise.all([def.load(), def.loadPhysical?.(), def.loadSerbianNames?.()]);
+  setPlaceNames(def.placeNames, serbianNames);
   mapData = { ...data, physical };
   // A non-started game gives the menu a live map in the background.
   newGame(false);
@@ -156,8 +158,8 @@ function newGame(start: boolean) {
         if (e.levelUp) {
           sfx.levelUp();
           showToast(
-            `Level ${game!.level}! +${CONFIG.levelTimeBonus / 60}:00`,
-            physicalOn ? 'Lesser-known places, and they show up later' : 'Smaller towns, and the dot shows up later',
+            t('levelUp', { n: game!.level, bonus: `${CONFIG.levelTimeBonus / 60}:00` }),
+            t(physicalOn ? 'levelUpDetailPhysical' : 'levelUpDetail'),
           );
         } else {
           sfx.found();
@@ -178,17 +180,30 @@ function newGame(start: boolean) {
   }
 }
 
+const FLY_TO: Record<TargetKind, StringKey> = {
+  city: 'flyTo',
+  river: 'flyToRiver',
+  lake: 'flyToLake',
+  mountain: 'flyToMountain',
+};
+const KIND: Record<Exclude<TargetKind, 'city'>, StringKey> = {
+  river: 'kindRiver',
+  lake: 'kindLake',
+  mountain: 'kindMountain',
+};
+
 /** Target card: name plus, for physical features, what kind of place it is. */
-function setTargetLabel(t: Target) {
-  ui.targetLabel.textContent = t.kind === 'city' ? 'Fly to' : `Fly to the ${KIND_LABEL[t.kind]}`;
-  ui.targetName.textContent = t.name;
-  if (t.kind !== 'city') {
+function setTargetLabel(target: Target) {
+  ui.targetLabel.textContent = t(FLY_TO[target.kind]);
+  const name = placeName(target.name);
+  ui.targetName.textContent = name;
+  if (target.kind !== 'city' && !name.toLowerCase().includes(t(KIND[target.kind]).toLowerCase())) {
     const tag = document.createElement('span');
-    tag.className = `kind kind-${t.kind}`;
-    tag.textContent = KIND_LABEL[t.kind];
+    tag.className = `kind kind-${target.kind}`;
+    tag.textContent = t(KIND[target.kind]);
     ui.targetName.append(' ', tag);
   }
-  ui.progress.hidden = t.kind !== 'river';
+  ui.progress.hidden = target.kind !== 'river';
 }
 
 function showToast(title: string, detail: string) {
@@ -210,9 +225,10 @@ function endGame() {
   if (score > prevBest) setBest(scoreId(), score);
 
   $('final-score').textContent = String(score);
+  $('final-label').textContent = plural('placesFound', score);
   $('final-best').textContent =
-    score > prevBest && score > 0 ? 'New best score!' : prevBest > 0 ? `Best: ${prevBest}` : '';
-  $('final-missed').textContent = game.target ? `The last one was ${game.target.name}.` : '';
+    score > prevBest && score > 0 ? t('newBest') : prevBest > 0 ? t('bestShort', { n: prevBest }) : '';
+  $('final-missed').textContent = game.target ? t('lastOne', { name: placeName(game.target.name) }) : '';
   const list = $('found-list');
   list.innerHTML = '';
   const all = [
@@ -221,7 +237,7 @@ function endGame() {
   ];
   for (const { c, skipped } of all) {
     const s = document.createElement('span');
-    s.textContent = c.name;
+    s.textContent = placeName(c.name);
     if (skipped) s.className = 'skipped';
     list.append(s);
   }
@@ -240,8 +256,67 @@ function togglePause() {
 
 function toggleMute() {
   sfx.muted = !sfx.muted;
-  ui.mute.textContent = sfx.muted ? 'Sound off' : 'Sound on';
+  updateMuteLabel();
 }
+
+function updateMuteLabel() {
+  ui.mute.textContent = t(sfx.muted ? 'soundOff' : 'soundOn');
+}
+
+// ---------- Language ----------
+
+/** Fills every [data-i18n] element with its translation. */
+function translateStatic() {
+  for (const el of document.querySelectorAll<HTMLElement>('[data-i18n]')) {
+    el.innerHTML = t(el.dataset.i18n as StringKey, { keys: 'WASD' });
+  }
+  updateMuteLabel();
+  if (game?.target) setTargetLabel(game.target);
+  if (game) $('final-label').textContent = plural('placesFound', game.found.length);
+  renderLangPicker();
+  renderMapSelect();
+  updateInsets();
+}
+
+/** Flag dropdown: current language as flag + abbreviation; opens a list of all languages. */
+function renderLangPicker() {
+  const box = $('lang');
+  const current = LANGS.find((l) => l.id === getLang())!;
+  box.innerHTML = '';
+  const button = document.createElement('button');
+  button.className = 'lang-current';
+  button.type = 'button';
+  button.title = t('language');
+  button.setAttribute('aria-haspopup', 'listbox');
+  button.setAttribute('aria-expanded', 'false');
+  button.innerHTML = `${flagSvg(current.flag)}<span>${current.short}</span><span class="caret">▾</span>`;
+  const list = document.createElement('ul');
+  list.className = 'lang-list';
+  list.setAttribute('role', 'listbox');
+  list.hidden = true;
+  for (const l of LANGS) {
+    const item = document.createElement('li');
+    item.setAttribute('role', 'option');
+    item.setAttribute('aria-selected', String(l.id === current.id));
+    item.tabIndex = 0;
+    item.innerHTML = `${flagSvg(l.flag)}<b>${l.short}</b><span>${l.label}</span>`;
+    const choose = () => setLang(l.id);
+    item.onclick = choose;
+    item.onkeydown = (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), choose());
+    list.append(item);
+  }
+  button.onclick = (e) => {
+    e.stopPropagation();
+    list.hidden = !list.hidden;
+    button.setAttribute('aria-expanded', String(!list.hidden));
+  };
+  box.append(button, list);
+}
+document.addEventListener('click', () => {
+  const list = document.querySelector<HTMLElement>('.lang-list');
+  if (list) list.hidden = true;
+});
+onLangChange(translateStatic);
 
 // ---------- Controls ----------
 
@@ -287,9 +362,9 @@ window.addEventListener('resize', () => {
 
 function updateHud() {
   if (!game) return;
-  const t = Math.ceil(game.timeLeft);
-  ui.timer.textContent = `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
-  ui.timer.classList.toggle('low', t <= 15 && state === 'playing');
+  const secs = Math.ceil(game.timeLeft);
+  ui.timer.textContent = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+  ui.timer.classList.toggle('low', secs <= 15 && state === 'playing');
   ui.score.textContent = String(game.found.length);
   ui.level.textContent = String(game.level);
 
@@ -297,23 +372,18 @@ function updateHud() {
   const kind = game.target?.kind;
   const progress = game.riverProgress;
   (ui.progress.firstElementChild as HTMLElement).style.width = `${Math.round(progress * 100)}%`;
+  const hints: Record<TargetKind, StringKey> = { city: 'hintCity', river: 'hintRiver', lake: 'hintLake', mountain: 'hintMountain' };
   ui.targetHint.textContent =
     kind === 'river' && progress > 0
-      ? `Follow the river: ${Math.round(progress * 100)}%`
-      : !visible
-        ? ''
-        : kind === 'river'
-          ? 'Close! Follow the glowing river'
-          : kind === 'lake'
-            ? 'Close! Fly over the flashing lake'
-            : kind === 'mountain'
-              ? 'Close! Find the flashing peak'
-              : 'Close! Find the flashing dot';
+      ? t('followRiver', { p: Math.round(progress * 100) })
+      : visible && kind
+        ? t(hints[kind])
+        : '';
   if (visible && !wasVisible) sfx.reveal();
   wasVisible = visible;
 
-  if (t < lastWholeSecond && t <= 10 && t > 0) sfx.tick();
-  lastWholeSecond = t;
+  if (secs < lastWholeSecond && secs <= 10 && secs > 0) sfx.tick();
+  lastWholeSecond = secs;
 }
 
 function frame(now: number) {
@@ -329,7 +399,8 @@ function frame(now: number) {
   requestAnimationFrame(frame);
 }
 
-renderMapSelect();
+document.documentElement.lang = getLang();
+translateStatic();
 void selectMap(mapDef);
 requestAnimationFrame(frame);
 

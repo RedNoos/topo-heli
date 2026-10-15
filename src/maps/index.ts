@@ -6,7 +6,8 @@ import type { MapDefinition } from './types';
 export const MAPS: MapDefinition[] = [
   {
     id: 'serbia',
-    name: 'Srbija',
+    nameKey: 'mapSerbia',
+    placeNames: 'sr-Latn',
     viewKm: 260,
     load: async () => ({
       geo: (await import('./serbia/geo.json')).default as never,
@@ -16,7 +17,9 @@ export const MAPS: MapDefinition[] = [
   },
   {
     id: 'netherlands',
-    name: 'Nederland',
+    nameKey: 'mapNetherlands',
+    // Dutch names are kept in every language.
+    placeNames: 'native',
     viewKm: 160,
     load: async () => ({
       geo: (await import('./netherlands/geo.json')).default as never,
@@ -25,7 +28,9 @@ export const MAPS: MapDefinition[] = [
   },
   {
     id: 'europe',
-    name: 'Europe',
+    nameKey: 'mapEurope',
+    placeNames: 'native',
+    loadSerbianNames: async () => (await import('./europe/names.sr.json')).default,
     viewKm: 1300,
     load: async () => ({
       geo: (await import('./europe/geo.json')).default as never,

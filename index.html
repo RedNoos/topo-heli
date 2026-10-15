@@ -20,14 +20,14 @@
           <div class="progress" id="river-progress" hidden><div></div></div>
         </div>
         <div class="pill stats">
-          <span><b id="score">0</b> found</span>
-          <span class="lvl">Level <b id="level">1</b></span>
+          <span><b id="score">0</b> <span data-i18n="found">found</span></span>
+          <span class="lvl"><span data-i18n="level">Level</span> <b id="level">1</b></span>
         </div>
       </div>
       <div class="hud-bottom">
-        <button class="btn small ghost" id="btn-pause" title="Pause (P)">Pause</button>
-        <button class="btn small ghost" id="btn-skip" title="Skip city (N)">Skip −10s</button>
-        <button class="btn small ghost" id="btn-mute" title="Sound (M)">Sound on</button>
+        <button class="btn small ghost" id="btn-pause" title="P / Esc" data-i18n="pause">Pause</button>
+        <button class="btn small ghost" id="btn-skip" title="N" data-i18n="skip">Skip −10s</button>
+        <button class="btn small ghost" id="btn-mute" title="M">Sound on</button>
       </div>
       <canvas id="minimap"></canvas>
       <div class="toast" id="toast" hidden></div>
@@ -35,43 +35,44 @@
 
     <div class="overlay" id="menu">
       <div class="panel">
+        <div class="lang" id="lang"></div>
         <div class="logo">🚁</div>
         <h1>Topo Heli</h1>
-        <p class="sub">Fly your helicopter to as many cities as you can before time runs out.</p>
+        <p class="sub" data-i18n="subtitle">Fly your helicopter to as many cities as you can before time runs out.</p>
         <div class="map-select" id="map-select"></div>
         <label class="toggle" id="physical-toggle" hidden>
           <input type="checkbox" id="opt-physical" />
           <span class="switch"></span>
-          <span>Mountains, rivers &amp; lakes</span>
+          <span data-i18n="physicalOption">Mountains, rivers &amp; lakes</span>
         </label>
         <p class="best" id="best"></p>
-        <button class="btn primary" id="btn-start">Start</button>
+        <button class="btn primary" id="btn-start" data-i18n="start">Start</button>
         <ul class="howto">
-          <li><b>Fly</b> with the arrow keys / WASD, or drag anywhere on a touch screen.</li>
-          <li>Get close and the city starts <b>flashing</b>. Fly right over it.</li>
-          <li>Every <b>10 cities</b>: +1:00, but smaller towns and less help.</li>
-          <li id="howto-physical" hidden><b>Rivers:</b> fly <i>along</i> the river until the bar is full. Lakes and mountains: fly over them.</li>
+          <li data-i18n="howtoFly"></li>
+          <li data-i18n="howtoFlash"></li>
+          <li data-i18n="howtoLevels"></li>
+          <li id="howto-physical" data-i18n="howtoPhysical" hidden></li>
         </ul>
       </div>
     </div>
 
     <div class="overlay" id="pause" hidden>
       <div class="panel">
-        <h2>Paused</h2>
-        <button class="btn primary" id="btn-resume">Resume</button>
-        <button class="btn ghost" id="btn-quit">Quit to menu</button>
+        <h2 data-i18n="paused">Paused</h2>
+        <button class="btn primary" id="btn-resume" data-i18n="resume">Resume</button>
+        <button class="btn ghost" id="btn-quit" data-i18n="quit">Quit to menu</button>
       </div>
     </div>
 
     <div class="overlay" id="over" hidden>
       <div class="panel">
-        <h2>Time's up!</h2>
-        <div class="final"><b id="final-score">0</b> cities found</div>
+        <h2 data-i18n="timeUp">Time's up!</h2>
+        <div class="final"><b id="final-score">0</b> <span id="final-label">places found</span></div>
         <p class="best" id="final-best"></p>
         <p class="missed" id="final-missed"></p>
         <div class="found-list" id="found-list"></div>
-        <button class="btn primary" id="btn-again">Play again</button>
-        <button class="btn ghost" id="btn-menu">Menu</button>
+        <button class="btn primary" id="btn-again" data-i18n="playAgain">Play again</button>
+        <button class="btn ghost" id="btn-menu" data-i18n="menu">Menu</button>
       </div>
     </div>
 

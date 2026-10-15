@@ -1,5 +1,6 @@
 import { JOYSTICK_RADIUS, type Joystick } from './input';
 import type { Found, Game } from './game';
+import { placeName } from './i18n';
 import type { GeoData, PhysicalData } from './maps/types';
 import type { Projection } from './projection';
 import type { Target } from './targets';
@@ -162,7 +163,7 @@ export class Renderer {
 
   addFoundEffect(f: Found) {
     this.effects.push({ x: f.x, y: f.y, age: 0, life: 0.9, kind: 'ring' });
-    this.effects.push({ x: f.x, y: f.y, age: 0, life: 1.4, kind: 'text', text: f.target.name });
+    this.effects.push({ x: f.x, y: f.y, age: 0, life: 1.4, kind: 'text', text: placeName(f.target.name) });
   }
 
   /** Path2D (km coordinates) for a river or lake target, built once. */
@@ -374,9 +375,10 @@ export class Renderer {
       const x = water ? p.x : p.x + 8;
       ctx.lineWidth = 3;
       ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-      ctx.strokeText(f.target.name, x, p.y);
+      const label = placeName(f.target.name);
+      ctx.strokeText(label, x, p.y);
       ctx.fillStyle = water ? COLORS.foundWater : kind === 'mountain' ? '#5a3a1c' : '#24421f';
-      ctx.fillText(f.target.name, x, p.y);
+      ctx.fillText(label, x, p.y);
     }
   }
 

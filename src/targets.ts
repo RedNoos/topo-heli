@@ -28,13 +28,6 @@ export interface Target {
   rings?: Pt[][];
 }
 
-export const KIND_LABEL: Record<TargetKind, string> = {
-  city: 'city',
-  mountain: 'mountain',
-  lake: 'lake',
-  river: 'river',
-};
-
 function segmentDistance(p: Pt, a: Pt, b: Pt) {
   const dx = b.x - a.x;
   const dy = b.y - a.y;

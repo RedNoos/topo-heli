@@ -1,3 +1,5 @@
+import type { StringKey } from '../i18n';
+
 export type LonLat = [number, number];
 
 /** Geometry produced by scripts/build-map.mjs (all coordinates lon/lat). */
@@ -46,7 +48,15 @@ export interface MapData {
 
 export interface MapDefinition {
   id: string;
-  name: string;
+  /** Translated map name (see i18n.ts). */
+  nameKey: StringKey;
+  /**
+   * Place names: 'sr-Latn' = written in Serbian Latin (transliterated for Cyrillic);
+   * 'native' = shown as-is, or via loadSerbianNames when Serbian is selected.
+   */
+  placeNames: 'sr-Latn' | 'native';
+  /** Serbian (Cyrillic) names by place name, for maps whose names are not Serbian. */
+  loadSerbianNames?: () => Promise<Record<string, string>>;
   /** Kilometres visible across the smaller side of the screen. Bigger regions want a bigger view. */
   viewKm: number;
   /** Lazily loaded so adding maps does not grow the initial bundle. */

@@ -239,6 +239,7 @@ body {
 }
 
 .panel {
+  position: relative;
   background: var(--panel);
   border-radius: 22px;
   box-shadow: var(--shadow);
@@ -248,6 +249,85 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+/* ---------- Language picker ---------- */
+
+.lang {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  text-align: left;
+  z-index: 2;
+}
+
+.flag {
+  width: 22px;
+  height: 14px;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
+  flex: none;
+}
+
+.lang-current {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid #d8d4c4;
+  border-radius: 999px;
+  padding: 5px 9px 5px 8px;
+  cursor: pointer;
+}
+
+.lang-current .caret {
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+.lang-list {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  min-width: 210px;
+}
+
+.lang-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.lang-list li b {
+  width: 24px;
+}
+
+.lang-list li span {
+  white-space: nowrap;
+}
+
+.lang-list li:hover,
+.lang-list li:focus-visible {
+  background: #f1eee2;
+  outline: none;
+}
+
+.lang-list li[aria-selected='true'] {
+  background: #e2eed8;
 }
 
 .logo {

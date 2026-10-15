@@ -205,7 +205,7 @@ export class Game {
 
     if (this.isFound()) {
       const target = this.target;
-      const at = target.kind === 'river' ? nearestSample(target, h) : target;
+      const at = target.kind === 'river' ? nearestSample(target, h) : target.kind === 'lake' ? { x: h.x, y: h.y } : target;
       this.found.push({ target, x: at.x, y: at.y });
       const levelUp = this.found.length % CONFIG.citiesPerLevel === 0;
       if (levelUp) this.timeLeft += CONFIG.levelTimeBonus;

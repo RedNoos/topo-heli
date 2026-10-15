@@ -21,6 +21,11 @@ with the cities. Lakes and mountains are found by flying over them. Rivers are f
 them: the bar fills with the length of river you have flown along (40 km, or 60% of a short river);
 simply crossing a river covers only ~8 km. Best scores are kept per map and mode.
 
+**Languages:** English, Serbian Latin and Serbian Cyrillic (flag menu on the start screen). UI text
+lives in [src/i18n.ts](src/i18n.ts); Serbian is written once in Latin script and transliterated to
+Cyrillic. Place names: Serbia uses its (Serbian Latin) names, Europe has Serbian names in
+`src/maps/europe/names.sr.json`, Dutch names are kept as-is.
+
 Tuning lives in [src/config.ts](src/config.ts).
 
 ## Adding a map
