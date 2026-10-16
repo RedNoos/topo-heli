@@ -16,7 +16,7 @@ npm run build    # static site in dist/
   to the pool and the dot appears later (smaller reveal radius).
 - `N` skips a city (−10 s), `P`/`Esc` pauses, `M` toggles sound.
 
-**Mountains, rivers & lakes** (Serbia, switch on the start screen): physical features are mixed in
+**Mountains, rivers & lakes** (Serbia; rivers only for the Netherlands; switch on the start screen): physical features are mixed in
 with the cities. Lakes and mountains are found by flying over them. Rivers are found by *following*
 them: the bar fills with the length of river you have flown along (40 km, or 60% of a short river);
 simply crossing a river covers only ~8 km. Best scores are kept per map and mode.

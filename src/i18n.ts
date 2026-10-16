@@ -17,13 +17,16 @@ export const LANGS: { id: Lang; short: string; label: string; flag: 'gb' | 'rs' 
 const en = {
   subtitle: 'Fly your helicopter to as many cities as you can before time runs out.',
   physicalOption: 'Mountains, rivers &amp; lakes',
+  physicalOptionRivers: 'Rivers',
   start: 'Start',
   howtoFly: '<b>Fly</b> with the arrow keys / {keys}, or drag anywhere on a touch screen.',
   howtoFlash: 'Get close and the city starts <b>flashing</b>. Fly right over it.',
   howtoLevels: 'Every <b>10 cities</b>: +1:00, but smaller towns and less help.',
   howtoPhysical: '<b>Rivers:</b> fly <i>along</i> the river until the bar is full. Lakes and mountains: fly over them.',
+  howtoPhysicalRivers: '<b>Rivers:</b> fly <i>along</i> the river until the bar is full.',
   best: 'Best on {map}: {n} found',
   bestPhysical: 'Best on {map} (with mountains, rivers &amp; lakes): {n} found',
+  bestPhysicalRivers: 'Best on {map} (with rivers): {n} found',
   flyTo: 'Fly to',
   flyToRiver: 'Fly to the river',
   flyToLake: 'Fly to the lake',
@@ -69,13 +72,16 @@ export type StringKey = keyof typeof en;
 const srLatn: Record<StringKey, string> = {
   subtitle: 'Leti helikopterom do što više gradova pre nego što istekne vreme.',
   physicalOption: 'Planine, reke i jezera',
+  physicalOptionRivers: 'Reke',
   start: 'Počni',
   howtoFly: '<b>Letiš</b> strelicama / {keys}, ili prevlačenjem prsta po ekranu.',
   howtoFlash: 'Kad se približiš, grad počinje da <b>treperi</b>. Preleti tačno preko njega.',
   howtoLevels: 'Na svakih <b>10 gradova</b>: +1:00, ali manja mesta i manje pomoći.',
   howtoPhysical: '<b>Reke:</b> leti <i>duž</i> reke dok se traka ne napuni. Jezera i planine: preleti preko njih.',
+  howtoPhysicalRivers: '<b>Reke:</b> leti <i>duž</i> reke dok se traka ne napuni.',
   best: 'Rekord ({map}): {n} pronađeno',
   bestPhysical: 'Rekord ({map}, sa planinama, rekama i jezerima): {n} pronađeno',
+  bestPhysicalRivers: 'Rekord ({map}, sa rekama): {n} pronađeno',
   flyTo: 'Leti do',
   flyToRiver: 'Leti do reke',
   flyToLake: 'Leti do jezera',
@@ -253,10 +259,33 @@ export function placeName(name: string): string {
 // ---------- Flags (SVG: flag emoji don't render on Windows) ----------
 
 let flagId = 0;
+
+/**
+ * Serbian state flag: red-blue-white with the lesser coat of arms (crowned red shield with
+ * a white double-headed eagle), shifted towards the hoist. Simplified to read at ~21×14 px.
+ */
+const SERBIA_FLAG = (() => {
+  const x = 43; // emblem centre: 1/7 of the flag length towards the hoist
+  const gold = '#e7b53c';
+  return [
+    '<svg class="flag" viewBox="0 0 120 80" aria-hidden="true">',
+    '<rect width="120" height="80" fill="#fff"/>',
+    '<rect width="120" height="53.33" fill="#0c4076"/>',
+    '<rect width="120" height="26.67" fill="#c6363c"/>',
+    // Crown.
+    `<path d="M${x - 12} 20 L${x - 13.5} 11 L${x - 6} 15.5 L${x} 8 L${x + 6} 15.5 L${x + 13.5} 11 L${x + 12} 20 Z" fill="${gold}"/>`,
+    `<circle cx="${x}" cy="6.5" r="2" fill="${gold}"/>`,
+    // Shield.
+    `<path d="M${x - 14} 22 H${x + 14} V46 Q${x + 14} 60 ${x} 67 Q${x - 14} 60 ${x - 14} 46 Z" fill="#c6363c" stroke="${gold}" stroke-width="2"/>`,
+    // Double-headed eagle: two heads, spread wings, body and tail.
+    `<circle cx="${x - 4}" cy="28.5" r="2.6" fill="#fff"/><circle cx="${x + 4}" cy="28.5" r="2.6" fill="#fff"/>`,
+    `<path d="M${x - 11.5} 31 Q${x - 12.5} 41 ${x - 6} 46 L${x - 3} 42 L${x - 3} 53 L${x} 58 L${x + 3} 53 L${x + 3} 42 L${x + 6} 46 Q${x + 12.5} 41 ${x + 11.5} 31 L${x + 5} 35 L${x + 2.5} 30.5 L${x} 33 L${x - 2.5} 30.5 L${x - 5} 35 Z" fill="#fff"/>`,
+    '</svg>',
+  ].join('');
+})();
 export function flagSvg(flag: 'gb' | 'rs'): string {
-  if (flag === 'rs') {
-    return '<svg class="flag" viewBox="0 0 3 2" aria-hidden="true"><rect width="3" height="2" fill="#fff"/><rect width="3" height="1.333" fill="#0c4076"/><rect width="3" height="0.667" fill="#c6363c"/></svg>';
-  }
+  if (flag === 'rs') return SERBIA_FLAG;
   const id = `gb-clip-${flagId++}`;
-  return `<svg class="flag" viewBox="0 0 60 30" aria-hidden="true"><clipPath id="${id}"><path d="M30,15h30v15zv15h-30zh-30v-15zv-15h30z"/></clipPath><rect width="60" height="30" fill="#012169"/><path d="M0,0L60,30M60,0L0,30" stroke="#fff" stroke-width="6"/><path d="M0,0L60,30M60,0L0,30" clip-path="url(#${id})" stroke="#c8102e" stroke-width="4"/><path d="M30,0v30M0,15h60" stroke="#fff" stroke-width="10"/><path d="M30,0v30M0,15h60" stroke="#c8102e" stroke-width="6"/></svg>`;
+  // Stretched to the same 3:2 box as the Serbian flag so the two line up.
+  return `<svg class="flag" viewBox="0 0 60 30" preserveAspectRatio="none" aria-hidden="true"><clipPath id="${id}"><path d="M30,15h30v15zv15h-30zh-30v-15zv-15h30z"/></clipPath><rect width="60" height="30" fill="#012169"/><path d="M0,0L60,30M60,0L0,30" stroke="#fff" stroke-width="6"/><path d="M0,0L60,30M60,0L0,30" clip-path="url(#${id})" stroke="#c8102e" stroke-width="4"/><path d="M30,0v30M0,15h60" stroke="#fff" stroke-width="10"/><path d="M30,0v30M0,15h60" stroke="#c8102e" stroke-width="6"/></svg>`;
 }

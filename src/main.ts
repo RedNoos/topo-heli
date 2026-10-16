@@ -117,19 +117,27 @@ function renderMapSelect() {
   // The mode switch is only offered for maps that have physical data.
   ui.physicalToggle.hidden = !mapDef.loadPhysical;
   ui.physicalOption.checked = physicalOn;
+  // Maps with only rivers (the Netherlands) call the option "Rivers".
+  const p = mapData?.physical;
+  const riversOnly = !!p && p.lakes.length === 0 && p.mountains.length === 0;
+  $('physical-label').innerHTML = t(riversOnly ? 'physicalOptionRivers' : 'physicalOption');
+  $('howto-physical').innerHTML = t(riversOnly ? 'howtoPhysicalRivers' : 'howtoPhysical');
   $('howto-physical').hidden = !physicalOn;
   const best = getBest(scoreId());
   const params = { map: t(mapDef.nameKey), n: best };
-  ui.best.innerHTML = best > 0 ? t(physicalOn ? 'bestPhysical' : 'best', params) : '';
+  const bestKey: StringKey = !physicalOn ? 'best' : riversOnly ? 'bestPhysicalRivers' : 'bestPhysical';
+  ui.best.innerHTML = best > 0 ? t(bestKey, params) : '';
 }
 
 async function selectMap(def: MapDefinition) {
   mapDef = def;
+  mapData = null;
   physicalOn = !!def.loadPhysical && loadOption(def.id);
   renderMapSelect();
   const [data, physical, serbianNames] = await Promise.all([def.load(), def.loadPhysical?.(), def.loadSerbianNames?.()]);
   setPlaceNames(def.placeNames, serbianNames);
   mapData = { ...data, physical };
+  renderMapSelect();
   // A non-started game gives the menu a live map in the background.
   newGame(false);
 }

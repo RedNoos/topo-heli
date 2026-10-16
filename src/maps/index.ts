@@ -25,6 +25,7 @@ export const MAPS: MapDefinition[] = [
       geo: (await import('./netherlands/geo.json')).default as never,
       cities: (await import('./netherlands/cities.json')).default,
     }),
+    loadPhysical: async () => (await import('./netherlands/physical.json')).default as never,
   },
   {
     id: 'europe',

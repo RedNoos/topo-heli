@@ -267,6 +267,7 @@ export class Renderer {
         ctx.stroke(r.path);
       }
       ctx.fillStyle = COLORS.water;
+      ctx.fill(L.lakes, 'evenodd');
       ctx.fill(L.physical.lakes, 'evenodd');
     } else {
       drawWater();

@@ -20,8 +20,9 @@ const OVERPASS = [
 ];
 
 // `level` is the game level from which the feature can be asked (1 = best known).
-// Rivers: 'Name' or ['Name', [minLon, minLat, maxLon, maxLat]] to keep only the parts in that
-// box (for names shared by several rivers). Lakes: 'Name' or ['Shown name', 'OSM name']. Mountains: ['Range', 'OSM peak name'] or
+// Rivers: 'Name', ['Name', [minLon, minLat, maxLon, maxLat]] to keep only the parts in that
+// box (for names shared by several rivers), or { name, osm: [OSM names], box? } when the shown
+// river is made of differently named OSM rivers (e.g. Rijn = Bovenrijn + Nederrijn). Lakes: 'Name' or ['Shown name', 'OSM name']. Mountains: ['Range', 'OSM peak name'] or
 // ['Range', { lat, lon, ele }] where OSM has no usable peak tag (coordinates taken from OSM
 // nodes for that summit/range).
 const PHYSICAL = {
@@ -43,6 +44,28 @@ const PHYSICAL = {
       2: [['Rtanj', 'Šiljak'], ['Suva planina', 'Trem'], ['Golija', 'Jankov kamen'], ['Avala', 'Avala'], ['Rudnik', 'Cvijićev vrh'], ['Šar planina', 'Ljuboten'], ['Prokletije', 'Đeravica'], ['Besna Kobila', 'Besna Kobila']],
       3: [['Maljen', 'Kraljev sto'], ['Povlen', 'Mali Povlen'], ['Jastrebac', 'Velika Đulica'], ['Radan', 'Šopot'], ['Zlatar', 'Golo brdo'], ['Goč', 'Krnja jela'], ['Kosmaj', 'Kosmaj'], ['Cer', { lat: 44.606, lon: 19.488, ele: 687 }], ['Ozren', 'Leskovik'], ['Vidlič', { lat: 43.137, lon: 22.819, ele: null }], ['Ovčar', 'Ovčar'], ['Kablar', 'Kablar']],
     },
+  },
+  netherlands: {
+    areas: ['NL'],
+    bbox: [2.9, 50.6, 7.6, 53.75],
+    rivers: {
+      1: [{ name: 'Rijn', osm: ['Rijn', 'Bovenrijn', 'Nederrijn'] }, 'Waal', 'Maas', 'IJssel', 'Lek'],
+      2: [
+        'Amstel',
+        ['Vecht', [4.85, 52.0, 5.15, 52.35]],
+        // Old spelling on most ways; the river relation uses the German name.
+        { name: 'Overijsselse Vecht', osm: ['Vecht', 'Overijsselse Vecht', 'Overijsselsche Vecht', 'Vechte'], box: [6.0, 52.45, 7.1, 52.7] },
+        'Linge', 'Oude IJssel',
+        // OSM uses the old spelling.
+        { name: 'Hollandse IJssel', osm: ['Hollandsche IJssel', 'Gekanaliseerde Hollandsche IJssel'] },
+        'Nieuwe Maas', 'Oude Maas',
+        { name: 'Merwede', osm: ['Boven-Merwede', 'Beneden-Merwede', 'Nieuwe Merwede'] },
+        'Zwarte Water', 'Oude Rijn',
+      ],
+      3: ['Eem', 'Dommel', 'Roer', 'Berkel', 'Dinkel', 'Regge', 'Geul', 'Niers', 'Mark', 'Schipbeek', 'Reitdiep'],
+    },
+    lakes: {},
+    mountains: {},
   },
 };
 
@@ -125,6 +148,16 @@ function areaQuery(cfg) {
 const inAreas = (cfg, filter, keys = NAME_KEYS) =>
   cfg.areas.map((_, i) => keys.map((k) => `${filter}["${k}"~"__RE__",i](area.a${i});`).join('\n')).join('\n');
 
+/**
+ * The playable country (from the map's geo.json) grown by `km`, as a clip layer: keeps
+ * rivers inside the country, while border rivers (Danube, Drina…) are not chopped up.
+ */
+async function countryClip(id, km) {
+  const geo = JSON.parse(await fs.readFile(path.join(ROOT, 'src', 'maps', id, 'geo.json'), 'utf8'));
+  const home = { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'MultiPolygon', coordinates: geo.home } }] };
+  return simplifyGeo(home, `-buffer radius=${km}km`);
+}
+
 async function simplifyGeo(fc, cmd) {
   const out = await mapshaper.applyCommands(`-i in.json ${cmd} -o out.json format=geojson`, { 'in.json': fc });
   const res = JSON.parse(out['out.json']);
@@ -137,24 +170,50 @@ const byLevel = (obj) => Object.entries(obj).flatMap(([level, list]) => list.map
 // ---------- builders ----------
 
 async function buildRivers(id, cfg) {
-  const entries = byLevel(cfg.rivers).map(({ level, item }) =>
-    Array.isArray(item) ? { level, item: item[0], box: item[1] } : { level, item },
-  );
-  const names = entries.map((e) => e.item);
-  const re = nameRegex(names);
-  const query = `[out:json][timeout:300];\n${areaQuery(cfg)}\n(\n${inAreas(cfg, 'way["waterway"="river"]').replaceAll('__RE__', re)}\n);\nout geom;`;
-  const data = await overpass(`${id}-rivers`, query);
+  const entries = byLevel(cfg.rivers).map(({ level, item }) => {
+    if (typeof item === 'string') return { level, name: item, osm: [item] };
+    if (Array.isArray(item)) return { level, name: item[0], osm: [item[0]], box: item[1] };
+    return { level, name: item.name, osm: item.osm ?? [item.name], box: item.box };
+  });
+  if (!entries.length) return [];
+  const osmNames = [...new Set(entries.flatMap((e) => e.osm))];
+  const re = nameRegex(osmNames);
+  const inBox = (box, [x, y]) => x >= box[0] && x <= box[2] && y >= box[1] && y <= box[3];
+  const [w, so, e, n] = cfg.bbox;
+  const query = `[out:json][timeout:300];\n${areaQuery(cfg)}\n(\n${inAreas(cfg, 'way["waterway"="river"]').replaceAll('__RE__', re)}\n${inAreas(cfg, 'relation["waterway"="river"]').replaceAll('__RE__', re)}\n);\nout geom(${so},${w},${n},${e});`;
+  const data = await overpass(`${id}-rivers-v2`, query);
 
   const features = [];
+  // Way id -> { river, coords }. A way can come in directly and as a relation member: keep it once,
+  // otherwise its length would count twice when following the river.
+  const ways = new Map();
+  const add = (wayId, osmName, geometry) => {
+    const coords = (geometry ?? []).filter(Boolean).map((p) => [p.lon, p.lat]);
+    if (coords.length < 2 || ways.has(wayId)) return;
+    const entry = entries.find((en) => en.osm.includes(osmName) && (!en.box || coords.some((c) => inBox(en.box, c))));
+    if (entry) ways.set(wayId, { river: entry.name, coords });
+  };
+  // Named ways first, then relation members.
   for (const el of data.elements) {
-    const name = matchName(el.tags, names);
-    if (!name || !el.geometry) continue;
-    features.push({ type: 'Feature', properties: { feat: name }, geometry: { type: 'LineString', coordinates: el.geometry.map((p) => [p.lon, p.lat]) } });
+    const osmName = matchName(el.tags, osmNames);
+    if (osmName && el.type === 'way') add(el.id, osmName, el.geometry);
   }
-  const bbox = cfg.bbox.join(',');
-  const fc = await simplifyGeo({ type: 'FeatureCollection', features }, `-clip bbox=${bbox} -dissolve feat -simplify interval=400`);
+  for (const el of data.elements) {
+    const osmName = matchName(el.tags, osmNames);
+    if (!osmName || el.type !== 'relation') continue;
+    for (const m of el.members ?? []) if (m.type === 'way') add(m.ref, osmName, m.geometry);
+  }
+  for (const { river, coords } of ways.values()) {
+    features.push({ type: 'Feature', properties: { feat: river }, geometry: { type: 'LineString', coordinates: coords } });
+  }
+  const clip = await countryClip(id, 2);
+  const out = await mapshaper.applyCommands(
+    '-i in.json -clip clip.json -dissolve feat -simplify interval=400 -o out.json format=geojson',
+    { 'in.json': { type: 'FeatureCollection', features }, 'clip.json': clip },
+  );
+  const fc = JSON.parse(out['out.json']);
   const result = [];
-  for (const { level, item: name, box } of entries) {
+  for (const { level, name, box } of entries) {
     const f = fc.features.find((x) => x.properties.feat === name);
     if (!f) {
       console.warn(`  ! river not found: ${name}`);
@@ -162,10 +221,7 @@ async function buildRivers(id, cfg) {
     }
     const g = f.geometry;
     let lines = g.type === 'LineString' ? [g.coordinates] : g.coordinates;
-    if (box) {
-      const inBox = ([x, y]) => x >= box[0] && x <= box[2] && y >= box[1] && y <= box[3];
-      lines = lines.filter((l) => l.some(inBox));
-    }
+    if (box) lines = lines.filter((l) => l.some((c) => inBox(box, c)));
     result.push({ name, level, lines: round(lines) });
   }
   return result;
@@ -175,6 +231,7 @@ async function buildLakes(id, cfg) {
   const entries = byLevel(cfg.lakes).map(({ level, item }) =>
     Array.isArray(item) ? { level, item: item[1], shown: item[0] } : { level, item, shown: item },
   );
+  if (!entries.length) return [];
   const names = entries.map((e) => e.item);
   const re = nameRegex(names);
   const query = `[out:json][timeout:300];\n${areaQuery(cfg)}\n(\n${inAreas(cfg, 'nwr["natural"="water"]', ['name', 'name:sr']).replaceAll('__RE__', re)}\n);\nout geom;`;
@@ -221,6 +278,7 @@ async function buildLakes(id, cfg) {
 
 async function buildMountains(id, cfg) {
   const entries = byLevel(cfg.mountains);
+  if (!entries.length) return [];
   const peaks = entries.map((e) => e.item[1]).filter((p) => typeof p === 'string');
   const re = nameRegex(peaks);
   const query = `[out:json][timeout:300];\n${areaQuery(cfg)}\n(\n${inAreas(cfg, 'node["natural"="peak"]').replaceAll('__RE__', re)}\n);\nout;`;
