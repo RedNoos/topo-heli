@@ -85,7 +85,8 @@ const PHYSICAL = {
       ],
       // Real water surfaces (river banks, harbours, lakes…) so wide water such as the delta
       // and the Rotterdam port is drawn at its true shape; pieces under minKm2 are dropped.
-      surfaces: { types: ['river', 'canal', 'lake', 'harbour', 'basin', 'lagoon'], minKm2: 0.2 },
+      // interval: simplification in metres (one screen pixel is ~200 m on this map).
+      surfaces: { types: ['river', 'canal', 'lake', 'harbour', 'basin', 'lagoon'], minKm2: 0.2, interval: 150 },
       areas: ['Hollandsch Diep', 'Hollands Diep', 'Brielse Meer', 'Haringvliet', 'IJ', 'Ketelmeer', 'Zwarte Meer', 'Volkerak', 'Biesbosch'],
     },
   },
@@ -185,6 +186,35 @@ async function countryClip(id, km) {
   const geo = JSON.parse(await fs.readFile(path.join(ROOT, 'src', 'maps', id, 'geo.json'), 'utf8'));
   const home = { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'MultiPolygon', coordinates: geo.home } }] };
   return simplifyGeo(home, `-buffer radius=${km}km`);
+}
+
+/** The playable country itself (no margin): drawing layers are clipped to exactly this. */
+async function homeShape(id) {
+  const geo = JSON.parse(await fs.readFile(path.join(ROOT, 'src', 'maps', id, 'geo.json'), 'utf8'));
+  return { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'MultiPolygon', coordinates: geo.home } }] };
+}
+
+/** Clips lon/lat lines or polygons to the country, for drawing without a per-frame clip. */
+async function clipToHome(id, geometries, kind) {
+  if (!geometries.length) return [];
+  const features = geometries.map((coordinates) => ({
+    type: 'Feature',
+    properties: {},
+    geometry: { type: kind === 'line' ? 'LineString' : 'Polygon', coordinates },
+  }));
+  const out = await mapshaper.applyCommands('-i in.json -clip home.json -o out.json format=geojson', {
+    'in.json': { type: 'FeatureCollection', features },
+    'home.json': await homeShape(id),
+  });
+  const fc = JSON.parse(out['out.json']);
+  const result = [];
+  // Without attributes mapshaper writes a GeometryCollection instead of features.
+  for (const g of fc.features?.map((f) => f.geometry) ?? fc.geometries ?? []) {
+    if (!g) continue;
+    if (g.type === 'LineString' || g.type === 'Polygon') result.push(g.coordinates);
+    else if (g.type === 'MultiLineString' || g.type === 'MultiPolygon') result.push(...g.coordinates);
+  }
+  return round(result);
 }
 
 async function simplifyGeo(fc, cmd) {
@@ -348,7 +378,7 @@ async function buildMountains(id, cfg) {
  * inner rings, so islands stay land), merged, small pieces dropped, clipped to the country.
  */
 async function buildSurfaces(id, cfg) {
-  const { types, minKm2 } = cfg.context.surfaces;
+  const { types, minKm2, interval = 150 } = cfg.context.surfaces;
   const re = `^(${types.join('|')})$`;
   const query = `[out:json][timeout:600];\n${areaQuery(cfg)}\n(\n${cfg.areas
     .map((_, i) => `way["natural"="water"]["water"~"${re}"](area.a${i});\nrelation["natural"="water"]["water"~"${re}"](area.a${i});`)
@@ -378,7 +408,7 @@ async function buildSurfaces(id, cfg) {
   }
   const clip = await countryClip(id, 0.5);
   const result = await mapshaper.applyCommands(
-    `-i outer.json -dissolve2 -erase inner.json -explode -filter "this.area > ${minKm2 * 1e6}" -simplify interval=60 keep-shapes -clip clip.json -o out.json format=geojson`,
+    `-i outer.json -dissolve2 -erase inner.json -explode -filter "this.area > ${minKm2 * 1e6}" -simplify interval=${interval} keep-shapes -clip clip.json -o out.json format=geojson`,
     {
       'outer.json': { type: 'FeatureCollection', features: outer },
       'inner.json': { type: 'FeatureCollection', features: inner },
@@ -403,18 +433,34 @@ async function build(id, cfg) {
     lakes: await buildLakes(id, cfg),
     mountains: await buildMountains(id, cfg),
   };
+
+  // Background water (never asked): connections to the sea, river banks, harbours, …
+  let contextLines = [];
+  let contextAreas = [];
   if (cfg.context) {
     const lines = await buildRivers(id, { ...cfg, rivers: { 1: cfg.context.lines } }, 'context-lines');
     const areas = await buildLakes(id, { ...cfg, lakes: { 1: cfg.context.areas } }, 'context-areas');
     const surfaces = cfg.context.surfaces ? await buildSurfaces(id, cfg) : [];
-    out.context = { lines: lines.flatMap((r) => r.lines), areas: [...areas.map((a) => a.rings), ...surfaces] };
-    console.log(`  background water: ${lines.length} waterways, ${areas.length} water areas`);
+    contextLines = lines.flatMap((r) => r.lines);
+    contextAreas = [...areas.map((a) => a.rings), ...surfaces];
+    console.log(`  background water: ${lines.length} waterways, ${areas.length} named areas, ${surfaces.length} surfaces`);
   }
+
+  // Drawing layers, pre-clipped to the country so the game needs no per-frame clipping. The
+  // targets above keep their full geometry (incl. a margin along border rivers) for finding them.
+  const riversOfLevel = (lv) => out.rivers.filter((r) => Math.min(r.level, 3) === lv).flatMap((r) => r.lines);
+  out.draw = {
+    rivers: [await clipToHome(id, riversOfLevel(1), 'line'), await clipToHome(id, riversOfLevel(2), 'line'), await clipToHome(id, riversOfLevel(3), 'line')],
+    lines: await clipToHome(id, contextLines, 'line'),
+    water: await clipToHome(id, [...out.lakes.map((l) => l.rings), ...contextAreas], 'polygon'),
+  };
+
   const file = path.join(ROOT, 'src', 'maps', id, 'physical.json');
   await fs.writeFile(file, JSON.stringify(out));
   const kb = ((await fs.stat(file)).size / 1024).toFixed(0);
   console.log(`  ${out.rivers.length} rivers, ${out.lakes.length} lakes, ${out.mountains.length} mountains -> ${path.relative(ROOT, file)} (${kb} KB)`);
 }
+
 
 const only = process.argv[2];
 for (const [id, cfg] of Object.entries(PHYSICAL)) {

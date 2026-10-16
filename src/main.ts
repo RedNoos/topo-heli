@@ -432,4 +432,4 @@ void selectMap(mapDef);
 requestAnimationFrame(frame);
 
 // Debug handle for automated tests / tinkering in the dev console.
-if (import.meta.env.DEV) Object.assign(window, { __game: () => game });
+if (import.meta.env.DEV) Object.assign(window, { __game: () => game, __renderer: () => renderer });

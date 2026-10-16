@@ -94,7 +94,7 @@ async function shape(geojson, commands) {
     { 'in.json': geojson },
   );
   const fc = JSON.parse(out['out.json']);
-  return fc.type === 'FeatureCollection' ? fc : { type: 'FeatureCollection', features: fc.geometries?.map((geometry) => ({ geometry })) ?? [] };
+  return fc.type === 'FeatureCollection' ? fc : { type: 'FeatureCollection', features: fc.geometries?.map((geometry) => ({ type: 'Feature', properties: {}, geometry })) ?? [] };
 }
 
 const round = (c) => (typeof c[0] === 'number' ? [+c[0].toFixed(4), +c[1].toFixed(4)] : c.map(round));
@@ -111,6 +111,25 @@ function parts(fc) {
     else if (g.type === 'MultiLineString') list.push(...g.coordinates);
   }
   return round(list);
+}
+
+/**
+ * Splits features into the part inside the playable area and the part outside it, so the
+ * game can draw them (bright / muted) without clipping every frame.
+ */
+async function splitByHome(features, home) {
+  const run = async (cmd) => {
+    const out = await mapshaper.applyCommands(`-i in.json ${cmd} home.json -o out.json format=geojson`, {
+      'in.json': { type: 'FeatureCollection', features },
+      'home.json': home,
+    });
+    const fc = JSON.parse(out['out.json']);
+    if (fc.type === 'FeatureCollection') return fc;
+    // Without attributes mapshaper writes a GeometryCollection.
+    return { type: 'FeatureCollection', features: (fc.geometries ?? []).map((geometry) => ({ type: 'Feature', properties: {}, geometry })) };
+  };
+  if (!features.length) return { inside: { features: [] }, outside: { features: [] } };
+  return { inside: await run('-clip'), outside: await run('-erase') };
 }
 
 const filterFeatures = (fc, pred) => ({ type: 'FeatureCollection', features: fc.features.filter(pred) });
@@ -180,7 +199,7 @@ async function buildMap(id, cfg) {
     districts = parts(await shape(homeAdmin, `-dissolve district ${area()} -innerlines`));
   }
 
-  const rivers = [];
+  const riverFeatures = [];
   const riverSources = [SOURCES.rivers, ...(cfg.europeanRivers === false ? [] : [SOURCES.riversEurope])];
   for (const src of riverSources) {
     const fc = await source(src);
@@ -188,17 +207,22 @@ async function buildMap(id, cfg) {
     for (const f of (await shape(kept, area(false))).features ?? []) {
       // scalerank: lower = more important river -> drawn wider.
       const rank = f.properties.scalerank ?? 10;
-      for (const line of parts({ features: [f] })) rivers.push({ r: rank, l: line });
+      riverFeatures.push({ type: 'Feature', properties: { r: rank }, geometry: f.geometry });
     }
   }
 
-  const lakes = [];
+  const lakeFeatures = [];
   const lakeSources = [SOURCES.lakes, ...(cfg.europeanRivers === false ? [] : [SOURCES.lakesEurope])];
   for (const src of lakeSources) {
     const fc = await source(src);
     const kept = filterFeatures(fc, (f) => (f.properties.scalerank ?? 10) <= (cfg.lakeMaxRank ?? 99));
-    lakes.push(...parts(await shape(kept, area())));
+    lakeFeatures.push(...((await shape(kept, area())).features ?? []).filter((f) => f.geometry));
   }
+
+  const riverSplit = await splitByHome(riverFeatures, home);
+  const lakeSplit = await splitByHome(lakeFeatures, home);
+  const riverList = (fc) =>
+    (fc.features ?? []).flatMap((f) => parts({ features: [f] }).map((l) => ({ r: f.properties?.r ?? 10, l })));
 
   const out = {
     bbox: cfg.bbox,
@@ -206,8 +230,11 @@ async function buildMap(id, cfg) {
     home: parts(home),
     neighbours: parts(neighbours),
     districts,
-    rivers,
-    lakes,
+    // Inside the playable area (drawn bright) and outside it (drawn muted).
+    rivers: riverList(riverSplit.inside),
+    riversOutside: riverList(riverSplit.outside),
+    lakes: parts(lakeSplit.inside),
+    lakesOutside: parts(lakeSplit.outside),
   };
   if (cfg.colorCountries) {
     const features = homeCountries.features;

@@ -38,14 +38,15 @@ interface Layers {
   lakes: Path2D;
   districts: Path2D;
   /** One path per colour index (multi-country maps only). */
-  countries: { color: string; path: Path2D }[];
+  countries: { color: string; path: Path2D; empty: boolean }[];
   borders: Path2D;
-  /** Rivers grouped by drawn width (px at default zoom). */
+  /** Rivers grouped by drawn width (px at default zoom); inside the playable area. */
   rivers: { width: number; path: Path2D }[];
-  /** Everything except the playable area (clip for muted water outside it). */
-  outside: Path2D;
-  /** Detailed rivers/lakes inside the playable area (physical mode). */
-  physical?: { rivers: { width: number; path: Path2D }[]; lakes: Path2D; contextLines: Path2D };
+  /** Base-map water outside the playable area (drawn muted). */
+  riversOutside: { width: number; path: Path2D }[];
+  lakesOutside: Path2D;
+  /** Detailed rivers/water inside the playable area (physical mode), pre-clipped at build time. */
+  physical?: { rivers: { width: number; path: Path2D }[]; water: Path2D; lines: Path2D };
 }
 
 function buildLayers(geo: GeoData, proj: Projection, physical?: PhysicalData): Layers {
@@ -69,44 +70,41 @@ function buildLayers(geo: GeoData, proj: Projection, physical?: PhysicalData): L
   };
 
   const widthOf = (rank: number) => (rank <= 4 ? 4.2 : rank <= 8 ? 2.2 : 1.3);
-  const byWidth = new Map<number, [number, number][][]>();
-  for (const r of geo.rivers) {
-    const w = widthOf(r.r);
-    if (!byWidth.has(w)) byWidth.set(w, []);
-    byWidth.get(w)!.push(r.l);
-  }
-
-  const outside = polygons(geo.home);
-  outside.rect(-1e5, -1e5, 2e5, 2e5);
+  const byWidth = (list: GeoData['rivers']) => {
+    const groups = new Map<number, [number, number][][]>();
+    for (const r of list) {
+      const w = widthOf(r.r);
+      if (!groups.has(w)) groups.set(w, []);
+      groups.get(w)!.push(r.l);
+    }
+    return [...groups].map(([width, l]) => ({ width, path: lines(l) }));
+  };
 
   let phys: Layers['physical'];
   if (physical) {
     // Level 1 rivers are the big ones: draw them widest.
     const widths = [3.6, 2.4, 1.6];
     phys = {
-      rivers: widths.map((width, i) => ({
-        width,
-        path: lines(physical.rivers.filter((r) => Math.min(r.level, 3) === i + 1).flatMap((r) => r.lines)),
-      })),
-      // Background water areas are drawn like lakes.
-      lakes: polygons([...physical.lakes.map((l) => l.rings), ...(physical.context?.areas ?? [])]),
-      contextLines: lines(physical.context?.lines ?? []),
+      rivers: widths.map((width, i) => ({ width, path: lines(physical.draw.rivers[i] ?? []) })),
+      water: polygons(physical.draw.water),
+      lines: lines(physical.draw.lines),
     };
   }
 
   return {
-    outside,
     physical: phys,
+    riversOutside: byWidth(geo.riversOutside),
+    lakesOutside: polygons(geo.lakesOutside),
     neighbours: polygons(geo.neighbours),
-    countries: COUNTRY_COLORS.map((color, i) => ({
-      color,
-      path: polygons((geo.countries ?? []).filter((c) => c.c === i).flatMap((c) => c.p)),
-    })),
+    countries: COUNTRY_COLORS.map((color, i) => {
+      const polys = (geo.countries ?? []).filter((c) => c.c === i).flatMap((c) => c.p);
+      return { color, path: polygons(polys), empty: polys.length === 0 };
+    }),
     borders: lines(geo.borders ?? []),
     home: polygons(geo.home),
     lakes: polygons(geo.lakes),
     districts: lines(geo.districts),
-    rivers: [...byWidth].map(([width, l]) => ({ width, path: lines(l) })),
+    rivers: byWidth(geo.rivers),
   };
 }
 
@@ -245,40 +243,31 @@ export class Renderer {
     ctx.stroke(L.districts);
     ctx.setLineDash([]);
 
-    // Water: muted outside the playable area, full colour inside it.
-    const drawWater = () => {
-      ctx.strokeStyle = COLORS.water;
-      for (const r of L.rivers) {
+    // Water: muted outside the playable area, full colour inside it. Both are split at build
+    // time, so no (expensive) clipping to the country shape is needed per frame.
+    const strokeRivers = (list: { width: number; path: Path2D }[]) => {
+      for (const r of list) {
         ctx.lineWidth = px(r.width * riverScale);
         ctx.stroke(r.path);
       }
-      ctx.fillStyle = COLORS.water;
-      ctx.fill(L.lakes, 'evenodd');
     };
-    ctx.save();
-    ctx.clip(L.outside, 'evenodd');
+    ctx.strokeStyle = COLORS.water;
+    ctx.fillStyle = COLORS.water;
     ctx.globalAlpha = 0.35;
-    drawWater();
-    ctx.restore();
-    ctx.save();
-    ctx.clip(L.home, 'evenodd');
+    strokeRivers(L.riversOutside);
+    ctx.fill(L.lakesOutside, 'evenodd');
+    ctx.globalAlpha = 1;
+    ctx.fill(L.lakes, 'evenodd');
     if (L.physical) {
-      ctx.strokeStyle = COLORS.water;
       ctx.lineWidth = px(3.6 * riverScale);
-      ctx.stroke(L.physical.contextLines);
-      for (const r of L.physical.rivers) {
-        ctx.lineWidth = px(r.width * riverScale);
-        ctx.stroke(r.path);
-      }
-      ctx.fillStyle = COLORS.water;
-      ctx.fill(L.lakes, 'evenodd');
+      ctx.stroke(L.physical.lines);
+      strokeRivers(L.physical.rivers);
       // nonzero: overlapping water shapes add up instead of cancelling; islands are
       // wound the other way, so they stay land.
-      ctx.fill(L.physical.lakes, 'nonzero');
+      ctx.fill(L.physical.water, 'nonzero');
     } else {
-      drawWater();
+      strokeRivers(L.rivers);
     }
-    ctx.restore();
 
     this.drawWorldTargets(px);
 
@@ -306,7 +295,8 @@ export class Renderer {
   /** Fills the playable area: one colour, or a colour per country. */
   private fillHome(ctx: CanvasRenderingContext2D) {
     ctx.fillStyle = COLORS.home;
-    ctx.fill(this.layers.home, 'evenodd');
+    // Multi-country maps are fully covered by the per-country fills below.
+    if (this.layers.countries.every((c) => c.empty)) ctx.fill(this.layers.home, 'evenodd');
     for (const c of this.layers.countries) {
       ctx.fillStyle = c.color;
       ctx.fill(c.path, 'evenodd');

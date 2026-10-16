@@ -13,6 +13,9 @@ export interface GeoData {
   /** r = Natural Earth scalerank (lower = bigger river), l = line. */
   rivers: { r: number; l: LonLat[] }[];
   lakes: LonLat[][][];
+  /** Base-map water outside the playable area (drawn muted). Inside: rivers/lakes. */
+  riversOutside: { r: number; l: LonLat[] }[];
+  lakesOutside: LonLat[][][];
   /** Default: equirectangular around the bbox centre. */
   projection?: { type: 'laea'; lon0: number; lat0: number; /** [minX, minY, maxX, maxY] km, y up. */ rect: number[] };
   /** Multi-country maps: each country with a colour index (neighbours differ). */
@@ -37,8 +40,11 @@ export interface PhysicalData {
   lakes: { name: string; level: number; rings: LonLat[][] }[];
   /** Located at the range's main peak. */
   mountains: { name: string; level: number; lat: number; lon: number; ele: number | null }[];
-  /** Background water (never asked) that connects the rivers, e.g. to the sea. */
-  context?: { lines: LonLat[][]; areas: LonLat[][][] };
+  /**
+   * Drawing layers, pre-clipped to the country: rivers by level (1..3), background
+   * waterways never asked (e.g. Nieuwe Waterweg) and water areas (lakes, river banks, harbours).
+   */
+  draw: { rivers: LonLat[][][]; lines: LonLat[][]; water: LonLat[][][] };
 }
 
 export interface MapData {
