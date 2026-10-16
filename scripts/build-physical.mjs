@@ -22,7 +22,8 @@ const OVERPASS = [
 // `level` is the game level from which the feature can be asked (1 = best known).
 // Rivers: 'Name', ['Name', [minLon, minLat, maxLon, maxLat]] to keep only the parts in that
 // box (for names shared by several rivers), or { name, osm: [OSM names], box? } when the shown
-// river is made of differently named OSM rivers (e.g. Rijn = Bovenrijn + Nederrijn). Lakes: 'Name' or ['Shown name', 'OSM name']. Mountains: ['Range', 'OSM peak name'] or
+// river is made of differently named OSM rivers (e.g. Rijn = Bovenrijn + Nederrijn). Add
+// `canals: true` when stretches of the river are tagged as canal in OSM. Lakes: 'Name' or ['Shown name', 'OSM name']. Mountains: ['Range', 'OSM peak name'] or
 // ['Range', { lat, lon, ele }] where OSM has no usable peak tag (coordinates taken from OSM
 // nodes for that summit/range).
 const PHYSICAL = {
@@ -49,7 +50,14 @@ const PHYSICAL = {
     areas: ['NL'],
     bbox: [2.9, 50.6, 7.6, 53.75],
     rivers: {
-      1: [{ name: 'Rijn', osm: ['Rijn', 'Bovenrijn', 'Nederrijn'] }, 'Waal', 'Maas', 'IJssel', 'Lek'],
+      1: [
+        // From the border at Lobith: Bovenrijn (part of the German-named Rhein relation),
+        // Pannerdensch Kanaal, Nederrijn. The box keeps the Rhein relation to that stretch.
+        { name: 'Rijn', osm: ['Rijn', 'Bovenrijn', 'Nederrijn', 'Pannerdensch Kanaal', 'Rhein'], box: [5.3, 51.82, 6.115, 52.0], canals: true },
+        // The box leaves out a creek called Waal on IJsselmonde (Rotterdam).
+        { name: 'Waal', osm: ['Waal'], box: [4.9, 51.75, 6.2, 51.95] },
+        'Maas', 'IJssel', 'Lek',
+      ],
       2: [
         'Amstel',
         ['Vecht', [4.85, 52.0, 5.15, 52.35]],
@@ -60,7 +68,9 @@ const PHYSICAL = {
         { name: 'Hollandse IJssel', osm: ['Hollandsche IJssel', 'Gekanaliseerde Hollandsche IJssel'] },
         'Nieuwe Maas', 'Oude Maas',
         { name: 'Merwede', osm: ['Boven-Merwede', 'Beneden-Merwede', 'Nieuwe Merwede'] },
-        'Zwarte Water', 'Oude Rijn',
+        'Zwarte Water',
+        // Utrecht – Woerden – Leiden – Katwijk; not the Oude Rijn near Zevenaar. Partly canal.
+        { name: 'Oude Rijn', osm: ['Oude Rijn', 'Leidsche Rijn', 'Leidse Rijn'], box: [4.3, 52.0, 5.15, 52.25], canals: true },
       ],
       3: ['Eem', 'Dommel', 'Roer', 'Berkel', 'Dinkel', 'Regge', 'Geul', 'Niers', 'Mark', 'Schipbeek', 'Reitdiep'],
     },
@@ -128,7 +138,14 @@ async function overpass(key, query) {
         },
         body: new URLSearchParams({ data: query }),
       });
-      if (res.ok) break;
+      // An empty answer is usually a server hiccup: try the next server instead of caching it.
+      if (res.ok) {
+        const text = await res.clone().text();
+        if (JSON.parse(text).elements?.length) break;
+        console.warn(`  ! empty answer, trying next server`);
+        res = { ok: false, status: 'empty', text: async () => text };
+        continue;
+      }
       console.warn(`  ! ${res.status}, trying next server`);
     }
     if (!res.ok) throw new Error(`Overpass failed (${res.status}): ${await res.text()}`);
@@ -181,11 +198,11 @@ const byLevel = (obj) => Object.entries(obj).flatMap(([level, list]) => list.map
 
 // ---------- builders ----------
 
-async function buildRivers(id, cfg, key = 'rivers', waterways = 'river') {
+async function buildRivers(id, cfg, key = 'rivers', waterways = 'river|canal') {
   const entries = byLevel(cfg.rivers).map(({ level, item }) => {
     if (typeof item === 'string') return { level, name: item, osm: [item] };
     if (Array.isArray(item)) return { level, name: item[0], osm: [item[0]], box: item[1] };
-    return { level, name: item.name, osm: item.osm ?? [item.name], box: item.box };
+    return { level, name: item.name, osm: item.osm ?? [item.name], box: item.box, canals: item.canals };
   });
   if (!entries.length) return [];
   const osmNames = [...new Set(entries.flatMap((e) => e.osm))];
@@ -193,27 +210,37 @@ async function buildRivers(id, cfg, key = 'rivers', waterways = 'river') {
   const inBox = (box, [x, y]) => x >= box[0] && x <= box[2] && y >= box[1] && y <= box[3];
   const [w, so, e, n] = cfg.bbox;
   const query = `[out:json][timeout:300];\n${areaQuery(cfg)}\n(\n${inAreas(cfg, `way["waterway"~"^(${waterways})$"]`).replaceAll('__RE__', re)}\n${inAreas(cfg, `relation["waterway"~"^(${waterways})$"]`).replaceAll('__RE__', re)}\n);\nout geom(${so},${w},${n},${e});`;
-  const data = await overpass(`${id}-${key}-v2`, query);
+  const data = await overpass(`${id}-${key}-v3`, query);
 
   const features = [];
   // Way id -> { river, coords }. A way can come in directly and as a relation member: keep it once,
   // otherwise its length would count twice when following the river.
   const ways = new Map();
-  const add = (wayId, osmName, geometry) => {
+  const add = (wayId, osmName, geometry, waterway) => {
     const coords = (geometry ?? []).filter(Boolean).map((p) => [p.lon, p.lat]);
     if (coords.length < 2 || ways.has(wayId)) return;
-    const entry = entries.find((en) => en.osm.includes(osmName) && (!en.box || coords.some((c) => inBox(en.box, c))));
+    const entry = entries.find(
+      (en) =>
+        en.osm.includes(osmName) &&
+        (!en.box || coords.some((c) => inBox(en.box, c))) &&
+        (waterway !== 'canal' || en.canals || key !== 'rivers'),
+    );
     if (entry) ways.set(wayId, { river: entry.name, coords });
   };
   // Named ways first, then relation members.
   for (const el of data.elements) {
     const osmName = matchName(el.tags, osmNames);
-    if (osmName && el.type === 'way') add(el.id, osmName, el.geometry);
+    if (osmName && el.type === 'way') add(el.id, osmName, el.geometry, el.tags.waterway);
   }
   for (const el of data.elements) {
     const osmName = matchName(el.tags, osmNames);
     if (!osmName || el.type !== 'relation') continue;
-    for (const m of el.members ?? []) if (m.type === 'way') add(m.ref, osmName, m.geometry);
+    // Side streams (e.g. unnamed side channels of the Rhein relation) are not the river itself.
+    for (const m of el.members ?? []) if (m.type === 'way' && m.role !== 'side_stream') add(m.ref, osmName, m.geometry, el.tags.waterway);
+  }
+  if (!ways.size) {
+    console.warn(`  ! no waterways found for ${key}`);
+    return [];
   }
   for (const { river, coords } of ways.values()) {
     features.push({ type: 'Feature', properties: { feat: river }, geometry: { type: 'LineString', coordinates: coords } });
@@ -377,7 +404,7 @@ async function build(id, cfg) {
     mountains: await buildMountains(id, cfg),
   };
   if (cfg.context) {
-    const lines = await buildRivers(id, { ...cfg, rivers: { 1: cfg.context.lines } }, 'context-lines', 'river|canal');
+    const lines = await buildRivers(id, { ...cfg, rivers: { 1: cfg.context.lines } }, 'context-lines');
     const areas = await buildLakes(id, { ...cfg, lakes: { 1: cfg.context.areas } }, 'context-areas');
     const surfaces = cfg.context.surfaces ? await buildSurfaces(id, cfg) : [];
     out.context = { lines: lines.flatMap((r) => r.lines), areas: [...areas.map((a) => a.rings), ...surfaces] };
