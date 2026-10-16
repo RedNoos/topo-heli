@@ -118,6 +118,8 @@ export class Renderer {
   private minimapStatic: HTMLCanvasElement | null = null;
   private effects: Effect[] = [];
   private targetPaths = new Map<Target, Path2D>();
+  /** Offscreen canvas for the helicopter shadow (see drawHeliShadow). */
+  private shadowCanvas: HTMLCanvasElement | null = null;
   private w = 0;
   private h = 0;
   private dpr = 1;
@@ -456,25 +458,82 @@ export class Renderer {
     const bob = Math.sin(this.time * 3) * 1.5;
 
     // Shadow on the ground.
-    this.heliShape(p.x + 14 * size, p.y + 18 * size, h.heading, size * 0.95, true);
+    this.drawHeliShadow(p.x + 14 * size, p.y + 18 * size, h.heading, size * 0.95);
     // Slight forward pitch when flying fast (body looks shorter).
     const pitch = 1 - Math.min(speed / this.game.maxSpeed, 1) * 0.08;
     ctx.save();
     ctx.translate(0, bob);
-    this.heliShape(p.x, p.y, h.heading, size, false, pitch);
+    this.heliShape(p.x, p.y, h.heading, size, pitch);
     ctx.restore();
   }
 
-  private heliShape(x: number, y: number, heading: number, size: number, shadow: boolean, pitch = 1) {
+  /**
+   * The shadow is drawn opaque on a small offscreen canvas first and then put down with one
+   * alpha, so overlapping parts don't add up to darker patches. Only the rotor disc is lighter:
+   * light passes through the spinning blades.
+   */
+  private drawHeliShadow(x: number, y: number, heading: number, size: number) {
+    const R = 42 * size; // css px; covers rotor and tail
+    const side = Math.ceil(2 * R * this.dpr);
+    if (!this.shadowCanvas || this.shadowCanvas.width !== side) {
+      this.shadowCanvas = document.createElement('canvas');
+      this.shadowCanvas.width = this.shadowCanvas.height = side;
+    }
+    const s = this.shadowCanvas.getContext('2d')!;
+    s.setTransform(1, 0, 0, 1, 0, 0);
+    s.clearRect(0, 0, side, side);
+    s.setTransform(this.dpr * size, 0, 0, this.dpr * size, side / 2, side / 2);
+    s.rotate(heading);
+    s.fillStyle = '#000';
+
+    // Rotor disc with the blades a little darker (one path, so crossing blades don't add up).
+    s.globalAlpha = 0.3;
+    s.beginPath();
+    s.arc(2, 0, 30, 0, Math.PI * 2);
+    s.fill();
+    const blade = new Path2D();
+    blade.roundRect(-31, -2, 62, 4, 2);
+    const blades = new Path2D();
+    const deg = (rad: number) => (rad * 180) / Math.PI;
+    for (const a of [this.rotor + Math.PI / 2, this.rotor + Math.PI]) {
+      blades.addPath(blade, new DOMMatrix().translate(2, 0).rotate(deg(a)));
+    }
+    s.globalAlpha = 0.4;
+    s.fill(blades);
+
+    // Body, tail, fin, skids and tail rotor: one opaque shape.
+    const body = new Path2D();
+    body.moveTo(-6, -3);
+    body.lineTo(-36, -1.5);
+    body.lineTo(-36, 1.5);
+    body.lineTo(-6, 3);
+    body.closePath();
+    body.rect(-38, -6, 5, 12);
+    body.ellipse(2, 0, 16, 9.5, 0, 0, Math.PI * 2);
+    body.rect(-12, -12, 26, 2);
+    body.rect(-12, 10, 26, 2);
+    const tailRotor = new Path2D();
+    tailRotor.rect(-6, -1, 12, 2);
+    body.addPath(tailRotor, new DOMMatrix().translate(-36, 7).rotate(deg(this.rotor * 1.7)));
+    s.globalAlpha = 1;
+    s.fill(body);
+
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.globalAlpha = 0.22;
+    ctx.drawImage(this.shadowCanvas, x - R, y - R, 2 * R, 2 * R);
+    ctx.restore();
+  }
+
+  private heliShape(x: number, y: number, heading: number, size: number, pitch = 1) {
     const ctx = this.ctx;
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(heading);
     ctx.scale(size * pitch, size);
-    const dark = 'rgba(0,0,0,0.22)';
 
     // Tail boom + fin.
-    ctx.fillStyle = shadow ? dark : '#b8321c';
+    ctx.fillStyle = '#b8321c';
     ctx.beginPath();
     ctx.moveTo(-6, -3);
     ctx.lineTo(-36, -1.5);
@@ -484,68 +543,59 @@ export class Renderer {
     ctx.fillRect(-38, -6, 5, 12);
 
     // Skids.
-    if (!shadow) {
-      ctx.strokeStyle = '#3b3b3b';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(-12, -11); ctx.lineTo(14, -11);
-      ctx.moveTo(-12, 11); ctx.lineTo(14, 11);
-      ctx.stroke();
-    }
+    ctx.strokeStyle = '#3b3b3b';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-12, -11); ctx.lineTo(14, -11);
+    ctx.moveTo(-12, 11); ctx.lineTo(14, 11);
+    ctx.stroke();
 
     // Body.
     ctx.beginPath();
     ctx.ellipse(2, 0, 16, 9.5, 0, 0, Math.PI * 2);
-    if (shadow) {
-      ctx.fillStyle = dark;
-      ctx.fill();
-    } else {
-      const g = ctx.createLinearGradient(0, -10, 0, 10);
-      g.addColorStop(0, '#ff7b5c');
-      g.addColorStop(0.5, '#e5482b');
-      g.addColorStop(1, '#a92f19');
-      ctx.fillStyle = g;
-      ctx.fill();
-      // Cockpit glass.
-      ctx.beginPath();
-      ctx.ellipse(10, 0, 7, 7, 0, -Math.PI / 2, Math.PI / 2);
-      ctx.fillStyle = '#9fd8f5';
-      ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(11, -2.5, 3, 1.6, 0.3, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(255,255,255,0.8)';
-      ctx.fill();
-    }
+    const g = ctx.createLinearGradient(0, -10, 0, 10);
+    g.addColorStop(0, '#ff7b5c');
+    g.addColorStop(0.5, '#e5482b');
+    g.addColorStop(1, '#a92f19');
+    ctx.fillStyle = g;
+    ctx.fill();
+    // Cockpit glass.
+    ctx.beginPath();
+    ctx.ellipse(10, 0, 7, 7, 0, -Math.PI / 2, Math.PI / 2);
+    ctx.fillStyle = '#9fd8f5';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(11, -2.5, 3, 1.6, 0.3, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.fill();
 
     // Tail rotor.
     ctx.save();
     ctx.translate(-36, 7);
     ctx.rotate(this.rotor * 1.7);
-    ctx.fillStyle = shadow ? dark : '#333';
+    ctx.fillStyle = '#333';
     ctx.fillRect(-6, -1, 12, 2);
     ctx.restore();
 
     // Main rotor: motion-blur disc + two blades.
     ctx.beginPath();
     ctx.arc(2, 0, 30, 0, Math.PI * 2);
-    ctx.fillStyle = shadow ? 'rgba(0,0,0,0.06)' : 'rgba(40,40,40,0.10)';
+    ctx.fillStyle = 'rgba(40,40,40,0.10)';
     ctx.fill();
     ctx.save();
     ctx.translate(2, 0);
     ctx.rotate(this.rotor);
-    ctx.fillStyle = shadow ? dark : '#2b2b2b';
+    ctx.fillStyle = '#2b2b2b';
     for (let i = 0; i < 2; i++) {
       ctx.rotate(Math.PI / 2);
       ctx.beginPath();
       ctx.roundRect(-31, -2, 62, 4, 2);
       ctx.fill();
     }
-    if (!shadow) {
-      ctx.beginPath();
-      ctx.arc(0, 0, 3, 0, Math.PI * 2);
-      ctx.fillStyle = '#666';
-      ctx.fill();
-    }
+    ctx.beginPath();
+    ctx.arc(0, 0, 3, 0, Math.PI * 2);
+    ctx.fillStyle = '#666';
+    ctx.fill();
     ctx.restore();
     ctx.restore();
   }
