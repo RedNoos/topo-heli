@@ -272,7 +272,9 @@ export class Renderer {
       }
       ctx.fillStyle = COLORS.water;
       ctx.fill(L.lakes, 'evenodd');
-      ctx.fill(L.physical.lakes, 'evenodd');
+      // nonzero: overlapping water shapes add up instead of cancelling; islands are
+      // wound the other way, so they stay land.
+      ctx.fill(L.physical.lakes, 'nonzero');
     } else {
       drawWater();
     }

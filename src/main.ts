@@ -118,8 +118,7 @@ function renderMapSelect() {
   ui.physicalToggle.hidden = !mapDef.loadPhysical;
   ui.physicalOption.checked = physicalOn;
   // Maps with only rivers (the Netherlands) call the option "Rivers".
-  const p = mapData?.physical;
-  const riversOnly = !!p && p.lakes.length === 0 && p.mountains.length === 0;
+  const riversOnly = !!mapDef.physicalRiversOnly;
   $('physical-label').innerHTML = t(riversOnly ? 'physicalOptionRivers' : 'physicalOption');
   $('howto-physical').innerHTML = t(riversOnly ? 'howtoPhysicalRivers' : 'howtoPhysical');
   $('howto-physical').hidden = !physicalOn;
@@ -134,7 +133,11 @@ async function selectMap(def: MapDefinition) {
   mapData = null;
   physicalOn = !!def.loadPhysical && loadOption(def.id);
   renderMapSelect();
-  const [data, physical, serbianNames] = await Promise.all([def.load(), def.loadPhysical?.(), def.loadSerbianNames?.()]);
+  const [data, physical, serbianNames] = await Promise.all([
+    def.load(),
+    physicalOn ? def.loadPhysical?.() : undefined,
+    def.loadSerbianNames?.(),
+  ]);
   setPlaceNames(def.placeNames, serbianNames);
   mapData = { ...data, physical };
   renderMapSelect();
@@ -337,10 +340,17 @@ onLangChange(translateStatic);
 // ---------- Controls ----------
 
 $('btn-start').onclick = start;
-ui.physicalOption.onchange = () => {
+ui.physicalOption.onchange = async () => {
   physicalOn = ui.physicalOption.checked;
   saveOption(mapDef.id, physicalOn);
   renderMapSelect();
+  if (physicalOn && mapData && !mapData.physical) {
+    const def = mapDef;
+    const physical = await def.loadPhysical?.();
+    // Ignore if the player switched maps while it loaded.
+    if (def !== mapDef || !mapData) return;
+    mapData = { ...mapData, physical };
+  }
   newGame(false); // redraw the menu background with/without the detailed water
 };
 $('btn-again').onclick = start;

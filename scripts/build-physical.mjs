@@ -73,6 +73,9 @@ const PHYSICAL = {
         'Nieuwe Waterweg', 'Scheur', 'Het Scheur', 'Noord', 'Dordtsche Kil', 'Spui', 'Amer', 'Bergsche Maas',
         'Afgedamde Maas', 'Pannerdensch Kanaal', 'Noordzeekanaal', 'Lekkanaal',
       ],
+      // Real water surfaces (river banks, harbours, lakes…) so wide water such as the delta
+      // and the Rotterdam port is drawn at its true shape; pieces under minKm2 are dropped.
+      surfaces: { types: ['river', 'canal', 'lake', 'harbour', 'basin', 'lagoon'], minKm2: 0.2 },
       areas: ['Hollandsch Diep', 'Hollands Diep', 'Brielse Meer', 'Haringvliet', 'IJ', 'Ketelmeer', 'Zwarte Meer', 'Volkerak', 'Biesbosch'],
     },
   },
@@ -313,6 +316,59 @@ async function buildMountains(id, cfg) {
   return result;
 }
 
+/**
+ * Water surfaces of the given OSM water types: closed ways and multipolygons (outer rings minus
+ * inner rings, so islands stay land), merged, small pieces dropped, clipped to the country.
+ */
+async function buildSurfaces(id, cfg) {
+  const { types, minKm2 } = cfg.context.surfaces;
+  const re = `^(${types.join('|')})$`;
+  const query = `[out:json][timeout:600];\n${areaQuery(cfg)}\n(\n${cfg.areas
+    .map((_, i) => `way["natural"="water"]["water"~"${re}"](area.a${i});\nrelation["natural"="water"]["water"~"${re}"](area.a${i});`)
+    .join('\n')}\n);\nout geom;`;
+  const data = await overpass(`${id}-surfaces`, query);
+
+  const toCoords = (geometry) => (geometry ?? []).filter(Boolean).map((p) => [p.lon, p.lat]);
+  const outer = [];
+  const inner = [];
+  const line = (coords) => ({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: coords } });
+  for (const el of data.elements) {
+    if (el.type === 'way') {
+      const c = toCoords(el.geometry);
+      if (c.length >= 4) outer.push({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [c] } });
+      continue;
+    }
+    // Multipolygon members come as pieces: stitch each relation's outer and inner rings separately.
+    const pieces = { outer: [], inner: [] };
+    for (const m of el.members ?? []) {
+      if (m.type === 'way' && (m.role === 'outer' || m.role === 'inner')) pieces[m.role].push(line(toCoords(m.geometry)));
+    }
+    for (const role of ['outer', 'inner']) {
+      if (!pieces[role].length) continue;
+      const fc = await simplifyGeo({ type: 'FeatureCollection', features: pieces[role] }, '-polygons gap-tolerance=0.0005');
+      (role === 'outer' ? outer : inner).push(...fc.features.map((f) => ({ ...f, properties: {} })));
+    }
+  }
+  const clip = await countryClip(id, 0.5);
+  const result = await mapshaper.applyCommands(
+    `-i outer.json -dissolve2 -erase inner.json -explode -filter "this.area > ${minKm2 * 1e6}" -simplify interval=60 keep-shapes -clip clip.json -o out.json format=geojson`,
+    {
+      'outer.json': { type: 'FeatureCollection', features: outer },
+      'inner.json': { type: 'FeatureCollection', features: inner },
+      'clip.json': clip,
+    },
+  );
+  const fc = JSON.parse(result['out.json']);
+  const polys = [];
+  for (const f of fc.features ?? fc.geometries?.map((geometry) => ({ geometry })) ?? []) {
+    const g = f.geometry;
+    if (g?.type === 'Polygon') polys.push(g.coordinates);
+    else if (g?.type === 'MultiPolygon') polys.push(...g.coordinates);
+  }
+  console.log(`  water surfaces: ${outer.length} shapes, ${inner.length} islands -> ${polys.length} polygons`);
+  return round(polys);
+}
+
 async function build(id, cfg) {
   console.log(`Building physical features for ${id}`);
   const out = {
@@ -323,7 +379,8 @@ async function build(id, cfg) {
   if (cfg.context) {
     const lines = await buildRivers(id, { ...cfg, rivers: { 1: cfg.context.lines } }, 'context-lines', 'river|canal');
     const areas = await buildLakes(id, { ...cfg, lakes: { 1: cfg.context.areas } }, 'context-areas');
-    out.context = { lines: lines.flatMap((r) => r.lines), areas: areas.map((a) => a.rings) };
+    const surfaces = cfg.context.surfaces ? await buildSurfaces(id, cfg) : [];
+    out.context = { lines: lines.flatMap((r) => r.lines), areas: [...areas.map((a) => a.rings), ...surfaces] };
     console.log(`  background water: ${lines.length} waterways, ${areas.length} water areas`);
   }
   const file = path.join(ROOT, 'src', 'maps', id, 'physical.json');

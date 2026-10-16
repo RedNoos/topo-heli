@@ -65,4 +65,6 @@ export interface MapDefinition {
   load: () => Promise<MapData>;
   /** Mountains, rivers and lakes as extra targets (optional mode). */
   loadPhysical?: () => Promise<PhysicalData>;
+  /** Only rivers in the physical data: the option is then called "Rivers". */
+  physicalRiversOnly?: boolean;
 }
