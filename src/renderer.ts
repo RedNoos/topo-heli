@@ -479,7 +479,8 @@ export class Renderer {
       this.shadowCanvas = document.createElement('canvas');
       this.shadowCanvas.width = this.shadowCanvas.height = side;
     }
-    const s = this.shadowCanvas.getContext('2d')!;
+    // CPU-backed: drawing this tiny canvas is cheaper than syncing a GPU canvas every frame.
+    const s = this.shadowCanvas.getContext('2d', { willReadFrequently: true })!;
     s.setTransform(1, 0, 0, 1, 0, 0);
     s.clearRect(0, 0, side, side);
     s.setTransform(this.dpr * size, 0, 0, this.dpr * size, side / 2, side / 2);

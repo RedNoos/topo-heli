@@ -7,7 +7,7 @@
   {
     "id": "nl-friesland",
     "name": "Friesland",
-    "viewKm": 80
+    "viewKm": 81
   },
   {
     "id": "nl-drenthe",
@@ -17,17 +17,17 @@
   {
     "id": "nl-overijssel",
     "name": "Overijssel",
-    "viewKm": 69
+    "viewKm": 70
   },
   {
     "id": "nl-flevoland",
     "name": "Flevoland",
-    "viewKm": 57
+    "viewKm": 58
   },
   {
     "id": "nl-gelderland",
     "name": "Gelderland",
-    "viewKm": 92
+    "viewKm": 93
   },
   {
     "id": "nl-utrecht",
@@ -42,12 +42,12 @@
   {
     "id": "nl-zuid-holland",
     "name": "Zuid-Holland",
-    "viewKm": 72
+    "viewKm": 67
   },
   {
     "id": "nl-zeeland",
     "name": "Zeeland",
-    "viewKm": 57
+    "viewKm": 56
   },
   {
     "id": "nl-noord-brabant",

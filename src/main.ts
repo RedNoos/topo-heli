@@ -303,6 +303,7 @@ const STATIC_PARAMS = {
   osm: '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>',
   ne: '<a href="https://www.naturalearthdata.com/" target="_blank" rel="noopener">Natural Earth</a>',
   gn: '<a href="https://www.geonames.org/" target="_blank" rel="noopener">GeoNames</a>',
+  cbs: '<a href="https://www.pdok.nl/" target="_blank" rel="noopener">CBS/Kadaster (PDOK)</a>',
 };
 
 /** Fills every [data-i18n] element with its translation. */

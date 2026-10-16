@@ -49,10 +49,9 @@ const MAPS = {
     simplify: '45%',
   },
   netherlands: {
-    home: ['NLD'],
+    // Land and province borders from CBS (see cbsLand); province borders drawn as districts.
+    cbs: true,
     bbox: [2.9, 50.6, 7.6, 53.75],
-    districtOf: (p) => p.name,
-    // Small country: Natural Earth is coarse already, so keep every point.
     simplify: '100%',
   },
   europe: {
@@ -164,27 +163,79 @@ function colorCountries(features, count) {
   return colors;
 }
 
-/** Province maps: the province's land, the other countries and the rest of the country. */
-async function provinceShapes(cfg) {
-  const countries = await source(cfg.countries ?? SOURCES.countries);
-  const admin1 = await source(SOURCES.admin1);
-  const country = filterFeatures(countries, (f) => f.properties.ADM0_A3 === cfg.province.country);
-  const province = filterFeatures(admin1, (f) => f.properties.adm0_a3 === cfg.province.country && f.properties.name === cfg.province.ne);
-  if (!province.features.length) throw new Error(`Province not found: ${cfg.province.ne}`);
-  const run = async (cmd, a, b) => {
-    const out = await mapshaper.applyCommands(`-i a.json ${cmd} b.json -o out.json format=geojson`, { 'a.json': a, 'b.json': b });
-    const fc = JSON.parse(out['out.json']);
-    const features = fc.type === 'FeatureCollection' ? fc.features : (fc.geometries ?? []).map((geometry) => ({ type: 'Feature', geometry }));
-    return features.filter((f) => f.geometry);
-  };
-  // Admin-1 shapes include water (IJsselmeer, sea): keep only the province's land.
-  const home = (await run('-clip', province, country)).map((f) => ({ ...f, properties: { code: 'HOME', home: true } }));
-  const rest = (await run('-erase', country, province)).map((f) => ({ ...f, properties: { code: 'REST', home: false } }));
-  const others = countries.features
-    .filter((f) => f.properties.ADM0_A3 !== cfg.province.country)
-    .map((f) => ({ ...f, properties: { code: f.properties.ADM0_A3, home: false } }));
-  return { home, neighbours: [...rest, ...others] };
+const PDOK = 'https://service.pdok.nl/cbs';
+
+/** Cached download of a PDOK (CBS) WFS layer as GeoJSON in lon/lat. */
+async function pdok(file, url) {
+  const p = path.join(CACHE, file);
+  try {
+    return JSON.parse(await fs.readFile(p, 'utf8'));
+  } catch {
+    console.log(`  downloading ${file}...`);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`PDOK download failed (${res.status}): ${url}`);
+    const text = await res.text();
+    await fs.mkdir(CACHE, { recursive: true });
+    await fs.writeFile(p, text);
+    return JSON.parse(text);
+  }
 }
+
+/**
+ * Dutch provinces as land only: CBS province borders minus the CBS "water" neighbourhoods
+ * (Westerschelde, Haringvliet, Grevelingen, North Sea strip, …), so islands are separate.
+ * Data: CBS / Kadaster via PDOK (CC BY 4.0).
+ */
+/** @param interval simplification in metres: finer for province maps (zoomed in) than for the country. */
+async function cbsLand(interval) {
+  const cachedFile = path.join(CACHE, `cbs-province-land-${interval}.json`);
+  try {
+    return JSON.parse(await fs.readFile(cachedFile, 'utf8'));
+  } catch {
+    /* build below */
+  }
+  const wfs = (service, layer, extra = '') =>
+    `${PDOK}/${service}/2024/wfs/v1_0?service=WFS&version=2.0.0&request=GetFeature&typeNames=${layer}&outputFormat=application/json&srsName=EPSG:4326&count=5000${extra}`;
+  const provinces = await pdok('cbs-provincie-2024.json', wfs('gebiedsindelingen', 'gebiedsindelingen:provincie_gegeneraliseerd'));
+  const filter = encodeURIComponent('<Filter xmlns="http://www.opengis.net/fes/2.0"><PropertyIsEqualTo><ValueReference>water</ValueReference><Literal>JA</Literal></PropertyIsEqualTo></Filter>');
+  const water = await pdok('cbs-waterbuurten-2024.json', wfs('wijkenbuurten', 'wijkenbuurten:buurten', `&filter=${filter}`));
+  // (field 'prov': mapshaper reads 'name' as an option keyword)
+  for (const f of provinces.features) f.properties = { prov: f.properties.statnaam };
+  for (const f of water.features) f.properties = {};
+  const out = await mapshaper.applyCommands(
+    `-i prov.json -erase water.json -simplify interval=${interval} keep-shapes -filter-islands min-area=0.1km2 -filter-slivers -o out.json format=geojson`,
+    { 'prov.json': provinces, 'water.json': water },
+  );
+  const land = JSON.parse(out['out.json']);
+  await fs.writeFile(cachedFile, JSON.stringify(land));
+  return land;
+}
+
+/**
+ * Netherlands from CBS: the whole country, or one province with the other provinces shown as
+ * surroundings. Neighbouring countries come from Natural Earth, grown by 1.5 km so they reach
+ * under the (more precise) Dutch border instead of leaving gaps.
+ */
+async function cbsShapes(cfg) {
+  // One screen pixel is ~200 m on the country map and ~115 m on a province map.
+  const land = await cbsLand(cfg.province ? 80 : 150);
+  const isHome = (f) => !cfg.province || f.properties.prov === cfg.province;
+  const home = land.features.filter(isHome).map((f) => ({ ...f, properties: { code: 'HOME', home: true, prov: f.properties.prov } }));
+  if (!home.length) throw new Error(`CBS province not found: ${cfg.province}`);
+  const rest = land.features.filter((f) => !isHome(f)).map((f) => ({ ...f, properties: { code: 'REST', home: false } }));
+  if (!cfg.bbox) {
+    // Province bbox plus a margin (~15 km) of surroundings.
+    const [w, s, e, n] = boundsOf(home);
+    cfg.bbox = [w - 0.22, s - 0.14, e + 0.22, n + 0.14].map((v) => +v.toFixed(3));
+  }
+  const [w, s, e, n] = cfg.bbox;
+  const countries = await source(SOURCES.countries);
+  const others = filterFeatures(countries, (f) => f.properties.ADM0_A3 !== 'NLD');
+  const grown = await shape(others, `-clip bbox=${[w - 0.6, s - 0.6, e + 0.6, n + 0.6].join(',')} -buffer radius=1.5km`);
+  const neighbours = [...rest, ...(grown.features ?? []).map((f) => ({ ...f, properties: { code: 'OTHER', home: false } }))];
+  return { home, neighbours, provinces: cfg.province ? null : land };
+}
+
 
 const boundsOf = (features) => {
   const pts = features.flatMap((f) => parts({ features: [f] }).flat(2));
@@ -195,16 +246,12 @@ const boundsOf = (features) => {
 
 async function buildMap(id, cfg) {
   console.log(`Building ${id}`);
-  const prov = cfg.province ? await provinceShapes(cfg) : null;
-  if (prov && !cfg.bbox) {
-    // Province bbox plus a margin (~15 km) of surroundings.
-    const [w, s, e, n] = boundsOf(prov.home);
-    cfg.bbox = [w - 0.22, s - 0.14, e + 0.22, n + 0.14].map((v) => +v.toFixed(3));
-  }
+  const prov = cfg.cbs ? await cbsShapes(cfg) : null;
   const proj = cfg.projection;
   // Map data reaches a bit beyond the playable bbox: the camera may look past the edge (so
   // places near it are not hidden under the HUD), and that strip should still show the map.
-  const DRAW_MARGIN = 0.35;
+  // Provinces are small: on wide screens the view is far wider than the province.
+  const DRAW_MARGIN = cfg.province ? 1.2 : 0.35;
   const [bw, bs, be, bn] = cfg.bbox;
   const bbox = (proj ? cfg.bbox : [bw - DRAW_MARGIN, bs - DRAW_MARGIN, be + DRAW_MARGIN, bn + DRAW_MARGIN]).join(',');
   const projStr = proj && `+proj=laea +lat_0=${proj.lat0} +lon_0=${proj.lon0} +R=6371000`;
@@ -242,7 +289,10 @@ async function buildMap(id, cfg) {
   const neighbours = await shape(neighbourFc, `${area()} -filter-slivers`);
 
   let districts = [];
-  if (cfg.districtOf) {
+  if (prov?.provinces) {
+    // Whole Netherlands: province borders.
+    districts = parts(await shape(prov.provinces, `-dissolve prov ${area()} -innerlines`));
+  } else if (cfg.districtOf) {
     const admin1 = await source(SOURCES.admin1);
     const homeAdmin = filterFeatures(admin1, (f) => homeTest({ ADM0_A3: f.properties.adm0_a3 }));
     for (const f of homeAdmin.features) f.properties = { district: cfg.districtOf(f.properties) };
@@ -266,11 +316,33 @@ async function buildMap(id, cfg) {
   for (const src of lakeSources) {
     const fc = await source(src);
     const kept = filterFeatures(fc, (f) => (f.properties.scalerank ?? 10) <= (cfg.lakeMaxRank ?? 99));
-    lakeFeatures.push(...((await shape(kept, area())).features ?? []).filter((f) => f.geometry));
+    lakeFeatures.push(...((await shape(kept, area())).features ?? []).filter((f) => f.geometry).map((f) => ({ ...f, properties: { lid: lakeFeatures.length + Math.random() } })));
   }
 
   const riverSplit = await splitByHome(riverFeatures, home);
   const lakeSplit = await splitByHome(lakeFeatures, home);
+  if (cfg.cbs) {
+    // CBS land already leaves out lakes that lie outside it (IJsselmeer…); keep only lakes that
+    // lie (almost) wholly inside the land, not the slivers of outside lakes along the shore.
+    const area = (fc) => {
+      const byLake = new Map();
+      for (const f of fc.features ?? []) {
+        let a = 0;
+        for (const poly of parts({ features: [f] })) {
+          for (const [i, ring] of poly.entries()) {
+            let r = 0;
+            for (let k = 0, j = ring.length - 1; k < ring.length; j = k++) r += (ring[j][0] - ring[k][0]) * (ring[j][1] + ring[k][1]);
+            a += (i === 0 ? 1 : -1) * Math.abs(r / 2);
+          }
+        }
+        byLake.set(f.properties?.lid, (byLake.get(f.properties?.lid) ?? 0) + a);
+      }
+      return byLake;
+    };
+    const total = area({ features: lakeFeatures });
+    const inside = area(lakeSplit.inside);
+    lakeSplit.inside.features = lakeSplit.inside.features.filter((f) => (inside.get(f.properties?.lid) ?? 0) >= 0.8 * (total.get(f.properties?.lid) ?? Infinity));
+  }
   const riverList = (fc) =>
     (fc.features ?? []).flatMap((f) => parts({ features: [f] }).map((l) => ({ r: f.properties?.r ?? 10, l })));
 
@@ -284,7 +356,9 @@ async function buildMap(id, cfg) {
     rivers: riverList(riverSplit.inside),
     riversOutside: riverList(riverSplit.outside),
     lakes: parts(lakeSplit.inside),
-    lakesOutside: parts(lakeSplit.outside),
+    // CBS maps: the land shape already leaves out the big lakes (IJsselmeer…); Natural Earth's
+    // coarser version on top would only blur the shoreline. Lakes inside the land stay.
+    lakesOutside: cfg.cbs ? [] : parts(lakeSplit.outside),
   };
   if (cfg.colorCountries) {
     const features = homeCountries.features;
@@ -304,7 +378,7 @@ async function buildMap(id, cfg) {
 // Dutch provinces: the province is the playable area, the rest of the Netherlands is shown
 // like a neighbouring country. The bbox is derived from the province's shape.
 for (const p of PROVINCES) {
-  MAPS[p.id] = { province: { country: 'NLD', ne: p.ne }, simplify: '100%' };
+  MAPS[p.id] = { cbs: true, province: p.cbs, simplify: '100%' };
 }
 
 const only = process.argv[2];

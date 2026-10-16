@@ -69,7 +69,7 @@ const en = {
   mapEurope: 'Europe',
   region: 'Province',
   regionAll: 'All of the Netherlands',
-  credits: 'Map data: © {osm} contributors, {ne}, {gn}',
+  credits: 'Map data: © {osm} contributors, {ne}, {gn}, {cbs}',
 };
 
 export type StringKey = keyof typeof en;
@@ -126,7 +126,7 @@ const nl: Record<StringKey, string> = {
   mapEurope: 'Europa',
   region: 'Provincie',
   regionAll: 'Heel Nederland',
-  credits: 'Kaartgegevens: © {osm}-bijdragers, {ne}, {gn}',
+  credits: 'Kaartgegevens: © {osm}-bijdragers, {ne}, {gn}, {cbs}',
 };
 
 const srLatn: Record<StringKey, string> = {
@@ -181,7 +181,7 @@ const srLatn: Record<StringKey, string> = {
   mapEurope: 'Evropa',
   region: 'Provincija',
   regionAll: 'Cela Holandija',
-  credits: 'Podaci za mape: © saradnici {osm}, {ne}, {gn}',
+  credits: 'Podaci za mape: © saradnici {osm}, {ne}, {gn}, {cbs}',
 };
 
 // ---------- Transliteration ----------
