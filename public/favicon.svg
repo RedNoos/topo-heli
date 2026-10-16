@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Topo Heli: the game's helicopter seen from above, on a round map-coloured badge. -->
+  <circle cx="32" cy="32" r="30" fill="#eef0d2" stroke="#5e5038" stroke-width="3"/>
+  <g transform="rotate(-35 32 32)">
+    <!-- Tail boom and fin -->
+    <path d="M24 29 L8 30.5 L8 33.5 L24 35 Z" fill="#b8321c"/>
+    <rect x="5" y="25.5" width="6" height="13" rx="1.5" fill="#b8321c"/>
+    <!-- Body with cockpit -->
+    <ellipse cx="35" cy="32" rx="14" ry="10" fill="#e5482b"/>
+    <path d="M42 23.3 A9 9 0 0 1 42 40.7 Z" fill="#9fd8f5"/>
+    <!-- Rotor blades (thin, slightly see-through: they spin) and hub -->
+    <g fill="#2b2b2b" fill-opacity="0.8">
+      <rect x="11" y="30.6" width="48" height="2.8" rx="1.4" transform="rotate(45 35 32)"/>
+      <rect x="11" y="30.6" width="48" height="2.8" rx="1.4" transform="rotate(-45 35 32)"/>
+    </g>
+    <circle cx="35" cy="32" r="2.6" fill="#555"/>
+  </g>
+</svg>
