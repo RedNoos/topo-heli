@@ -66,6 +66,15 @@ const PHYSICAL = {
     },
     lakes: {},
     mountains: {},
+    // Background water, drawn but never asked: the connections that make the rivers reach the
+    // sea (the base map draws these as part of its rivers, the detailed layer replaces it).
+    context: {
+      lines: [
+        'Nieuwe Waterweg', 'Scheur', 'Het Scheur', 'Noord', 'Dordtsche Kil', 'Spui', 'Amer', 'Bergsche Maas',
+        'Afgedamde Maas', 'Pannerdensch Kanaal', 'Noordzeekanaal', 'Lekkanaal',
+      ],
+      areas: ['Hollandsch Diep', 'Hollands Diep', 'Brielse Meer', 'Haringvliet', 'IJ', 'Ketelmeer', 'Zwarte Meer', 'Volkerak', 'Biesbosch'],
+    },
   },
 };
 
@@ -169,7 +178,7 @@ const byLevel = (obj) => Object.entries(obj).flatMap(([level, list]) => list.map
 
 // ---------- builders ----------
 
-async function buildRivers(id, cfg) {
+async function buildRivers(id, cfg, key = 'rivers', waterways = 'river') {
   const entries = byLevel(cfg.rivers).map(({ level, item }) => {
     if (typeof item === 'string') return { level, name: item, osm: [item] };
     if (Array.isArray(item)) return { level, name: item[0], osm: [item[0]], box: item[1] };
@@ -180,8 +189,8 @@ async function buildRivers(id, cfg) {
   const re = nameRegex(osmNames);
   const inBox = (box, [x, y]) => x >= box[0] && x <= box[2] && y >= box[1] && y <= box[3];
   const [w, so, e, n] = cfg.bbox;
-  const query = `[out:json][timeout:300];\n${areaQuery(cfg)}\n(\n${inAreas(cfg, 'way["waterway"="river"]').replaceAll('__RE__', re)}\n${inAreas(cfg, 'relation["waterway"="river"]').replaceAll('__RE__', re)}\n);\nout geom(${so},${w},${n},${e});`;
-  const data = await overpass(`${id}-rivers-v2`, query);
+  const query = `[out:json][timeout:300];\n${areaQuery(cfg)}\n(\n${inAreas(cfg, `way["waterway"~"^(${waterways})$"]`).replaceAll('__RE__', re)}\n${inAreas(cfg, `relation["waterway"~"^(${waterways})$"]`).replaceAll('__RE__', re)}\n);\nout geom(${so},${w},${n},${e});`;
+  const data = await overpass(`${id}-${key}-v2`, query);
 
   const features = [];
   // Way id -> { river, coords }. A way can come in directly and as a relation member: keep it once,
@@ -227,7 +236,7 @@ async function buildRivers(id, cfg) {
   return result;
 }
 
-async function buildLakes(id, cfg) {
+async function buildLakes(id, cfg, key = 'lakes') {
   const entries = byLevel(cfg.lakes).map(({ level, item }) =>
     Array.isArray(item) ? { level, item: item[1], shown: item[0] } : { level, item, shown: item },
   );
@@ -235,7 +244,7 @@ async function buildLakes(id, cfg) {
   const names = entries.map((e) => e.item);
   const re = nameRegex(names);
   const query = `[out:json][timeout:300];\n${areaQuery(cfg)}\n(\n${inAreas(cfg, 'nwr["natural"="water"]', ['name', 'name:sr']).replaceAll('__RE__', re)}\n);\nout geom;`;
-  const data = await overpass(`${id}-lakes`, query);
+  const data = await overpass(`${id}-${key}`, query);
 
   const features = [];
   for (const el of data.elements) {
@@ -311,6 +320,12 @@ async function build(id, cfg) {
     lakes: await buildLakes(id, cfg),
     mountains: await buildMountains(id, cfg),
   };
+  if (cfg.context) {
+    const lines = await buildRivers(id, { ...cfg, rivers: { 1: cfg.context.lines } }, 'context-lines', 'river|canal');
+    const areas = await buildLakes(id, { ...cfg, lakes: { 1: cfg.context.areas } }, 'context-areas');
+    out.context = { lines: lines.flatMap((r) => r.lines), areas: areas.map((a) => a.rings) };
+    console.log(`  background water: ${lines.length} waterways, ${areas.length} water areas`);
+  }
   const file = path.join(ROOT, 'src', 'maps', id, 'physical.json');
   await fs.writeFile(file, JSON.stringify(out));
   const kb = ((await fs.stat(file)).size / 1024).toFixed(0);

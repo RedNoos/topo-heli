@@ -45,7 +45,7 @@ interface Layers {
   /** Everything except the playable area (clip for muted water outside it). */
   outside: Path2D;
   /** Detailed rivers/lakes inside the playable area (physical mode). */
-  physical?: { rivers: { width: number; path: Path2D }[]; lakes: Path2D };
+  physical?: { rivers: { width: number; path: Path2D }[]; lakes: Path2D; contextLines: Path2D };
 }
 
 function buildLayers(geo: GeoData, proj: Projection, physical?: PhysicalData): Layers {
@@ -88,7 +88,9 @@ function buildLayers(geo: GeoData, proj: Projection, physical?: PhysicalData): L
         width,
         path: lines(physical.rivers.filter((r) => Math.min(r.level, 3) === i + 1).flatMap((r) => r.lines)),
       })),
-      lakes: polygons(physical.lakes.map((l) => l.rings)),
+      // Background water areas are drawn like lakes.
+      lakes: polygons([...physical.lakes.map((l) => l.rings), ...(physical.context?.areas ?? [])]),
+      contextLines: lines(physical.context?.lines ?? []),
     };
   }
 
@@ -262,6 +264,8 @@ export class Renderer {
     ctx.clip(L.home, 'evenodd');
     if (L.physical) {
       ctx.strokeStyle = COLORS.water;
+      ctx.lineWidth = px(3.6 * riverScale);
+      ctx.stroke(L.physical.contextLines);
       for (const r of L.physical.rivers) {
         ctx.lineWidth = px(r.width * riverScale);
         ctx.stroke(r.path);

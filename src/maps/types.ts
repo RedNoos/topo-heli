@@ -37,6 +37,8 @@ export interface PhysicalData {
   lakes: { name: string; level: number; rings: LonLat[][] }[];
   /** Located at the range's main peak. */
   mountains: { name: string; level: number; lat: number; lon: number; ele: number | null }[];
+  /** Background water (never asked) that connects the rivers, e.g. to the sea. */
+  context?: { lines: LonLat[][]; areas: LonLat[][][] };
 }
 
 export interface MapData {
