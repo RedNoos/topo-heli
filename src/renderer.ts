@@ -501,22 +501,31 @@ export class Renderer {
     s.globalAlpha = 0.4;
     s.fill(blades);
 
-    // Body, tail, fin, skids and tail rotor: one opaque shape.
-    const body = new Path2D();
-    body.moveTo(-6, -3);
-    body.lineTo(-36, -1.5);
-    body.lineTo(-36, 1.5);
-    body.lineTo(-6, 3);
-    body.closePath();
-    body.rect(-38, -6, 5, 12);
-    body.ellipse(2, 0, 16, 9.5, 0, 0, Math.PI * 2);
-    body.rect(-12, -12, 26, 2);
-    body.rect(-12, 10, 26, 2);
+    // Body, tail, fin, skids and tail rotor, opaque. Each part is filled on its own: merged
+    // into one path, parts drawn in opposite directions would cancel out where they overlap.
+    const parts: Path2D[] = [];
+    const boom = new Path2D();
+    boom.moveTo(-6, -3);
+    boom.lineTo(-36, -1.5);
+    boom.lineTo(-36, 1.5);
+    boom.lineTo(-6, 3);
+    boom.closePath();
+    parts.push(boom);
+    for (const [px, py, pw, ph] of [[-38, -6, 5, 12], [-12, -12, 26, 2], [-12, 10, 26, 2]]) {
+      const r = new Path2D();
+      r.rect(px, py, pw, ph);
+      parts.push(r);
+    }
+    const hull = new Path2D();
+    hull.ellipse(2, 0, 16, 9.5, 0, 0, Math.PI * 2);
+    parts.push(hull);
     const tailRotor = new Path2D();
     tailRotor.rect(-6, -1, 12, 2);
-    body.addPath(tailRotor, new DOMMatrix().translate(-36, 7).rotate(deg(this.rotor * 1.7)));
+    const tail = new Path2D();
+    tail.addPath(tailRotor, new DOMMatrix().translate(-36, 7).rotate(deg(this.rotor * 1.7)));
+    parts.push(tail);
     s.globalAlpha = 1;
-    s.fill(body);
+    for (const part of parts) s.fill(part);
 
     const ctx = this.ctx;
     ctx.save();
