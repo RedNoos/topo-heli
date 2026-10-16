@@ -59,6 +59,8 @@ export interface MapDefinition {
   placeNames: 'sr-Latn' | 'native';
   /** Serbian (Cyrillic) names by place name, for maps whose names are not Serbian. */
   loadSerbianNames?: () => Promise<Record<string, string>>;
+  /** Dutch names by place name, where they differ (e.g. Vienna -> Wenen). */
+  loadDutchNames?: () => Promise<Record<string, string>>;
   /** Kilometres visible across the smaller side of the screen. Bigger regions want a bigger view. */
   viewKm: number;
   /** Lazily loaded so adding maps does not grow the initial bundle. */

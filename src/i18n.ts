@@ -1,15 +1,18 @@
 /**
- * UI language: English, Serbian Latin and Serbian Cyrillic.
+ * UI language: English, Dutch, Serbian Latin and Serbian Cyrillic.
  *
  * Serbian is written once, in Latin script; Cyrillic is derived by
  * transliteration (Serbian Latin <-> Cyrillic is one-to-one). Text inside
  * HTML tags and {placeholders} is never transliterated.
  */
 
-export type Lang = 'en' | 'sr-Latn' | 'sr-Cyrl';
+export type Lang = 'en' | 'nl' | 'sr-Latn' | 'sr-Cyrl';
 
-export const LANGS: { id: Lang; short: string; label: string; flag: 'gb' | 'rs' }[] = [
+type Flag = 'gb' | 'nl' | 'rs';
+
+export const LANGS: { id: Lang; short: string; label: string; flag: Flag }[] = [
   { id: 'en', short: 'EN', label: 'English', flag: 'gb' },
+  { id: 'nl', short: 'NL', label: 'Nederlands', flag: 'nl' },
   { id: 'sr-Latn', short: 'SR', label: 'Srpski (latinica)', flag: 'rs' },
   { id: 'sr-Cyrl', short: 'СР', label: 'Српски (ћирилица)', flag: 'rs' },
 ];
@@ -68,6 +71,59 @@ const en = {
 };
 
 export type StringKey = keyof typeof en;
+
+const nl: Record<StringKey, string> = {
+  subtitle: 'Vlieg met je helikopter naar zoveel mogelijk steden voordat de tijd om is.',
+  physicalOption: 'Bergen, rivieren &amp; meren',
+  physicalOptionRivers: 'Rivieren',
+  start: 'Start',
+  howtoFly: '<b>Vliegen</b> met de pijltjestoetsen / {keys}, of sleep met je vinger over het scherm.',
+  howtoFlash: 'Kom je dichtbij, dan gaat de stad <b>knipperen</b>. Vlieg er precies overheen.',
+  howtoLevels: 'Elke <b>10 steden</b>: +1:00, maar kleinere plaatsen en minder hulp.',
+  howtoPhysical: '<b>Rivieren:</b> vlieg <i>langs</i> de rivier tot de balk vol is. Meren en bergen: vlieg eroverheen.',
+  howtoPhysicalRivers: '<b>Rivieren:</b> vlieg <i>langs</i> de rivier tot de balk vol is.',
+  best: 'Record op {map}: {n} gevonden',
+  bestPhysical: 'Record op {map} (met bergen, rivieren &amp; meren): {n} gevonden',
+  bestPhysicalRivers: 'Record op {map} (met rivieren): {n} gevonden',
+  flyTo: 'Vlieg naar',
+  flyToRiver: 'Vlieg naar de rivier',
+  flyToLake: 'Vlieg naar het meer',
+  flyToMountain: 'Vlieg naar de berg',
+  kindRiver: 'rivier',
+  kindLake: 'meer',
+  kindMountain: 'berg',
+  found: 'gevonden',
+  level: 'Niveau',
+  pause: 'Pauze',
+  skip: 'Overslaan −10s',
+  soundOn: 'Geluid aan',
+  soundOff: 'Geluid uit',
+  hintCity: 'Dichtbij! Zoek de knipperende stip',
+  hintRiver: 'Dichtbij! Volg de oplichtende rivier',
+  hintLake: 'Dichtbij! Vlieg over het knipperende meer',
+  hintMountain: 'Dichtbij! Zoek de knipperende top',
+  followRiver: 'Volg de rivier: {p}%',
+  levelUp: 'Niveau {n}! +{bonus}',
+  levelUpDetail: 'Kleinere plaatsen, en de stip verschijnt later',
+  levelUpDetailPhysical: 'Minder bekende plaatsen, en ze verschijnen later',
+  paused: 'Gepauzeerd',
+  resume: 'Verder',
+  quit: 'Naar het menu',
+  timeUp: 'De tijd is om!',
+  placesFoundOne: 'plaats gevonden',
+  placesFoundFew: 'plaatsen gevonden',
+  placesFoundMany: 'plaatsen gevonden',
+  newBest: 'Nieuw record!',
+  bestShort: 'Record: {n}',
+  lastOne: 'De laatste was {name}.',
+  playAgain: 'Opnieuw spelen',
+  menu: 'Menu',
+  language: 'Taal',
+  mapSerbia: 'Servië',
+  mapNetherlands: 'Nederland',
+  mapEurope: 'Europa',
+  credits: 'Kaartgegevens: © {osm}-bijdragers, {ne}, {gn}',
+};
 
 const srLatn: Record<StringKey, string> = {
   subtitle: 'Leti helikopterom do što više gradova pre nego što istekne vreme.',
@@ -186,8 +242,20 @@ function detect(): Lang {
   } catch {
     /* no storage */
   }
-  const nav = (navigator.language || '').toLowerCase();
-  if (nav.startsWith('sr')) return nav.includes('latn') ? 'sr-Latn' : 'sr-Cyrl';
+  return fromBrowser(navigator.languages?.length ? navigator.languages : [navigator.language]);
+}
+
+/**
+ * First supported language in the browser's preference list; English otherwise.
+ * Serbian without a script (sr, sr-RS) is Cyrillic, the official script; sr-Latn is Latin.
+ */
+export function fromBrowser(prefs: readonly string[]): Lang {
+  for (const raw of prefs) {
+    const p = (raw || '').toLowerCase();
+    if (p.startsWith('nl')) return 'nl';
+    if (p.startsWith('sr')) return p.includes('latn') ? 'sr-Latn' : 'sr-Cyrl';
+    if (p.startsWith('en')) return 'en';
+  }
   return 'en';
 }
 
@@ -210,7 +278,7 @@ export function onLangChange(fn: () => void) {
 
 /** Translated string; {name} placeholders are filled from params (never transliterated). */
 export function t(key: StringKey, params: Record<string, string | number> = {}): string {
-  let s = lang === 'en' ? en[key] : srLatn[key];
+  let s = lang === 'en' ? en[key] : lang === 'nl' ? nl[key] : srLatn[key];
   if (lang === 'sr-Cyrl') s = toCyrillic(s);
   return s.replace(/\{(\w+)\}/g, (m, p: string) => (p in params ? String(params[p]) : m));
 }
@@ -223,7 +291,7 @@ export function plural(base: 'placesFound', n: number): string {
   const mod10 = n % 10;
   const mod100 = n % 100;
   const form =
-    lang === 'en'
+    lang === 'en' || lang === 'nl'
       ? n === 1 ? 'One' : 'Many'
       : mod10 === 1 && mod100 !== 11
         ? 'One'
@@ -242,15 +310,22 @@ export function plural(base: 'placesFound', n: number): string {
  */
 let nameScript: 'sr-Latn' | 'native' = 'native';
 let serbianNames: Record<string, string> = {};
+let dutchNames: Record<string, string> = {};
 
-export function setPlaceNames(script: 'sr-Latn' | 'native', serbian: Record<string, string> = {}) {
+export function setPlaceNames(
+  script: 'sr-Latn' | 'native',
+  serbian: Record<string, string> = {},
+  dutch: Record<string, string> = {},
+) {
   nameScript = script;
   serbianNames = serbian;
+  dutchNames = dutch;
 }
 
 export function placeName(name: string): string {
   if (lang === 'en') return name;
   if (nameScript === 'sr-Latn') return lang === 'sr-Cyrl' ? toCyrillic(name) : name;
+  if (lang === 'nl') return dutchNames[name] ?? name;
   const sr = serbianNames[name];
   if (!sr) return name;
   return lang === 'sr-Cyrl' ? sr : toLatin(sr);
@@ -283,8 +358,11 @@ const SERBIA_FLAG = (() => {
     '</svg>',
   ].join('');
 })();
-export function flagSvg(flag: 'gb' | 'rs'): string {
+export function flagSvg(flag: Flag): string {
   if (flag === 'rs') return SERBIA_FLAG;
+  if (flag === 'nl') {
+    return '<svg class="flag" viewBox="0 0 9 6" aria-hidden="true"><rect width="9" height="6" fill="#21468b"/><rect width="9" height="4" fill="#fff"/><rect width="9" height="2" fill="#ae1c28"/></svg>';
+  }
   const id = `gb-clip-${flagId++}`;
   // Stretched to the same 3:2 box as the Serbian flag so the two line up.
   return `<svg class="flag" viewBox="0 0 60 30" preserveAspectRatio="none" aria-hidden="true"><clipPath id="${id}"><path d="M30,15h30v15zv15h-30zh-30v-15zv-15h30z"/></clipPath><rect width="60" height="30" fill="#012169"/><path d="M0,0L60,30M60,0L0,30" stroke="#fff" stroke-width="6"/><path d="M0,0L60,30M60,0L0,30" clip-path="url(#${id})" stroke="#c8102e" stroke-width="4"/><path d="M30,0v30M0,15h60" stroke="#fff" stroke-width="10"/><path d="M30,0v30M0,15h60" stroke="#c8102e" stroke-width="6"/></svg>`;
