@@ -4,7 +4,7 @@
  */
 
 /** GoatCounter site code: https://<code>.goatcounter.com. Empty = statistics off. */
-const GOATCOUNTER_CODE = '';
+const GOATCOUNTER_CODE: string = 'rednoos';
 
 interface GoatCounter {
   count(vars: { path: string; title?: string; event?: boolean }): void;
