@@ -1,0 +1,14 @@
+[
+{"name":"Almere","lat":52.3702,"lon":5.2141,"pop":220000},
+{"name":"Lelystad","lat":52.5083,"lon":5.475,"pop":80000,"level":1},
+{"name":"Dronten","lat":52.5237,"lon":5.716,"pop":28086},
+{"name":"Emmeloord","lat":52.7108,"lon":5.7486,"pop":26000},
+{"name":"Zeewolde","lat":52.3311,"lon":5.543,"pop":22457},
+{"name":"Urk","lat":52.6655,"lon":5.5988,"pop":20220},
+{"name":"Swifterbant","lat":52.5683,"lon":5.6431,"pop":6475},
+{"name":"Biddinghuizen","lat":52.455,"lon":5.6931,"pop":5010},
+{"name":"Marknesse","lat":52.7083,"lon":5.8708,"pop":4010},
+{"name":"Ens","lat":52.6367,"lon":5.8278,"pop":3174},
+{"name":"Tollebeek","lat":52.6775,"lon":5.675,"pop":2455},
+{"name":"Luttelgeest","lat":52.7433,"lon":5.8528,"pop":2285}
+]

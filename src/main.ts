@@ -104,15 +104,35 @@ function updateInsets() {
   renderer.setInsets(top + 8, bottom + 8);
 }
 
+const mapName = (m: MapDefinition) => (m.nameKey ? t(m.nameKey) : (m.name ?? m.id));
+/** The top-level map a (sub-)map belongs to, e.g. the Netherlands for a province. */
+const topMap = (m: MapDefinition) => MAPS.find((x) => x.id === m.parent) ?? m;
+
 function renderMapSelect() {
   const box = $('map-select');
   box.innerHTML = '';
-  for (const m of MAPS) {
+  for (const m of MAPS.filter((x) => !x.parent)) {
     const b = document.createElement('button');
-    b.textContent = t(m.nameKey);
-    b.classList.toggle('active', m === mapDef);
+    b.textContent = mapName(m);
+    b.classList.toggle('active', m === topMap(mapDef));
     b.onclick = () => void selectMap(m);
     box.append(b);
+  }
+  // Sub-maps (provinces) of the chosen map: a list with the whole map first.
+  const top = topMap(mapDef);
+  const subs = MAPS.filter((x) => x.parent === top.id);
+  $('region-box').hidden = subs.length === 0;
+  if (subs.length) {
+    $('region-label').textContent = t('region');
+    const select = $<HTMLSelectElement>('region');
+    select.innerHTML = '';
+    for (const m of [top, ...subs]) {
+      const o = document.createElement('option');
+      o.value = m.id;
+      o.textContent = m === top ? t('regionAll') : mapName(m);
+      o.selected = m === mapDef;
+      select.append(o);
+    }
   }
   // The mode switch is only offered for maps that have physical data.
   ui.physicalToggle.hidden = !mapDef.loadPhysical;
@@ -123,7 +143,7 @@ function renderMapSelect() {
   $('howto-physical').innerHTML = t(riversOnly ? 'howtoPhysicalRivers' : 'howtoPhysical');
   $('howto-physical').hidden = !physicalOn;
   const best = getBest(scoreId());
-  const params = { map: t(mapDef.nameKey), n: best };
+  const params = { map: mapName(mapDef), n: best };
   const bestKey: StringKey = !physicalOn ? 'best' : riversOnly ? 'bestPhysicalRivers' : 'bestPhysical';
   ui.best.innerHTML = best > 0 ? t(bestKey, params) : '';
 }
@@ -149,7 +169,7 @@ async function selectMap(def: MapDefinition) {
 function newGame(start: boolean) {
   if (!mapData) return;
   const physical = physicalOn ? mapData.physical : undefined;
-  game = new Game(mapData, mapDef.viewKm, { physical: !!physical });
+  game = new Game(mapData, mapDef.viewKm, { physical: !!physical, pool: mapDef.pool });
   renderer = new Renderer(canvas, minimap, game, mapData.geo, mapDef.viewKm, physical);
   wasVisible = false;
   lastWholeSecond = Math.ceil(game.timeLeft);
@@ -341,6 +361,10 @@ onLangChange(translateStatic);
 // ---------- Controls ----------
 
 $('btn-start').onclick = start;
+$<HTMLSelectElement>('region').onchange = (e) => {
+  const def = MAPS.find((m) => m.id === (e.target as HTMLSelectElement).value);
+  if (def) void selectMap(def);
+};
 ui.physicalOption.onchange = async () => {
   physicalOn = ui.physicalOption.checked;
   saveOption(mapDef.id, physicalOn);

@@ -13,6 +13,8 @@ export interface Bounds {
 export interface GameOptions {
   /** Add mountains, rivers and lakes as targets (maps with physical data only). */
   physical?: boolean;
+  /** Cities in play per level (see MapDefinition.pool); default CONFIG.poolSize. */
+  pool?: { first: number; step: number };
 }
 
 export interface Found {
@@ -51,9 +53,13 @@ export class Game {
 
   /** Scale for the distances in CONFIG (see CONFIG.referenceViewKm). */
   readonly distScale: number;
+  /** Number of best-known cities in play at a level. */
+  private readonly poolSize: (level: number) => number;
 
   constructor(data: MapData, viewKm: number, options: GameOptions = {}) {
     this.distScale = viewKm / CONFIG.referenceViewKm;
+    const pool = options.pool;
+    this.poolSize = pool ? (level) => pool.first + pool.step * (level - 1) : CONFIG.poolSize;
     this.projection = new Projection(data.geo);
     const cities = cityTargets(data.cities, this.projection).sort((a, b) => b.pop - a.pop);
     const physical = options.physical && data.physical ? physicalTargets(data.physical, this.projection) : [];
@@ -130,16 +136,17 @@ export class Game {
 
   private nextTarget() {
     const poolFor = (level: number) => {
-      const size = CONFIG.poolSize(level);
+      const size = this.poolSize(level);
       return this.targets.filter(
         (t, rank) =>
           // Physical features only enter by level; cities also by population rank.
-          ((t.kind === 'city' && rank < size) || (t.level ?? Infinity) <= level) && !this.asked.has(t),
+          ((t.kind === 'city' && rank < size && level >= (t.minLevel ?? 1)) || (t.level ?? Infinity) <= level) &&
+          !this.asked.has(t),
       );
     };
     // When this level's pool is used up (e.g. by skipping), widen one level at a time.
     let pool = poolFor(this.level);
-    for (let l = this.level + 1; pool.length === 0 && CONFIG.poolSize(l - 1) < this.targets.length; l++) {
+    for (let l = this.level + 1; pool.length === 0 && l < 100; l++) {
       pool = poolFor(l);
     }
     if (pool.length === 0) {

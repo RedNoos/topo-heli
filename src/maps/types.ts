@@ -32,6 +32,8 @@ export interface City {
   pop: number;
   /** Optional: in play from this level on, regardless of population (e.g. capitals). */
   level?: number;
+  /** Optional: not before this level, even if its population ranks it earlier. */
+  minLevel?: number;
 }
 
 /** Optional physical-geography targets (scripts/build-physical.mjs). */
@@ -56,8 +58,13 @@ export interface MapData {
 
 export interface MapDefinition {
   id: string;
-  /** Translated map name (see i18n.ts). */
-  nameKey: StringKey;
+  /** Translated map name (see i18n.ts); or a fixed `name` (e.g. a province). */
+  nameKey?: StringKey;
+  name?: string;
+  /** Sub-map of another map (e.g. a province of 'netherlands'): chosen in that map's list. */
+  parent?: string;
+  /** Cities in play per level: first + step × (level − 1), best known first. Default: CONFIG.poolSize. */
+  pool?: { first: number; step: number };
   /**
    * Place names: 'sr-Latn' = written in Serbian Latin (transliterated for Cyrillic);
    * 'native' = shown as-is, or via loadSerbianNames when Serbian is selected.

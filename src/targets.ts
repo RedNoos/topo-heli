@@ -17,6 +17,8 @@ export interface Target {
   pop: number;
   /** In play from this level on, regardless of population. */
   level?: number;
+  /** Not before this level, even if its population ranks it earlier. */
+  minLevel?: number;
   /** Anchor: the place itself for points, a label position for lakes and rivers. */
   x: number;
   y: number;
@@ -84,7 +86,7 @@ function resample(lines: Pt[][], step: number): Pt[] {
 }
 
 export function cityTargets(cities: City[], proj: Projection): Target[] {
-  return cities.map((c) => ({ kind: 'city', name: c.name, pop: c.pop, level: c.level, ...proj.project(c.lon, c.lat) }));
+  return cities.map((c) => ({ kind: 'city', name: c.name, pop: c.pop, level: c.level, minLevel: c.minLevel, ...proj.project(c.lon, c.lat) }));
 }
 
 export function physicalTargets(data: PhysicalData, proj: Projection): Target[] {

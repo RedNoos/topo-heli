@@ -367,6 +367,24 @@ h1 {
   cursor: pointer;
 }
 
+.region {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.region select {
+  font: inherit;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 2px solid #c9c5b4;
+  background: #fff;
+  color: var(--ink);
+}
+
 .map-select button.active {
   border-color: var(--ink);
   background: var(--ink);

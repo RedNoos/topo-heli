@@ -29,6 +29,9 @@ Cyrillic. Place names: Serbia uses its (Serbian Latin) names, Europe has Serbian
 
 Tuning lives in [src/config.ts](src/config.ts).
 
+**Provinces** (Netherlands): pick a province in the list under the map buttons to play only that
+province: its map, its places (capital always in level 1) and, where there are any, its rivers.
+
 ## Adding a map
 
 1. Add an entry to `MAPS` in [scripts/build-map.mjs](scripts/build-map.mjs): the Natural Earth
@@ -45,6 +48,14 @@ Tuning lives in [src/config.ts](src/config.ts).
    larger regions want a larger value).
 
 ## Physical features
+
+Dutch places and provinces: the curated list is [data/netherlands-cities.json](data/netherlands-cities.json);
+`npm run build:places` adds municipality seats (OpenStreetMap) and villages of 2,000+ inhabitants
+(GeoNames) and writes the per-province lists. In the whole-country map the added places only come
+up from level 6. Build order after changing map data: `build:map` → `build:places` → `build:physical`.
+Province definitions: [scripts/provinces.mjs](scripts/provinces.mjs).
+
+
 
 `npm run build:physical` queries OpenStreetMap (Overpass API) for the rivers, lakes and peaks
 listed in [scripts/build-physical.mjs](scripts/build-physical.mjs) and writes

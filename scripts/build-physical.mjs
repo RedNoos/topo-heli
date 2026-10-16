@@ -9,6 +9,10 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import mapshaper from 'mapshaper';
+import { PROVINCES } from './provinces.mjs';
+
+/** Province maps: rivers with less than this inside the province are not asked. */
+const MIN_PROVINCE_RIVER_KM = 8;
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const CACHE = path.join(ROOT, '.cache');
@@ -462,7 +466,63 @@ async function build(id, cfg) {
 }
 
 
+/**
+ * Province maps reuse the country's data: rivers cut to the province (with the same margin as
+ * the country), drawing layers clipped to it. No river long enough -> no physical file.
+ */
+async function buildDerived(id, fromId) {
+  const from = JSON.parse(await fs.readFile(path.join(ROOT, 'src', 'maps', fromId, 'physical.json'), 'utf8'));
+  const clip = await countryClip(id, 2);
+  const lengthKm = (lines) => {
+    const d = Math.PI / 180;
+    let L = 0;
+    for (const l of lines) for (let i = 1; i < l.length; i++) {
+      const [a, b] = [l[i - 1], l[i]];
+      L += 6371 * Math.hypot((b[0] - a[0]) * d * Math.cos(((a[1] + b[1]) / 2) * d), (b[1] - a[1]) * d);
+    }
+    return L;
+  };
+  const rivers = [];
+  for (const r of from.rivers) {
+    const out = await mapshaper.applyCommands('-i in.json -clip clip.json -o out.json format=geojson', {
+      'in.json': { type: 'FeatureCollection', features: r.lines.map((coordinates) => ({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates } })) },
+      'clip.json': clip,
+    });
+    const fc = JSON.parse(out['out.json']);
+    const lines = [];
+    for (const g of fc.features?.map((f) => f.geometry) ?? fc.geometries ?? []) {
+      if (g?.type === 'LineString') lines.push(g.coordinates);
+      else if (g?.type === 'MultiLineString') lines.push(...g.coordinates);
+    }
+    if (lengthKm(lines) >= MIN_PROVINCE_RIVER_KM) rivers.push({ ...r, lines: round(lines) });
+  }
+  const file = path.join(ROOT, 'src', 'maps', id, 'physical.json');
+  if (!rivers.length) {
+    await fs.rm(file, { force: true });
+    console.log(`  ${id}: no rivers of ${MIN_PROVINCE_RIVER_KM}+ km`);
+    return;
+  }
+  const out = {
+    rivers,
+    lakes: [],
+    mountains: [],
+    draw: {
+      rivers: await Promise.all(from.draw.rivers.map((lines) => clipToHome(id, lines, 'line'))),
+      lines: await clipToHome(id, from.draw.lines, 'line'),
+      water: await clipToHome(id, from.draw.water, 'polygon'),
+    },
+  };
+  await fs.writeFile(file, JSON.stringify(out));
+  const kb = ((await fs.stat(file)).size / 1024).toFixed(0);
+  console.log(`  ${id}: ${rivers.length} rivers (${rivers.map((r) => r.name).join(', ')}) -> ${kb} KB`);
+}
+
 const only = process.argv[2];
 for (const [id, cfg] of Object.entries(PHYSICAL)) {
   if (!only || only === id) await build(id, cfg);
+}
+// Provinces are derived from the Netherlands: `npm run build:physical -- provinces` (or no argument).
+if (!only || only === 'netherlands' || only === 'provinces') {
+  console.log('Deriving province rivers from netherlands');
+  for (const p of PROVINCES) await buildDerived(p.id, 'netherlands');
 }

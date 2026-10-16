@@ -1,0 +1,62 @@
+[
+  {
+    "id": "nl-groningen",
+    "name": "Groningen",
+    "viewKm": 66
+  },
+  {
+    "id": "nl-friesland",
+    "name": "Friesland",
+    "viewKm": 80
+  },
+  {
+    "id": "nl-drenthe",
+    "name": "Drenthe",
+    "viewKm": 58
+  },
+  {
+    "id": "nl-overijssel",
+    "name": "Overijssel",
+    "viewKm": 69
+  },
+  {
+    "id": "nl-flevoland",
+    "name": "Flevoland",
+    "viewKm": 57
+  },
+  {
+    "id": "nl-gelderland",
+    "name": "Gelderland",
+    "viewKm": 92
+  },
+  {
+    "id": "nl-utrecht",
+    "name": "Utrecht",
+    "viewKm": 55
+  },
+  {
+    "id": "nl-noord-holland",
+    "name": "Noord-Holland",
+    "viewKm": 87
+  },
+  {
+    "id": "nl-zuid-holland",
+    "name": "Zuid-Holland",
+    "viewKm": 72
+  },
+  {
+    "id": "nl-zeeland",
+    "name": "Zeeland",
+    "viewKm": 57
+  },
+  {
+    "id": "nl-noord-brabant",
+    "name": "Noord-Brabant",
+    "viewKm": 95
+  },
+  {
+    "id": "nl-limburg",
+    "name": "Limburg",
+    "viewKm": 87
+  }
+]

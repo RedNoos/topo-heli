@@ -1,4 +1,11 @@
-import type { MapDefinition } from './types';
+import provinces from './nl-provinces.json';
+import type { MapDefinition, MapData, PhysicalData } from './types';
+
+// Province maps (built by scripts/build-map.mjs, build-places.mjs and build-physical.mjs).
+const provinceGeo = import.meta.glob('./nl-*/geo.json');
+const provinceCities = import.meta.glob('./nl-*/cities.json');
+const provincePhysical = import.meta.glob('./nl-*/physical.json');
+const json = async <T>(load: () => Promise<unknown>) => ((await load()) as { default: T }).default;
 
 // To add a map: add its id + settings to MAPS in scripts/build-map.mjs, run
 // `npm run build:map -- <id>`, add a cities.json next to the generated geo.json
@@ -40,4 +47,22 @@ export const MAPS: MapDefinition[] = [
       cities: (await import('./europe/cities.json')).default,
     }),
   },
+  // Netherlands per province: only that province's places, its capital always in level 1.
+  ...provinces.map((p): MapDefinition => {
+    const physical = provincePhysical[`./${p.id}/physical.json`];
+    return {
+      id: p.id,
+      name: p.name,
+      parent: 'netherlands',
+      placeNames: 'native',
+      viewKm: p.viewKm,
+      pool: { first: 10, step: 10 },
+      load: async () => ({
+        geo: await json<MapData['geo']>(provinceGeo[`./${p.id}/geo.json`]),
+        cities: await json<MapData['cities']>(provinceCities[`./${p.id}/cities.json`]),
+      }),
+      loadPhysical: physical ? () => json<PhysicalData>(physical) : undefined,
+      physicalRiversOnly: true,
+    };
+  }),
 ];

@@ -9,6 +9,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import mapshaper from 'mapshaper';
+import { PROVINCES } from './provinces.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const CACHE = path.join(ROOT, '.cache');
@@ -163,10 +164,49 @@ function colorCountries(features, count) {
   return colors;
 }
 
+/** Province maps: the province's land, the other countries and the rest of the country. */
+async function provinceShapes(cfg) {
+  const countries = await source(cfg.countries ?? SOURCES.countries);
+  const admin1 = await source(SOURCES.admin1);
+  const country = filterFeatures(countries, (f) => f.properties.ADM0_A3 === cfg.province.country);
+  const province = filterFeatures(admin1, (f) => f.properties.adm0_a3 === cfg.province.country && f.properties.name === cfg.province.ne);
+  if (!province.features.length) throw new Error(`Province not found: ${cfg.province.ne}`);
+  const run = async (cmd, a, b) => {
+    const out = await mapshaper.applyCommands(`-i a.json ${cmd} b.json -o out.json format=geojson`, { 'a.json': a, 'b.json': b });
+    const fc = JSON.parse(out['out.json']);
+    const features = fc.type === 'FeatureCollection' ? fc.features : (fc.geometries ?? []).map((geometry) => ({ type: 'Feature', geometry }));
+    return features.filter((f) => f.geometry);
+  };
+  // Admin-1 shapes include water (IJsselmeer, sea): keep only the province's land.
+  const home = (await run('-clip', province, country)).map((f) => ({ ...f, properties: { code: 'HOME', home: true } }));
+  const rest = (await run('-erase', country, province)).map((f) => ({ ...f, properties: { code: 'REST', home: false } }));
+  const others = countries.features
+    .filter((f) => f.properties.ADM0_A3 !== cfg.province.country)
+    .map((f) => ({ ...f, properties: { code: f.properties.ADM0_A3, home: false } }));
+  return { home, neighbours: [...rest, ...others] };
+}
+
+const boundsOf = (features) => {
+  const pts = features.flatMap((f) => parts({ features: [f] }).flat(2));
+  const lons = pts.map((p) => p[0]);
+  const lats = pts.map((p) => p[1]);
+  return [Math.min(...lons), Math.min(...lats), Math.max(...lons), Math.max(...lats)];
+};
+
 async function buildMap(id, cfg) {
   console.log(`Building ${id}`);
-  const bbox = cfg.bbox.join(',');
+  const prov = cfg.province ? await provinceShapes(cfg) : null;
+  if (prov && !cfg.bbox) {
+    // Province bbox plus a margin (~15 km) of surroundings.
+    const [w, s, e, n] = boundsOf(prov.home);
+    cfg.bbox = [w - 0.22, s - 0.14, e + 0.22, n + 0.14].map((v) => +v.toFixed(3));
+  }
   const proj = cfg.projection;
+  // Map data reaches a bit beyond the playable bbox: the camera may look past the edge (so
+  // places near it are not hidden under the HUD), and that strip should still show the map.
+  const DRAW_MARGIN = 0.35;
+  const [bw, bs, be, bn] = cfg.bbox;
+  const bbox = (proj ? cfg.bbox : [bw - DRAW_MARGIN, bs - DRAW_MARGIN, be + DRAW_MARGIN, bn + DRAW_MARGIN]).join(',');
   const projStr = proj && `+proj=laea +lat_0=${proj.lat0} +lon_0=${proj.lon0} +R=6371000`;
   const rectM = proj && proj.rect.map((v) => v * 1000).join(',');
   // Clip (and for projected maps: project, clip to the rectangle, unproject), then simplify.
@@ -179,17 +219,27 @@ async function buildMap(id, cfg) {
       proj ? '-proj wgs84' : '',
     ].join(' ');
 
-  const countries = await source(cfg.countries ?? SOURCES.countries);
-  const homeTest = Array.isArray(cfg.home) ? (p) => cfg.home.includes(p.ADM0_A3) : cfg.home;
-  const isHome = (f) => homeTest(f.properties);
-  for (const f of countries.features) {
-    f.properties = { code: cfg.merge?.[f.properties.ADM0_A3] ?? f.properties.ADM0_A3, home: isHome(f) };
+  let homeFc;
+  let neighbourFc;
+  let homeTest = () => false;
+  if (prov) {
+    homeFc = { type: 'FeatureCollection', features: prov.home };
+    neighbourFc = { type: 'FeatureCollection', features: prov.neighbours };
+  } else {
+    // Fresh copy: the cached source is shared between maps.
+    const countries = structuredClone(await source(cfg.countries ?? SOURCES.countries));
+    homeTest = Array.isArray(cfg.home) ? (p) => cfg.home.includes(p.ADM0_A3) : cfg.home;
+    const isHome = (f) => homeTest(f.properties);
+    for (const f of countries.features) {
+      f.properties = { code: cfg.merge?.[f.properties.ADM0_A3] ?? f.properties.ADM0_A3, home: isHome(f) };
+    }
+    homeFc = filterFeatures(countries, (f) => f.properties.home);
+    neighbourFc = filterFeatures(countries, (f) => !f.properties.home);
   }
-  const homeFc = filterFeatures(countries, (f) => f.properties.home);
 
   const homeCountries = await shape(homeFc, `-dissolve code ${area()} -filter-slivers`);
   const home = await shape(homeFc, `-dissolve code ${area()} -filter-slivers -dissolve`);
-  const neighbours = await shape(filterFeatures(countries, (f) => !f.properties.home), `${area()} -filter-slivers`);
+  const neighbours = await shape(neighbourFc, `${area()} -filter-slivers`);
 
   let districts = [];
   if (cfg.districtOf) {
@@ -249,6 +299,12 @@ async function buildMap(id, cfg) {
   await fs.writeFile(file, JSON.stringify(out));
   const kb = ((await fs.stat(file)).size / 1024).toFixed(0);
   console.log(`  -> ${path.relative(ROOT, file)} (${kb} KB)`);
+}
+
+// Dutch provinces: the province is the playable area, the rest of the Netherlands is shown
+// like a neighbouring country. The bbox is derived from the province's shape.
+for (const p of PROVINCES) {
+  MAPS[p.id] = { province: { country: 'NLD', ne: p.ne }, simplify: '100%' };
 }
 
 const only = process.argv[2];
