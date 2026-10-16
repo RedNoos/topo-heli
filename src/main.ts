@@ -6,6 +6,7 @@ import { Input } from './input';
 import { MAPS } from './maps';
 import type { MapData, MapDefinition } from './maps/types';
 import { Renderer } from './renderer';
+import { initStats, scoreBucket, track } from './stats';
 import { flagSvg, getLang, LANGS, onLangChange, placeName, plural, setLang, setPlaceNames, t, type StringKey } from './i18n';
 import type { Target, TargetKind } from './targets';
 
@@ -253,6 +254,7 @@ function endGame() {
   if (!game) return;
   sfx.over();
   const score = game.found.length;
+  track(`finish/${scoreId()}/${scoreBucket(score)}`);
   const prevBest = getBest(scoreId());
   if (score > prevBest) setBest(scoreId(), score);
 
@@ -277,6 +279,7 @@ function endGame() {
 }
 
 function start() {
+  track(`start/${scoreId()}`);
   sfx.unlock();
   newGame(true);
 }
@@ -308,6 +311,7 @@ const STATIC_PARAMS = {
   game: '<i>Topografie Nederland</i>',
   maker: 'Radarsoft',
   platform: 'Commodore 64',
+  goatcounter: '<a href="https://www.goatcounter.com/" target="_blank" rel="noopener">GoatCounter</a>',
 };
 
 /** Fills every [data-i18n] element with its translation. */
@@ -345,7 +349,10 @@ function renderLangPicker() {
     item.setAttribute('aria-selected', String(l.id === current.id));
     item.tabIndex = 0;
     item.innerHTML = `${flagSvg(l.flag)}<b>${l.short}</b><span>${l.label}</span>`;
-    const choose = () => setLang(l.id);
+    const choose = () => {
+      setLang(l.id);
+      track(`language/${l.id}`);
+    };
     item.onclick = choose;
     item.onkeydown = (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), choose());
     list.append(item);
@@ -457,6 +464,8 @@ function frame(now: number) {
 
 document.documentElement.lang = getLang();
 translateStatic();
+initStats();
+track(`language-on-load/${getLang()}`);
 void selectMap(mapDef);
 requestAnimationFrame(frame);
 

@@ -71,6 +71,7 @@ const en = {
   regionAll: 'All of the Netherlands',
   credits: 'Map data: © {osm} contributors, {ne}, {gn}, {cbs}',
   inspiredBy: 'Inspired by {game} ({maker}, {platform}, 1984)',
+  privacy: 'Anonymous visitor statistics via {goatcounter}, without cookies.',
 };
 
 export type StringKey = keyof typeof en;
@@ -129,6 +130,7 @@ const nl: Record<StringKey, string> = {
   regionAll: 'Heel Nederland',
   credits: 'Kaartgegevens: © {osm}-bijdragers, {ne}, {gn}, {cbs}',
   inspiredBy: 'Geïnspireerd op {game} ({maker}, {platform}, 1984)',
+  privacy: 'Anonieme bezoekersstatistieken via {goatcounter}, zonder cookies.',
 };
 
 const srLatn: Record<StringKey, string> = {
@@ -185,6 +187,7 @@ const srLatn: Record<StringKey, string> = {
   regionAll: 'Cela Holandija',
   credits: 'Podaci za mape: © saradnici {osm}, {ne}, {gn}, {cbs}',
   inspiredBy: 'Inspirisano igrom {game} ({maker}, {platform}, 1984)',
+  privacy: 'Anonimna statistika poseta preko {goatcounter}, bez kolačića.',
 };
 
 // ---------- Transliteration ----------
