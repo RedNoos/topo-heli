@@ -70,6 +70,7 @@ const en = {
   region: 'Province',
   regionAll: 'All of the Netherlands',
   credits: 'Map data: © {osm} contributors, {ne}, {gn}, {cbs}',
+  inspiredBy: 'Inspired by {game} ({maker}, {platform}, 1984)',
 };
 
 export type StringKey = keyof typeof en;
@@ -127,6 +128,7 @@ const nl: Record<StringKey, string> = {
   region: 'Provincie',
   regionAll: 'Heel Nederland',
   credits: 'Kaartgegevens: © {osm}-bijdragers, {ne}, {gn}, {cbs}',
+  inspiredBy: 'Geïnspireerd op {game} ({maker}, {platform}, 1984)',
 };
 
 const srLatn: Record<StringKey, string> = {
@@ -182,6 +184,7 @@ const srLatn: Record<StringKey, string> = {
   region: 'Provincija',
   regionAll: 'Cela Holandija',
   credits: 'Podaci za mape: © saradnici {osm}, {ne}, {gn}, {cbs}',
+  inspiredBy: 'Inspirisano igrom {game} ({maker}, {platform}, 1984)',
 };
 
 // ---------- Transliteration ----------

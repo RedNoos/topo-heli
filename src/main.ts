@@ -304,6 +304,10 @@ const STATIC_PARAMS = {
   ne: '<a href="https://www.naturalearthdata.com/" target="_blank" rel="noopener">Natural Earth</a>',
   gn: '<a href="https://www.geonames.org/" target="_blank" rel="noopener">GeoNames</a>',
   cbs: '<a href="https://www.pdok.nl/" target="_blank" rel="noopener">CBS/Kadaster (PDOK)</a>',
+  // The game Topo Heli is based on (names are never translated or transliterated).
+  game: '<i>Topografie Nederland</i>',
+  maker: 'Radarsoft',
+  platform: 'Commodore 64',
 };
 
 /** Fills every [data-i18n] element with its translation. */

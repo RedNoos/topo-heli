@@ -61,6 +61,12 @@ Province definitions: [scripts/provinces.mjs](scripts/provinces.mjs).
 listed in [scripts/build-physical.mjs](scripts/build-physical.mjs) and writes
 `src/maps/<id>/physical.json`. Each feature has a `level` that decides when it can be asked.
 
+## Credits
+
+Inspired by *Topografie Nederland* (Radarsoft, Commodore 64, 1984), whose helicopter game had
+the same idea: fly to a named place before time runs out; it appears as a pulsing dot once you
+are close.
+
 ## Data
 
 - Borders, rivers and lakes: [Natural Earth](https://www.naturalearthdata.com/) (public domain).
