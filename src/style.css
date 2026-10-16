@@ -475,6 +475,16 @@ h1 {
   margin: 4px 0;
 }
 
+.credits {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.credits a {
+  color: inherit;
+}
+
 .final {
   font-size: 18px;
 }

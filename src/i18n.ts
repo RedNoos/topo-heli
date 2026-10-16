@@ -61,6 +61,7 @@ const en = {
   mapSerbia: 'Serbia',
   mapNetherlands: 'Netherlands',
   mapEurope: 'Europe',
+  credits: 'Map data: © {osm} contributors, {ne}, {gn}',
 };
 
 export type StringKey = keyof typeof en;
@@ -112,6 +113,7 @@ const srLatn: Record<StringKey, string> = {
   mapSerbia: 'Srbija',
   mapNetherlands: 'Holandija',
   mapEurope: 'Evropa',
+  credits: 'Podaci za mape: © saradnici {osm}, {ne}, {gn}',
 };
 
 // ---------- Transliteration ----------

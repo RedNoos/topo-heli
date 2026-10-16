@@ -265,10 +265,18 @@ function updateMuteLabel() {
 
 // ---------- Language ----------
 
+/** Untranslated pieces used in static texts (names, links). */
+const STATIC_PARAMS = {
+  keys: 'WASD',
+  osm: '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>',
+  ne: '<a href="https://www.naturalearthdata.com/" target="_blank" rel="noopener">Natural Earth</a>',
+  gn: '<a href="https://www.geonames.org/" target="_blank" rel="noopener">GeoNames</a>',
+};
+
 /** Fills every [data-i18n] element with its translation. */
 function translateStatic() {
   for (const el of document.querySelectorAll<HTMLElement>('[data-i18n]')) {
-    el.innerHTML = t(el.dataset.i18n as StringKey, { keys: 'WASD' });
+    el.innerHTML = t(el.dataset.i18n as StringKey, STATIC_PARAMS);
   }
   updateMuteLabel();
   if (game?.target) setTargetLabel(game.target);
