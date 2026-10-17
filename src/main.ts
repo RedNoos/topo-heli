@@ -105,6 +105,9 @@ function updateInsets() {
   renderer.setInsets(top + 8, bottom + 8);
 }
 
+/** Seconds as m:ss, e.g. 90 -> "1:30". */
+const clock = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+
 const mapName = (m: MapDefinition) => (m.nameKey ? t(m.nameKey) : (m.name ?? m.id));
 /** The top-level map a (sub-)map belongs to, e.g. the Netherlands for a province. */
 const topMap = (m: MapDefinition) => MAPS.find((x) => x.id === m.parent) ?? m;
@@ -135,6 +138,8 @@ function renderMapSelect() {
       select.append(o);
     }
   }
+  // Time bonus per level differs per map (e.g. Flevoland: +0:30).
+  $('howto-levels').innerHTML = t('howtoLevels', { bonus: clock(mapDef.time?.levelBonus ?? CONFIG.levelTimeBonus) });
   // The mode switch is only offered for maps that have physical data.
   ui.physicalToggle.hidden = !mapDef.loadPhysical;
   ui.physicalOption.checked = physicalOn;
@@ -170,7 +175,7 @@ async function selectMap(def: MapDefinition) {
 function newGame(start: boolean) {
   if (!mapData) return;
   const physical = physicalOn ? mapData.physical : undefined;
-  game = new Game(mapData, mapDef.viewKm, { physical: !!physical, pool: mapDef.pool });
+  game = new Game(mapData, mapDef.viewKm, { physical: !!physical, pool: mapDef.pool, time: mapDef.time });
   renderer = new Renderer(canvas, minimap, game, mapData.geo, mapDef.viewKm, physical);
   wasVisible = false;
   lastWholeSecond = Math.ceil(game.timeLeft);
@@ -191,7 +196,7 @@ function newGame(start: boolean) {
         if (e.levelUp) {
           sfx.levelUp();
           showToast(
-            t('levelUp', { n: game!.level, bonus: `${CONFIG.levelTimeBonus / 60}:00` }),
+            t('levelUp', { n: game!.level, bonus: clock(game!.levelBonus) }),
             t(physicalOn ? 'levelUpDetailPhysical' : 'levelUpDetail'),
           );
         } else {

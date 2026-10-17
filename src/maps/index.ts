@@ -57,6 +57,7 @@ export const MAPS: MapDefinition[] = [
       placeNames: 'native',
       viewKm: p.viewKm,
       pool: { first: 10, step: 10 },
+      time: 'time' in p ? (p.time as MapDefinition['time']) : undefined,
       load: async () => ({
         geo: await json<MapData['geo']>(provinceGeo[`./${p.id}/geo.json`]),
         cities: await json<MapData['cities']>(provinceCities[`./${p.id}/cities.json`]),

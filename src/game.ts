@@ -15,6 +15,8 @@ export interface GameOptions {
   physical?: boolean;
   /** Cities in play per level (see MapDefinition.pool); default CONFIG.poolSize. */
   pool?: { first: number; step: number };
+  /** Start time and extra time per level (seconds); default CONFIG.startTime / levelTimeBonus. */
+  time?: { start: number; levelBonus: number };
 }
 
 export interface Found {
@@ -38,7 +40,9 @@ export class Game {
   readonly bounds: Bounds;
 
   heli = { x: 0, y: 0, vx: 0, vy: 0, heading: -Math.PI / 2 };
-  timeLeft = CONFIG.startTime;
+  timeLeft: number;
+  /** Extra seconds per level. */
+  readonly levelBonus: number;
   elapsed = 0;
   found: Found[] = [];
   skipped: Target[] = [];
@@ -58,6 +62,8 @@ export class Game {
 
   constructor(data: MapData, viewKm: number, options: GameOptions = {}) {
     this.distScale = viewKm / CONFIG.referenceViewKm;
+    this.timeLeft = options.time?.start ?? CONFIG.startTime;
+    this.levelBonus = options.time?.levelBonus ?? CONFIG.levelTimeBonus;
     const pool = options.pool;
     this.poolSize = pool ? (level) => pool.first + pool.step * (level - 1) : CONFIG.poolSize;
     this.projection = new Projection(data.geo);
@@ -215,7 +221,7 @@ export class Game {
       const at = target.kind === 'river' ? nearestSample(target, h) : target.kind === 'lake' ? { x: h.x, y: h.y } : target;
       this.found.push({ target, x: at.x, y: at.y });
       const levelUp = this.found.length % CONFIG.citiesPerLevel === 0;
-      if (levelUp) this.timeLeft += CONFIG.levelTimeBonus;
+      if (levelUp) this.timeLeft += this.levelBonus;
       this.emit({ type: 'found', found: this.found[this.found.length - 1], levelUp });
       this.nextTarget();
     }

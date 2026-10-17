@@ -22,7 +22,11 @@
   {
     "id": "nl-flevoland",
     "name": "Flevoland",
-    "viewKm": 58
+    "viewKm": 58,
+    "time": {
+      "start": 120,
+      "levelBonus": 30
+    }
   },
   {
     "id": "nl-gelderland",

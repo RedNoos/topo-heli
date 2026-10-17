@@ -65,6 +65,8 @@ export interface MapDefinition {
   parent?: string;
   /** Cities in play per level: first + step × (level − 1), best known first. Default: CONFIG.poolSize. */
   pool?: { first: number; step: number };
+  /** Start time and extra time per level in seconds. Default: CONFIG.startTime / levelTimeBonus. */
+  time?: { start: number; levelBonus: number };
   /**
    * Place names: 'sr-Latn' = written in Serbian Latin (transliterated for Cyrillic);
    * 'native' = shown as-is, or via loadSerbianNames when Serbian is selected.

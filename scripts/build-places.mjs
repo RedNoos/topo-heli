@@ -19,6 +19,8 @@ const MIN_POP = 2000;
 const EXTRA_MIN_LEVEL = 6;
 /** Places closer than this to an already listed place are taken to be the same place. */
 const SAME_PLACE_KM = 2;
+/** Listed as a populated place in GeoNames, but not a town or village. */
+const NOT_A_PLACE = new Set(['Oostvaardersdiep']);
 
 const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
 
@@ -35,7 +37,7 @@ async function cached(file, fetcher) {
 }
 
 /** GeoNames country dump for the Netherlands (populated places with population). */
-async function geonames() {
+async function geonames(minPop = MIN_POP) {
   const zip = await cached('geonames-NL.zip', async () => {
     console.log('  downloading GeoNames NL...');
     const res = await fetch('https://download.geonames.org/export/dump/NL.zip');
@@ -46,8 +48,9 @@ async function geonames() {
   return text
     .split('\n')
     .map((l) => l.split('\t'))
-    .filter((c) => c[6] === 'P' && c[7] !== 'PPLX' && +c[14] >= MIN_POP)
-    .map((c) => ({ name: c[1], lat: +c[4], lon: +c[5], pop: +c[14], source: 'geonames' }));
+    .filter((c) => c[6] === 'P' && c[7] !== 'PPLX' && +c[14] >= minPop)
+    // Villages without a known population rank last.
+    .map((c) => ({ name: c[1], lat: +c[4], lon: +c[5], pop: +c[14] || 100, source: 'geonames' }));
 }
 
 /** Municipality seats ("admin_centre" of every gemeente) from OpenStreetMap. */
@@ -116,18 +119,35 @@ function provinceOf(place) {
 console.log('Building Dutch place lists');
 const all = curated.map((c) => ({ ...c, source: 'curated' }));
 let added = 0;
-for (const cand of [...(await seats()), ...(await geonames())]) {
+/** Adds a candidate unless it is already listed or is a district of a listed place. */
+function addPlace(cand, extra) {
+  if (NOT_A_PLACE.has(cand.name)) return false;
   // Same place already listed (curated names win: "Den Haag" over "The Hague")?
-  const dup = all.some((c) => km(c, cand) < SAME_PLACE_KM || (c.name === cand.name && km(c, cand) < 6));
+  if (all.some((c) => km(c, cand) < SAME_PLACE_KM || (c.name === cand.name && km(c, cand) < 6))) return false;
   // A district of a nearby place ("Almere Duin", "Leusden-Zuid"), not a place of its own.
-  const district = all.some((c) => (cand.name.startsWith(c.name + ' ') || cand.name.startsWith(c.name + '-')) && km(c, cand) < 10);
-  if (district) continue;
-  if (dup) continue;
-  all.push({ ...cand, extra: true });
-  added++;
+  if (all.some((c) => (cand.name.startsWith(c.name + ' ') || cand.name.startsWith(c.name + '-')) && km(c, cand) < 10)) return false;
+  all.push({ ...cand, ...extra });
+  return true;
+}
+for (const cand of [...(await seats()), ...(await geonames())]) {
+  if (addPlace(cand, { extra: true })) added++;
 }
 for (const c of all) c.province = provinceOf(c);
-console.log(`  ${curated.length} curated + ${added} added = ${all.length} places`);
+
+// Small provinces: also smaller villages, in the province's own list only (not the whole country).
+let small = 0;
+const lowPop = provinces.filter((p) => p.minPop !== undefined && p.minPop < MIN_POP);
+if (lowPop.length) {
+  for (const cand of await geonames(Math.min(...lowPop.map((p) => p.minPop)))) {
+    if (cand.pop >= MIN_POP) continue;
+    const p = provinceOf(cand);
+    if (!lowPop.includes(p) || cand.pop < p.minPop) continue;
+    // Small villages close together are often parts of one place: be stricter than for towns.
+    if (all.some((c) => km(c, cand) < 1.2)) continue;
+    if (addPlace(cand, { extra: true, provinceOnly: true, province: p })) small++;
+  }
+}
+console.log(`  ${curated.length} curated + ${added} added${small ? ` + ${small} small villages (province maps only)` : ''} = ${all.length} places`);
 
 const round4 = (v) => +v.toFixed(4);
 const out = (c, name = c.name) => ({
@@ -140,8 +160,8 @@ const out = (c, name = c.name) => ({
 
 // Whole country: added places only from EXTRA_MIN_LEVEL; same names get the province, e.g. "Hengelo (O)".
 const nameCount = {};
-for (const c of all) nameCount[c.name] = (nameCount[c.name] || 0) + 1;
-const nl = all.map((c) => {
+for (const c of all) if (!c.provinceOnly) nameCount[c.name] = (nameCount[c.name] || 0) + 1;
+const nl = all.filter((c) => !c.provinceOnly).map((c) => {
   const name = c.extra && nameCount[c.name] > 1 ? `${c.name} (${c.province.abbr})` : c.name;
   return { ...out(c, name), ...(c.extra ? { minLevel: EXTRA_MIN_LEVEL } : {}) };
 });
@@ -167,7 +187,7 @@ for (const p of provinces) {
   const widthKm = (e - w) * 111 * Math.cos(((s + n) / 2) * D);
   const heightKm = (n - s) * 111;
   const viewKm = Math.round(Math.min(110, Math.max(55, 0.6 * Math.max(widthKm, heightKm))));
-  manifest.push({ id: p.id, name: p.name, viewKm });
+  manifest.push({ id: p.id, name: p.name, viewKm, ...(p.time ? { time: p.time } : {}) });
   console.log(`  ${p.name.padEnd(14)} ${String(cities.length).padStart(3)} places (capital ${p.capital}), view ${viewKm} km`);
 }
 await fs.writeFile(path.join(ROOT, 'src', 'maps', 'nl-provinces.json'), JSON.stringify(manifest, null, 2) + '\n');
