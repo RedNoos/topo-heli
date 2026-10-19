@@ -143,14 +143,20 @@ function renderMapSelect() {
   // The mode switch is only offered for maps that have physical data.
   ui.physicalToggle.hidden = !mapDef.loadPhysical;
   ui.physicalOption.checked = physicalOn;
-  // Maps with only waters (the Netherlands) call the option "Waters".
-  const watersOnly = !!mapDef.physicalWatersOnly;
-  $('physical-label').innerHTML = t(watersOnly ? 'physicalOptionWaters' : 'physicalOption');
-  $('howto-physical').innerHTML = t(watersOnly ? 'howtoPhysicalWaters' : 'howtoPhysical');
+  // The Netherlands: "Waters" or "Waters & areas" instead of mountains, rivers & lakes.
+  const kind = mapDef.physicalKind;
+  $('physical-label').innerHTML = t(kind === 'watersAreas' ? 'physicalOptionWatersAreas' : kind ? 'physicalOptionWaters' : 'physicalOption');
+  $('howto-physical').innerHTML = kind ? t('howtoPhysicalWaters') + (kind === 'watersAreas' ? ' ' + t('howtoPhysicalAreas') : '') : t('howtoPhysical');
   $('howto-physical').hidden = !physicalOn;
   const best = getBest(scoreId());
   const params = { map: mapName(mapDef), n: best };
-  const bestKey: StringKey = !physicalOn ? 'best' : watersOnly ? 'bestPhysicalWaters' : 'bestPhysical';
+  const bestKey: StringKey = !physicalOn
+    ? 'best'
+    : kind === 'watersAreas'
+      ? 'bestPhysicalWatersAreas'
+      : kind
+        ? 'bestPhysicalWaters'
+        : 'bestPhysical';
   ui.best.innerHTML = best > 0 ? t(bestKey, params) : '';
 }
 
@@ -218,13 +224,14 @@ function newGame(start: boolean) {
   }
 }
 
-/** Texts per kind of target; canals (river kind) and seas (lake kind) have their own words. */
-const flyToKey = (t: Target): StringKey =>
-  t.sub === 'canal' ? 'flyToCanal' : t.sub === 'water' ? 'flyToWater' : ({ city: 'flyTo', river: 'flyToRiver', lake: 'flyToLake', mountain: 'flyToMountain' } as const)[t.kind];
-const kindKey = (t: Target): StringKey =>
-  t.sub === 'canal' ? 'kindCanal' : t.sub === 'water' ? 'kindWater' : ({ city: 'kindRiver', river: 'kindRiver', lake: 'kindLake', mountain: 'kindMountain' } as const)[t.kind];
-const hintKey = (t: Target): StringKey =>
-  t.sub === 'canal' ? 'hintCanal' : t.sub === 'water' ? 'hintWater' : ({ city: 'hintCity', river: 'hintRiver', lake: 'hintLake', mountain: 'hintMountain' } as const)[t.kind];
+/** Texts per kind of target; subkinds (canal, sea, province, ...) have their own words. */
+const SUB = { canal: 'Canal', dike: 'Dike', water: 'Water', province: 'Province', island: 'Island', airport: 'Airport' } as const;
+const KIND = { city: 'City', river: 'River', lake: 'Lake', mountain: 'Mountain', area: 'Area', landmark: 'Airport' } as const;
+const word = (t: Target) => (t.sub ? SUB[t.sub] : KIND[t.kind]);
+const flyToKey = (t: Target): StringKey => (t.kind === 'city' ? 'flyTo' : `flyTo${word(t)}`) as StringKey;
+const kindKey = (t: Target): StringKey => `kind${word(t)}` as StringKey;
+/** Provinces and islands share the area hint. */
+const hintKey = (t: Target): StringKey => (t.kind === 'area' ? 'hintArea' : (`hint${word(t)}` as StringKey));
 
 /** Target card: name plus, for physical features, what kind of place it is. */
 function setTargetLabel(target: Target) {
@@ -233,7 +240,7 @@ function setTargetLabel(target: Target) {
   ui.targetName.textContent = name;
   if (target.kind !== 'city' && !name.toLowerCase().includes(t(kindKey(target)).toLowerCase())) {
     const tag = document.createElement('span');
-    tag.className = `kind kind-${target.kind}`;
+    tag.className = `kind kind-${target.kind} kind-${target.sub ?? target.kind}`;
     tag.textContent = t(kindKey(target));
     ui.targetName.append(' ', tag);
   }
@@ -437,12 +444,15 @@ function updateHud() {
   const progress = game.riverProgress;
   (ui.progress.firstElementChild as HTMLElement).style.width = `${Math.round(progress * 100)}%`;
   const target = game.target;
+  const follow: StringKey = target?.sub === 'canal' ? 'followCanal' : target?.sub === 'dike' ? 'followDike' : 'followRiver';
   ui.targetHint.textContent =
     kind === 'river' && progress > 0
-      ? t(target?.sub === 'canal' ? 'followCanal' : 'followRiver', { p: Math.round(progress * 100) })
-      : visible && target
-        ? t(hintKey(target))
-        : '';
+      ? t(follow, { p: Math.round(progress * 100) })
+      : game.areaTooShallow
+        ? t('hintAreaDeeper')
+        : visible && target
+          ? t(hintKey(target))
+          : '';
   if (visible && !wasVisible) sfx.reveal();
   wasVisible = visible;
 

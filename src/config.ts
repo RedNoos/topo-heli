@@ -29,6 +29,12 @@ export const CONFIG = {
    */
   river: { followKm: 40, maxShare: 0.6, coverRadius: 4, sampleKm: 1 },
 
+  /**
+   * Areas (provinces, islands, ...) are found by flying into them: at least `insideKm`
+   * (real km, not scaled) from the edge, or half the depth of a narrow area.
+   */
+  area: { insideKm: 2, maxShare: 0.5 },
+
   /** Distance at which the target's flashing dot becomes visible, per level. */
   revealRadius: (level: number) => Math.max(12, 50 - (level - 1) * 7),
 

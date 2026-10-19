@@ -162,6 +162,18 @@ body {
   background: #7a5230;
 }
 
+.target-name .kind-dike {
+  background: #6d5b45;
+}
+
+.target-name .kind-area {
+  background: #7b4fa0;
+}
+
+.target-name .kind-landmark {
+  background: #2f7d32;
+}
+
 .progress {
   height: 6px;
   margin-top: 5px;

@@ -1,7 +1,7 @@
 import { CONFIG } from './config';
 import type { MapData } from './maps/types';
 import { dist, Projection } from './projection';
-import { cityTargets, distanceTo, nearestSample, physicalTargets, type Target } from './targets';
+import { cityTargets, distanceTo, edgeDistance, nearestSample, physicalTargets, type Target } from './targets';
 
 export interface Bounds {
   minX: number;
@@ -130,6 +130,12 @@ export class Game {
     return Math.min(1, (this.covered.size * CONFIG.river.sampleKm) / this.riverRequired);
   }
 
+  /** Area target: the helicopter is over it, but not yet deep enough inside. */
+  get areaTooShallow() {
+    const t = this.target;
+    return t?.kind === 'area' && this.targetDistance === 0 && edgeDistance(t, this.heli) < t.depth!;
+  }
+
   /** Course samples of the current river covered so far (for drawing the trail). */
   get coveredSamples() {
     const s = this.target?.samples;
@@ -242,6 +248,9 @@ export class Game {
       }
       case 'mountain':
         return this.targetDistance <= catchKm * CONFIG.mountainCatchFactor;
+      case 'area':
+        // Touching is not enough: fly in, past the edge.
+        return this.targetDistance === 0 && edgeDistance(t, this.heli) >= t.depth!;
       default:
         return this.targetDistance <= catchKm;
     }

@@ -87,7 +87,34 @@ const PHYSICAL = {
       3: ['Eem', 'Dommel', 'Roer', 'Berkel', 'Dinkel', 'Regge', 'Geul', 'Niers', 'Mark', 'Schipbeek', 'Reitdiep'],
     },
     lakes: {},
-    mountains: {},
+    mountains: { 2: [['Vaalserberg', { lat: 50.7548, lon: 6.0207, ele: 322 }]] },
+    // Areas (gebieden) of the basislijst topografie: found by flying (well) into them.
+    // Sources: a CBS province, the CBS land part (island) at a point, CBS municipalities, an OSM
+    // relation or a rough outline; always cut to the land. ('areas' = Overpass country areas.)
+    zones: {
+      1: [
+        ...[['Groningen', 'Groningen'], ['Friesland', 'Fryslân'], ['Drenthe', 'Drenthe'], ['Overijssel', 'Overijssel'], ['Flevoland', 'Flevoland'], ['Gelderland', 'Gelderland'], ['Utrecht', 'Utrecht'], ['Noord-Holland', 'Noord-Holland'], ['Zuid-Holland', 'Zuid-Holland'], ['Zeeland', 'Zeeland'], ['Noord-Brabant', 'Noord-Brabant'], ['Limburg', 'Limburg']].map(([name, cbs]) => ({ name, type: 'province', cbsProvince: cbs })),
+        { name: 'Texel', type: 'island', landAt: [4.8, 53.08] },
+        { name: 'Vlieland', type: 'island', landAt: [4.92, 53.23] },
+        { name: 'Terschelling', type: 'island', landAt: [5.3, 53.39] },
+        { name: 'Ameland', type: 'island', landAt: [5.77, 53.45] },
+        { name: 'Schiermonnikoog', type: 'island', landAt: [6.2, 53.48] },
+      ],
+      2: [
+        { name: 'Zeeuws-Vlaanderen', municipalities: ['Sluis', 'Terneuzen', 'Hulst'] },
+        { name: 'Haarlemmermeer', municipalities: ['Haarlemmermeer'] },
+        { name: 'Twente', municipalities: ["Almelo","Borne","Dinkelland","Enschede","Haaksbergen","Hellendoorn","Hengelo (O.)","Hof van Twente","Losser","Oldenzaal","Rijssen-Holten","Tubbergen","Twenterand","Wierden"] },
+        { name: 'Veluwe', relation: 2762589 }, // Natura 2000 area
+        { name: 'Biesbos', relation: 14616038 }, // Nationaal Park De Biesbosch
+        { name: 'Rijnmond', relation: 11961545 }, // veiligheidsregio Rotterdam-Rijnmond
+        // No official border: a generous ring around the four big cities and the Groene Hart.
+        { name: 'Randstad', outline: [[4.55, 52.52], [4.85, 52.5], [5.08, 52.46], [5.3, 52.38], [5.42, 52.2], [5.2, 51.98], [4.85, 51.78], [4.55, 51.8], [4.3, 51.84], [4.08, 51.98], [4.25, 52.12], [4.42, 52.28]] },
+      ],
+    },
+    // Points of the basislijst: Schiphol (airport), Vaalserberg (in mountains below).
+    landmarks: { 2: [{ name: 'Schiphol', type: 'airport', lat: 52.3086, lon: 4.7639 }] },
+    // Lines to follow that are not waterways: the Afsluitdijk (its A7 carriageways).
+    lines: { 2: [{ name: 'Afsluitdijk', type: 'dike', query: 'way["name"="Afsluitdijk"]["highway"="motorway"]' }] },
     waterAreas: {
       1: [
         { name: 'Waddenzee', relation: 5909370, type: 'water' }, // protected-area boundary: land is cut out
@@ -380,7 +407,8 @@ async function buildMountains(id, cfg) {
   const peaks = entries.map((e) => e.item[1]).filter((p) => typeof p === 'string');
   const re = nameRegex(peaks);
   const query = `[out:json][timeout:300];\n${areaQuery(cfg)}\n(\n${inAreas(cfg, 'node["natural"="peak"]').replaceAll('__RE__', re)}\n);\nout;`;
-  const data = await overpass(`${id}-peaks`, query);
+  // Only fixed coordinates (no peak names to look up): nothing to query.
+  const data = peaks.length ? await overpass(`${id}-peaks`, query) : { elements: [] };
 
   const result = [];
   for (const { level, item: [name, peak] } of entries) {
@@ -455,6 +483,117 @@ async function buildSurfaces(id, cfg) {
   return round(polys);
 }
 
+/** CBS land per province (made by build-map.mjs) and CBS municipalities (PDOK). */
+async function cbsData() {
+  const land = JSON.parse(await fs.readFile(path.join(CACHE, 'cbs-province-land-150.json'), 'utf8').catch(() => {
+    throw new Error('Run "npm run build:map" first (it builds .cache/cbs-province-land-150.json).');
+  }));
+  const file = path.join(CACHE, 'cbs-gemeente-2024.json');
+  let municipalities;
+  try {
+    municipalities = JSON.parse(await fs.readFile(file, 'utf8'));
+  } catch {
+    console.log('  downloading CBS municipalities...');
+    const res = await fetch('https://service.pdok.nl/cbs/gebiedsindelingen/2024/wfs/v1_0?service=WFS&version=2.0.0&request=GetFeature&typeNames=gebiedsindelingen:gemeente_gegeneraliseerd&outputFormat=application/json&srsName=EPSG:4326&count=5000');
+    if (!res.ok) throw new Error(`PDOK download failed (${res.status})`);
+    const text = await res.text();
+    await fs.writeFile(file, text);
+    municipalities = JSON.parse(text);
+  }
+  return { land, municipalities };
+}
+
+const polysOf = (fc) => {
+  const polys = [];
+  for (const g of fc.features?.map((f) => f.geometry) ?? fc.geometries ?? []) {
+    if (g?.type === 'Polygon') polys.push(g.coordinates);
+    else if (g?.type === 'MultiPolygon') polys.push(...g.coordinates);
+  }
+  return polys;
+};
+const featureOf = (coordinates) => ({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates } });
+function insideRingLL([x, y], ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+/** Areas (gebieden): see `areas` in the config. Output like lakes: outer rings + holes. */
+async function buildAreas(id, cfg) {
+  const entries = byLevel(cfg.zones ?? {});
+  if (!entries.length) return [];
+  const { land, municipalities } = await cbsData();
+  const ids = entries.map((e) => e.item.relation).filter(Boolean);
+  const data = ids.length
+    ? await overpass(`${id}-arearelations-${ids.join('-')}`, `[out:json][timeout:300];\n(${ids.map((r) => `relation(${r});`).join('')});\nout geom;`)
+    : { elements: [] };
+  const landFc = { type: 'FeatureCollection', features: land.features.map((f) => ({ ...f, properties: {} })) };
+  const line = (geometry) => ({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: geometry.filter(Boolean).map((p) => [p.lon, p.lat]) } });
+  const result = [];
+  for (const { level, item } of entries) {
+    let shapes = [];
+    if (item.cbsProvince) shapes = land.features.filter((f) => f.properties.prov === item.cbsProvince);
+    if (item.landAt) {
+      const part = polysOf(land).find((p) => insideRingLL(item.landAt, p[0]));
+      if (part) shapes = [featureOf(part)];
+    }
+    if (item.municipalities) shapes = municipalities.features.filter((f) => item.municipalities.includes(f.properties.statnaam));
+    if (item.relation) {
+      const rel = data.elements.find((e) => e.type === 'relation' && e.id === item.relation);
+      const outer = (rel?.members ?? []).filter((m) => m.type === 'way' && m.role !== 'inner' && m.geometry).map((m) => line(m.geometry));
+      if (outer.length) shapes = (await simplifyGeo({ type: 'FeatureCollection', features: outer }, '-polygons gap-tolerance=0.0005')).features;
+    }
+    if (item.outline) shapes = [featureOf([[...item.outline, item.outline[0]]])];
+    if (!shapes.length) {
+      console.warn(`  ! area not found: ${item.name}`);
+      continue;
+    }
+    const out = await mapshaper.applyCommands(
+      '-i area.json -dissolve -clip land.json -simplify interval=250 keep-shapes -filter-slivers -o out.json format=geojson',
+      { 'area.json': { type: 'FeatureCollection', features: shapes.map((f) => ({ ...f, properties: {} })) }, 'land.json': landFc },
+    );
+    const polys = polysOf(JSON.parse(out['out.json']));
+    if (!polys.length) {
+      console.warn(`  ! area empty on land: ${item.name}`);
+      continue;
+    }
+    result.push({ name: item.name, level, ...(item.type ? { type: item.type } : {}), rings: round(polys.map((p) => p[0])), holes: round(polys.flatMap((p) => p.slice(1))) });
+  }
+  return result;
+}
+
+/** Lines that are not waterways (e.g. the Afsluitdijk): played like rivers. */
+async function buildLines(id, cfg) {
+  const entries = byLevel(cfg.lines ?? {});
+  const result = [];
+  for (const { level, item } of entries) {
+    const data = await overpass(`${id}-line-${item.name}`, `[out:json][timeout:120];\n${item.query}(${cfg.bbox[1]},${cfg.bbox[0]},${cfg.bbox[3]},${cfg.bbox[2]});\nout geom;`);
+    const features = data.elements
+      .filter((e) => e.type === 'way' && e.geometry)
+      .map((e) => ({ type: 'Feature', properties: { feat: 1 }, geometry: { type: 'LineString', coordinates: e.geometry.map((p) => [p.lon, p.lat]) } }));
+    if (!features.length) {
+      console.warn(`  ! line not found: ${item.name}`);
+      continue;
+    }
+    // Two carriageways: keep one line per stretch by simplifying the merged lines generously.
+    const fc = await simplifyGeo({ type: 'FeatureCollection', features }, '-dissolve feat -simplify interval=300');
+    const lines = [];
+    for (const g of fc.features.map((f) => f.geometry)) {
+      if (g?.type === 'LineString') lines.push(g.coordinates);
+      else if (g?.type === 'MultiLineString') lines.push(...g.coordinates);
+    }
+    // Keep only the longest line (one carriageway): the other would double the length to follow.
+    const len = (l) => l.slice(1).reduce((s, q, i) => s + Math.hypot(q[0] - l[i][0], q[1] - l[i][1]), 0);
+    lines.sort((a, b) => len(b) - len(a));
+    result.push({ name: item.name, level, type: item.type, lines: round([lines[0]]) });
+  }
+  return result;
+}
+
 /** Large water areas (see `waterAreas` in the config), land cut out. */
 async function buildWaterAreas(id, cfg) {
   const entries = byLevel(cfg.waterAreas ?? {});
@@ -515,6 +654,9 @@ async function build(id, cfg) {
     lakes: [...(await buildLakes(id, cfg)), ...(await buildWaterAreas(id, cfg))],
     mountains: await buildMountains(id, cfg),
   };
+  if (cfg.lines) out.rivers.push(...(await buildLines(id, cfg)));
+  if (cfg.zones) out.areas = await buildAreas(id, cfg);
+  if (cfg.landmarks) out.landmarks = byLevel(cfg.landmarks).map(({ level, item }) => ({ level, ...item }));
 
   // Background water (never asked): connections to the sea, river banks, harbours, …
   let contextLines = [];
@@ -530,7 +672,7 @@ async function build(id, cfg) {
 
   // Drawing layers, pre-clipped to the country so the game needs no per-frame clipping. The
   // targets above keep their full geometry (incl. a margin along border rivers) for finding them.
-  const riversOfLevel = (lv) => out.rivers.filter((r) => Math.min(r.level, 3) === lv).flatMap((r) => r.lines);
+  const riversOfLevel = (lv) => out.rivers.filter((r) => r.type !== 'dike' && Math.min(r.level, 3) === lv).flatMap((r) => r.lines);
   out.draw = {
     rivers: [await clipToHome(id, riversOfLevel(1), 'line'), await clipToHome(id, riversOfLevel(2), 'line'), await clipToHome(id, riversOfLevel(3), 'line')],
     lines: await clipToHome(id, contextLines, 'line'),
@@ -583,7 +725,25 @@ async function buildDerived(id, fromId) {
   const near = (rings) =>
     rings.some((r) => r.some(([x, y]) => homePts.some(([hx, hy]) => Math.abs(hx - x) < 0.02 && Math.abs(hy - y) < 0.014)));
   const lakes = from.lakes.filter((l) => near(l.rings));
-  if (!rivers.length && !lakes.length) {
+  // Areas mostly inside the province (not the provinces themselves); points inside it.
+  const inHome = (pt) => home.some((poly) => insideRingLL(pt, poly[0]));
+  // Test points inside the area (a grid), not its outline: outline points lie on the very border.
+  const interior = (a) => {
+    const pts = a.rings.flat();
+    const [x0, x1] = [Math.min(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[0]))];
+    const [y0, y1] = [Math.min(...pts.map((p) => p[1])), Math.max(...pts.map((p) => p[1]))];
+    const grid = [];
+    for (let i = 0.5; i < 12; i++) for (let j = 0.5; j < 12; j++) grid.push([x0 + ((x1 - x0) * i) / 12, y0 + ((y1 - y0) * j) / 12]);
+    return grid.filter((p) => a.rings.some((r) => insideRingLL(p, r)));
+  };
+  const areas = (from.areas ?? []).filter((a) => {
+    if (a.type === 'province') return false;
+    const pts = interior(a);
+    return pts.length > 0 && pts.filter(inHome).length >= 0.5 * pts.length;
+  });
+  const mountains = (from.mountains ?? []).filter((m) => inHome([m.lon, m.lat]));
+  const landmarks = (from.landmarks ?? []).filter((m) => inHome([m.lon, m.lat]));
+  if (!rivers.length && !lakes.length && !areas.length && !mountains.length && !landmarks.length) {
     await fs.rm(path.join(ROOT, 'src', 'maps', id, 'physical.json'), { force: true });
     console.log(`  ${id}: no rivers of ${MIN_PROVINCE_RIVER_KM}+ km and no waters`);
     return;
@@ -591,7 +751,9 @@ async function buildDerived(id, fromId) {
   const out = {
     rivers,
     lakes,
-    mountains: [],
+    mountains,
+    areas,
+    landmarks,
     draw: {
       rivers: await Promise.all(from.draw.rivers.map((lines) => clipToHome(id, lines, 'line'))),
       lines: await clipToHome(id, from.draw.lines, 'line'),
@@ -600,7 +762,15 @@ async function buildDerived(id, fromId) {
   };
   await fs.writeFile(file, JSON.stringify(out));
   const kb = ((await fs.stat(file)).size / 1024).toFixed(0);
-  console.log(`  ${id}: ${rivers.length} rivers/canals, ${lakes.length} waters (${[...rivers, ...lakes].map((r) => r.name).join(', ')}) -> ${kb} KB`);
+  console.log(`  ${id}: ${rivers.length} rivers/canals/dikes, ${lakes.length} waters, ${areas.length + mountains.length + landmarks.length} areas/points (${[...rivers, ...lakes, ...areas, ...mountains, ...landmarks].map((r) => r.name).join(', ')}) -> ${kb} KB`);
+  // The menu calls the mode "Waters & areas" where there are areas or points.
+  const manifestFile = path.join(ROOT, 'src', 'maps', 'nl-provinces.json');
+  const manifest = JSON.parse(await fs.readFile(manifestFile, 'utf8'));
+  const entry = manifest.find((m) => m.id === id);
+  if (entry) {
+    entry.areas = areas.length + mountains.length + landmarks.length > 0;
+    await fs.writeFile(manifestFile, JSON.stringify(manifest, null, 2) + '\n');
+  }
 }
 
 const only = process.argv[2];

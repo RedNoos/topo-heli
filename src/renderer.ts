@@ -17,6 +17,8 @@ const COLORS = {
   target: '#e53935',
   foundWater: '#1d5f9e',
   mountain: '#7a5230',
+  area: '#7b4fa0',
+  dike: '#6d5b45',
   countryBorder: 'rgba(70, 58, 40, 0.75)',
 };
 
@@ -305,13 +307,22 @@ export class Renderer {
     }
   }
 
-  /** Found rivers/lakes and the current river/lake target, drawn in km coordinates. */
+  /** Found rivers/lakes/areas and the current river/lake/area target, drawn in km coordinates. */
   private drawWorldTargets(px: (n: number) => number) {
     const { ctx, game } = this;
+    // Areas first: waters are drawn over them.
+    for (const f of game.found) {
+      if (f.target.kind !== 'area') continue;
+      ctx.fillStyle = 'rgba(123, 79, 160, 0.07)';
+      ctx.fill(this.pathOf(f.target), 'evenodd');
+      ctx.strokeStyle = COLORS.area;
+      ctx.lineWidth = px(1.5);
+      ctx.stroke(this.pathOf(f.target));
+    }
     for (const f of game.found) {
       const t = f.target;
       if (t.kind === 'river') {
-        ctx.strokeStyle = COLORS.foundWater;
+        ctx.strokeStyle = t.sub === 'dike' ? COLORS.dike : COLORS.foundWater;
         ctx.lineWidth = px(3);
         ctx.stroke(this.pathOf(t));
       } else if (t.kind === 'lake') {
@@ -321,8 +332,16 @@ export class Renderer {
     }
 
     const t = game.target;
-    if (!t || game.over || !game.targetVisible || (t.kind !== 'river' && t.kind !== 'lake')) return;
+    if (!t || game.over || !game.targetVisible || (t.kind !== 'river' && t.kind !== 'lake' && t.kind !== 'area')) return;
     const pulse = 0.55 + 0.45 * Math.sin(this.time * 6);
+    if (t.kind === 'area') {
+      ctx.fillStyle = `rgba(229, 57, 53, ${0.12 + 0.18 * pulse})`;
+      ctx.fill(this.pathOf(t), 'evenodd');
+      ctx.strokeStyle = COLORS.target;
+      ctx.lineWidth = px(2 + 1.5 * pulse);
+      ctx.stroke(this.pathOf(t));
+      return;
+    }
     if (t.kind === 'lake') {
       ctx.fillStyle = `rgba(229, 57, 53, ${0.25 + 0.3 * pulse})`;
       ctx.fill(this.pathOf(t), 'evenodd');
@@ -366,17 +385,21 @@ export class Renderer {
         ctx.stroke();
       } else if (kind === 'mountain') {
         this.mountainIcon(p.x, p.y, 6, COLORS.mountain);
+      } else if (kind === 'landmark') {
+        this.planeIcon(p.x, p.y, 13, COLORS.found);
       }
-      // Water names are centred on the water, in italics (map convention).
-      const water = kind === 'river' || kind === 'lake';
-      ctx.font = water ? 'italic 600 12px system-ui, sans-serif' : '600 12px system-ui, sans-serif';
-      ctx.textAlign = water ? 'center' : 'left';
-      const x = water ? p.x : p.x + 8;
+      // Water names are centred on the water, in italics (map convention); areas centred, upright.
+      const dike = f.target.sub === 'dike';
+      const water = (kind === 'river' || kind === 'lake') && !dike;
+      const centred = kind === 'river' || kind === 'lake' || kind === 'area';
+      ctx.font = water ? 'italic 600 12px system-ui, sans-serif' : kind === 'area' ? '700 13px system-ui, sans-serif' : '600 12px system-ui, sans-serif';
+      ctx.textAlign = centred ? 'center' : 'left';
+      const x = centred ? p.x : p.x + 8;
       ctx.lineWidth = 3;
       ctx.strokeStyle = 'rgba(255,255,255,0.85)';
       const label = placeName(f.target.name);
       ctx.strokeText(label, x, p.y);
-      ctx.fillStyle = water ? COLORS.foundWater : kind === 'mountain' ? '#5a3a1c' : '#24421f';
+      ctx.fillStyle = water ? COLORS.foundWater : dike ? COLORS.dike : kind === 'area' ? COLORS.area : kind === 'mountain' ? '#5a3a1c' : '#24421f';
       ctx.fillText(label, x, p.y);
     }
   }
@@ -395,9 +418,23 @@ export class Renderer {
     ctx.stroke();
   }
 
-  /** City or mountain target within reveal range: flashing marker. */
+  /** Airport symbol. */
+  private planeIcon(x: number, y: number, size: number, fill: string, stroke = '#fff') {
+    const ctx = this.ctx;
+    ctx.font = `${size}px system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = stroke;
+    ctx.strokeText('✈', x, y);
+    ctx.fillStyle = fill;
+    ctx.fillText('✈', x, y);
+    ctx.textBaseline = 'middle';
+  }
+
+  /** City, mountain or landmark target within reveal range: flashing marker. */
   private drawTarget(c: Target) {
-    if (c.kind !== 'city' && c.kind !== 'mountain') return;
+    if (c.kind !== 'city' && c.kind !== 'mountain' && c.kind !== 'landmark') return;
     const ctx = this.ctx;
     const p = this.toScreen(c.x, c.y);
     const t = this.time;
@@ -411,6 +448,10 @@ export class Renderer {
     const on = Math.sin(t * 12) > -0.3;
     if (c.kind === 'mountain') {
       this.mountainIcon(p.x, p.y, on ? 10 : 8, on ? COLORS.target : '#fff', on ? '#fff' : COLORS.target);
+      return;
+    }
+    if (c.kind === 'landmark') {
+      this.planeIcon(p.x, p.y, on ? 22 : 18, on ? COLORS.target : '#fff', on ? '#fff' : COLORS.target);
       return;
     }
     // Flashing dot.

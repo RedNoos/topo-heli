@@ -33,7 +33,7 @@ export const MAPS: MapDefinition[] = [
       cities: (await import('./netherlands/cities.json')).default,
     }),
     loadPhysical: async () => (await import('./netherlands/physical.json')).default as never,
-    physicalWatersOnly: true,
+    physicalKind: 'watersAreas',
   },
   {
     id: 'europe',
@@ -63,7 +63,7 @@ export const MAPS: MapDefinition[] = [
         cities: await json<MapData['cities']>(provinceCities[`./${p.id}/cities.json`]),
       }),
       loadPhysical: physical ? () => json<PhysicalData>(physical) : undefined,
-      physicalWatersOnly: true,
+      physicalKind: 'areas' in p && p.areas ? 'watersAreas' : 'waters',
     };
   }),
 ];

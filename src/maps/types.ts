@@ -38,12 +38,16 @@ export interface City {
 
 /** Optional physical-geography targets (scripts/build-physical.mjs). */
 export interface PhysicalData {
-  /** type 'canal': shown as a canal (e.g. Noordzeekanaal). */
-  rivers: { name: string; level: number; type?: 'canal'; lines: LonLat[][] }[];
+  /** type 'canal': shown as a canal (e.g. Noordzeekanaal); 'dike': a dam to follow (Afsluitdijk). */
+  rivers: { name: string; level: number; type?: 'canal' | 'dike'; lines: LonLat[][] }[];
   /** type 'water': a sea or estuary (Waddenzee, Westerschelde); holes: islands in it. */
   lakes: { name: string; level: number; type?: 'water'; rings: LonLat[][]; holes?: LonLat[][] }[];
   /** Located at the range's main peak. */
   mountains: { name: string; level: number; lat: number; lon: number; ele: number | null }[];
+  /** Regions found by flying into them (provinces, islands, Veluwe, ...). */
+  areas?: { name: string; level: number; type?: 'province' | 'island'; rings: LonLat[][]; holes?: LonLat[][] }[];
+  /** Point features other than mountains (Schiphol). */
+  landmarks?: { name: string; level: number; type: 'airport'; lat: number; lon: number }[];
   /**
    * Drawing layers, pre-clipped to the country: rivers by level (1..3), background
    * waterways never asked (e.g. Nieuwe Waterweg) and water areas (lakes, river banks, harbours).
@@ -84,6 +88,9 @@ export interface MapDefinition {
   load: () => Promise<MapData>;
   /** Mountains, rivers and lakes as extra targets (optional mode). */
   loadPhysical?: () => Promise<PhysicalData>;
-  /** The physical data is only waters (rivers, canals, lakes, seas): the option is called "Waters". */
-  physicalWatersOnly?: boolean;
+  /**
+   * What the physical data holds, for the option's name: 'waters' (rivers, canals, lakes,
+   * seas) or 'watersAreas' (also regions and landmarks). Default: mountains, rivers & lakes.
+   */
+  physicalKind?: 'waters' | 'watersAreas';
 }
