@@ -1,8 +1,8 @@
 [
 {"name":"Leeuwarden","lat":53.2027,"lon":5.8097,"pop":125000,"level":1},
-{"name":"Drachten","lat":53.1125,"lon":6.0989,"pop":45000},
-{"name":"Sneek","lat":53.033,"lon":5.6589,"pop":34000},
-{"name":"Heerenveen","lat":52.9593,"lon":5.9185,"pop":30000},
+{"name":"Drachten","lat":53.1125,"lon":6.0989,"pop":45000,"level":2},
+{"name":"Sneek","lat":53.033,"lon":5.6589,"pop":34000,"level":2},
+{"name":"Heerenveen","lat":52.9593,"lon":5.9185,"pop":30000,"level":2},
 {"name":"Harlingen","lat":53.1748,"lon":5.4224,"pop":16000},
 {"name":"Franeker","lat":53.1855,"lon":5.5412,"pop":13000},
 {"name":"Dokkum","lat":53.3222,"lon":5.997,"pop":13000},

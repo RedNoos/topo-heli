@@ -8,7 +8,7 @@ import type { MapData, MapDefinition } from './maps/types';
 import { Renderer } from './renderer';
 import { initStats, scoreBucket, track } from './stats';
 import { flagSvg, getLang, LANGS, onLangChange, placeName, plural, setLang, setPlaceNames, t, type StringKey } from './i18n';
-import type { Target, TargetKind } from './targets';
+import type { Target } from './targets';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -143,14 +143,14 @@ function renderMapSelect() {
   // The mode switch is only offered for maps that have physical data.
   ui.physicalToggle.hidden = !mapDef.loadPhysical;
   ui.physicalOption.checked = physicalOn;
-  // Maps with only rivers (the Netherlands) call the option "Rivers".
-  const riversOnly = !!mapDef.physicalRiversOnly;
-  $('physical-label').innerHTML = t(riversOnly ? 'physicalOptionRivers' : 'physicalOption');
-  $('howto-physical').innerHTML = t(riversOnly ? 'howtoPhysicalRivers' : 'howtoPhysical');
+  // Maps with only waters (the Netherlands) call the option "Waters".
+  const watersOnly = !!mapDef.physicalWatersOnly;
+  $('physical-label').innerHTML = t(watersOnly ? 'physicalOptionWaters' : 'physicalOption');
+  $('howto-physical').innerHTML = t(watersOnly ? 'howtoPhysicalWaters' : 'howtoPhysical');
   $('howto-physical').hidden = !physicalOn;
   const best = getBest(scoreId());
   const params = { map: mapName(mapDef), n: best };
-  const bestKey: StringKey = !physicalOn ? 'best' : riversOnly ? 'bestPhysicalRivers' : 'bestPhysical';
+  const bestKey: StringKey = !physicalOn ? 'best' : watersOnly ? 'bestPhysicalWaters' : 'bestPhysical';
   ui.best.innerHTML = best > 0 ? t(bestKey, params) : '';
 }
 
@@ -218,27 +218,23 @@ function newGame(start: boolean) {
   }
 }
 
-const FLY_TO: Record<TargetKind, StringKey> = {
-  city: 'flyTo',
-  river: 'flyToRiver',
-  lake: 'flyToLake',
-  mountain: 'flyToMountain',
-};
-const KIND: Record<Exclude<TargetKind, 'city'>, StringKey> = {
-  river: 'kindRiver',
-  lake: 'kindLake',
-  mountain: 'kindMountain',
-};
+/** Texts per kind of target; canals (river kind) and seas (lake kind) have their own words. */
+const flyToKey = (t: Target): StringKey =>
+  t.sub === 'canal' ? 'flyToCanal' : t.sub === 'water' ? 'flyToWater' : ({ city: 'flyTo', river: 'flyToRiver', lake: 'flyToLake', mountain: 'flyToMountain' } as const)[t.kind];
+const kindKey = (t: Target): StringKey =>
+  t.sub === 'canal' ? 'kindCanal' : t.sub === 'water' ? 'kindWater' : ({ city: 'kindRiver', river: 'kindRiver', lake: 'kindLake', mountain: 'kindMountain' } as const)[t.kind];
+const hintKey = (t: Target): StringKey =>
+  t.sub === 'canal' ? 'hintCanal' : t.sub === 'water' ? 'hintWater' : ({ city: 'hintCity', river: 'hintRiver', lake: 'hintLake', mountain: 'hintMountain' } as const)[t.kind];
 
 /** Target card: name plus, for physical features, what kind of place it is. */
 function setTargetLabel(target: Target) {
-  ui.targetLabel.textContent = t(FLY_TO[target.kind]);
+  ui.targetLabel.textContent = t(flyToKey(target));
   const name = placeName(target.name);
   ui.targetName.textContent = name;
-  if (target.kind !== 'city' && !name.toLowerCase().includes(t(KIND[target.kind]).toLowerCase())) {
+  if (target.kind !== 'city' && !name.toLowerCase().includes(t(kindKey(target)).toLowerCase())) {
     const tag = document.createElement('span');
     tag.className = `kind kind-${target.kind}`;
-    tag.textContent = t(KIND[target.kind]);
+    tag.textContent = t(kindKey(target));
     ui.targetName.append(' ', tag);
   }
   ui.progress.hidden = target.kind !== 'river';
@@ -440,12 +436,12 @@ function updateHud() {
   const kind = game.target?.kind;
   const progress = game.riverProgress;
   (ui.progress.firstElementChild as HTMLElement).style.width = `${Math.round(progress * 100)}%`;
-  const hints: Record<TargetKind, StringKey> = { city: 'hintCity', river: 'hintRiver', lake: 'hintLake', mountain: 'hintMountain' };
+  const target = game.target;
   ui.targetHint.textContent =
     kind === 'river' && progress > 0
-      ? t('followRiver', { p: Math.round(progress * 100) })
-      : visible && kind
-        ? t(hints[kind])
+      ? t(target?.sub === 'canal' ? 'followCanal' : 'followRiver', { p: Math.round(progress * 100) })
+      : visible && target
+        ? t(hintKey(target))
         : '';
   if (visible && !wasVisible) sfx.reveal();
   wasVisible = visible;

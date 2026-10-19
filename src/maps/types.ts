@@ -38,8 +38,10 @@ export interface City {
 
 /** Optional physical-geography targets (scripts/build-physical.mjs). */
 export interface PhysicalData {
-  rivers: { name: string; level: number; lines: LonLat[][] }[];
-  lakes: { name: string; level: number; rings: LonLat[][] }[];
+  /** type 'canal': shown as a canal (e.g. Noordzeekanaal). */
+  rivers: { name: string; level: number; type?: 'canal'; lines: LonLat[][] }[];
+  /** type 'water': a sea or estuary (Waddenzee, Westerschelde); holes: islands in it. */
+  lakes: { name: string; level: number; type?: 'water'; rings: LonLat[][]; holes?: LonLat[][] }[];
   /** Located at the range's main peak. */
   mountains: { name: string; level: number; lat: number; lon: number; ele: number | null }[];
   /**
@@ -82,6 +84,6 @@ export interface MapDefinition {
   load: () => Promise<MapData>;
   /** Mountains, rivers and lakes as extra targets (optional mode). */
   loadPhysical?: () => Promise<PhysicalData>;
-  /** Only rivers in the physical data: the option is then called "Rivers". */
-  physicalRiversOnly?: boolean;
+  /** The physical data is only waters (rivers, canals, lakes, seas): the option is called "Waters". */
+  physicalWatersOnly?: boolean;
 }

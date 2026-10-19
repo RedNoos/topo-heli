@@ -1,6 +1,6 @@
 [
 {"name":"Utrecht","lat":52.0908,"lon":5.1222,"pop":370000,"level":1},
-{"name":"Amersfoort","lat":52.155,"lon":5.3875,"pop":160000},
+{"name":"Amersfoort","lat":52.155,"lon":5.3875,"pop":160000,"level":2},
 {"name":"Veenendaal","lat":52.0286,"lon":5.5589,"pop":67000},
 {"name":"Zeist","lat":52.09,"lon":5.2333,"pop":65000},
 {"name":"Nieuwegein","lat":52.0292,"lon":5.0806,"pop":64000},

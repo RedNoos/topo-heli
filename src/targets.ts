@@ -28,6 +28,10 @@ export interface Target {
   samples?: Pt[];
   /** Lakes: outline rings. */
   rings?: Pt[][];
+  /** Lakes/seas: islands (not part of the water). */
+  holes?: Pt[][];
+  /** Shown as a canal (river kind) or a sea/estuary (lake kind). */
+  sub?: 'canal' | 'water';
 }
 
 function segmentDistance(p: Pt, a: Pt, b: Pt) {
@@ -57,7 +61,11 @@ function insideRing(p: Pt, ring: Pt[]) {
 /** Distance from a point to the target's geometry (0 inside a lake). */
 export function distanceTo(t: Target, p: Pt): number {
   if (t.lines) return polylineDistance(p, t.lines);
-  if (t.rings) return t.rings.some((r) => insideRing(p, r)) ? 0 : polylineDistance(p, t.rings);
+  if (t.rings) {
+    const holes = t.holes ?? [];
+    const inside = t.rings.some((r) => insideRing(p, r)) && !holes.some((h) => insideRing(p, h));
+    return inside ? 0 : polylineDistance(p, [...t.rings, ...holes]);
+  }
   return dist(p.x, p.y, t.x, t.y);
 }
 
@@ -101,13 +109,14 @@ export function physicalTargets(data: PhysicalData, proj: Projection): Target[] 
     const pts = rings.flat();
     const x = pts.reduce((s, p) => s + p.x, 0) / pts.length;
     const y = pts.reduce((s, p) => s + p.y, 0) / pts.length;
-    targets.push({ kind: 'lake', name: l.name, pop: 0, level: l.level, x, y, rings });
+    const holes = l.holes?.map(toPts);
+    targets.push({ kind: 'lake', name: l.name, pop: 0, level: l.level, x, y, rings, holes, sub: l.type });
   }
   for (const r of data.rivers) {
     const lines = r.lines.map(toPts);
     const samples = resample(lines, CONFIG.river.sampleKm);
     const mid = samples[Math.floor(samples.length / 2)];
-    targets.push({ kind: 'river', name: r.name, pop: 0, level: r.level, x: mid.x, y: mid.y, lines, samples });
+    targets.push({ kind: 'river', name: r.name, pop: 0, level: r.level, x: mid.x, y: mid.y, lines, samples, sub: r.type });
   }
   return targets;
 }

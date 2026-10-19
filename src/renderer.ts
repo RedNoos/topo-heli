@@ -173,7 +173,7 @@ export class Renderer {
     let p = this.targetPaths.get(t);
     if (!p) {
       const path = new Path2D();
-      for (const l of t.lines ?? t.rings ?? []) {
+      for (const l of t.lines ?? [...(t.rings ?? []), ...(t.holes ?? [])]) {
         l.forEach((pt, i) => (i === 0 ? path.moveTo(pt.x, pt.y) : path.lineTo(pt.x, pt.y)));
         if (t.rings) path.closePath();
       }

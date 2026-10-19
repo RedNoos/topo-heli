@@ -27,7 +27,11 @@ const OVERPASS = [
 // Rivers: 'Name', ['Name', [minLon, minLat, maxLon, maxLat]] to keep only the parts in that
 // box (for names shared by several rivers), or { name, osm: [OSM names], box? } when the shown
 // river is made of differently named OSM rivers (e.g. Rijn = Bovenrijn + Nederrijn). Add
-// `canals: true` when stretches of the river are tagged as canal in OSM. Lakes: 'Name' or ['Shown name', 'OSM name']. Mountains: ['Range', 'OSM peak name'] or
+// `canals: true` when stretches of the river are tagged as canal in OSM, and `type: 'canal'`
+// for canals (shown as "canal" in the game).
+// Water areas (`waterAreas`): large waters played like lakes (fly over them), from an OSM
+// relation and/or a rough outline; the land is cut out, so the shape follows the real coast and
+// islands become holes. `type: 'water'` for seas/estuaries ("water" in the game). Lakes: 'Name' or ['Shown name', 'OSM name']. Mountains: ['Range', 'OSM peak name'] or
 // ['Range', { lat, lon, ele }] where OSM has no usable peak tag (coordinates taken from OSM
 // nodes for that summit/range).
 const PHYSICAL = {
@@ -73,6 +77,10 @@ const PHYSICAL = {
         'Nieuwe Maas', 'Oude Maas',
         { name: 'Merwede', osm: ['Boven-Merwede', 'Beneden-Merwede', 'Nieuwe Merwede'] },
         'Zwarte Water',
+        // Canals on the basislijst topografie.
+        { name: 'Noordzeekanaal', type: 'canal', canals: true },
+        { name: 'Amsterdam-Rijnkanaal', type: 'canal', canals: true },
+        { name: 'Nieuwe Waterweg', osm: ['Nieuwe Waterweg', 'Scheur'], type: 'canal', canals: true },
         // Utrecht – Woerden – Leiden – Katwijk; not the Oude Rijn near Zevenaar. Partly canal.
         { name: 'Oude Rijn', osm: ['Oude Rijn', 'Leidsche Rijn', 'Leidse Rijn'], box: [4.3, 52.0, 5.15, 52.25], canals: true },
       ],
@@ -80,6 +88,23 @@ const PHYSICAL = {
     },
     lakes: {},
     mountains: {},
+    waterAreas: {
+      1: [
+        { name: 'Waddenzee', relation: 5909370, type: 'water' }, // protected-area boundary: land is cut out
+        { name: 'IJsselmeer', relation: 945096 },
+        { name: 'Markermeer', relation: 49368 },
+      ],
+      2: [
+        { name: 'Oosterschelde', relation: 6846427, type: 'water' },
+        // Not a polygon in OSM (sea per the coastline): rough outline from the mouth
+        // (Vlissingen - Breskens) to the Belgian border, with its edges on land.
+        {
+          name: 'Westerschelde',
+          type: 'water',
+          outline: [[3.5, 51.47], [3.6, 51.475], [3.8, 51.475], [3.95, 51.465], [4.05, 51.465], [4.15, 51.445], [4.24, 51.425], [4.25, 51.37], [4.2, 51.345], [4.0, 51.325], [3.8, 51.325], [3.6, 51.355], [3.5, 51.375]],
+        },
+      ],
+    },
     // Background water, drawn but never asked: the connections that make the rivers reach the
     // sea (the base map draws these as part of its rivers, the detailed layer replaces it).
     context: {
@@ -236,7 +261,7 @@ async function buildRivers(id, cfg, key = 'rivers', waterways = 'river|canal') {
   const entries = byLevel(cfg.rivers).map(({ level, item }) => {
     if (typeof item === 'string') return { level, name: item, osm: [item] };
     if (Array.isArray(item)) return { level, name: item[0], osm: [item[0]], box: item[1] };
-    return { level, name: item.name, osm: item.osm ?? [item.name], box: item.box, canals: item.canals };
+    return { level, name: item.name, osm: item.osm ?? [item.name], box: item.box, canals: item.canals, type: item.type };
   });
   if (!entries.length) return [];
   const osmNames = [...new Set(entries.flatMap((e) => e.osm))];
@@ -244,7 +269,7 @@ async function buildRivers(id, cfg, key = 'rivers', waterways = 'river|canal') {
   const inBox = (box, [x, y]) => x >= box[0] && x <= box[2] && y >= box[1] && y <= box[3];
   const [w, so, e, n] = cfg.bbox;
   const query = `[out:json][timeout:300];\n${areaQuery(cfg)}\n(\n${inAreas(cfg, `way["waterway"~"^(${waterways})$"]`).replaceAll('__RE__', re)}\n${inAreas(cfg, `relation["waterway"~"^(${waterways})$"]`).replaceAll('__RE__', re)}\n);\nout geom(${so},${w},${n},${e});`;
-  const data = await overpass(`${id}-${key}-v3`, query);
+  const data = await overpass(`${id}-${key}-v4`, query);
 
   const features = [];
   // Way id -> { river, coords }. A way can come in directly and as a relation member: keep it once,
@@ -286,7 +311,7 @@ async function buildRivers(id, cfg, key = 'rivers', waterways = 'river|canal') {
   );
   const fc = JSON.parse(out['out.json']);
   const result = [];
-  for (const { level, name, box } of entries) {
+  for (const { level, name, box, type } of entries) {
     const f = fc.features.find((x) => x.properties.feat === name);
     if (!f) {
       console.warn(`  ! river not found: ${name}`);
@@ -295,7 +320,7 @@ async function buildRivers(id, cfg, key = 'rivers', waterways = 'river|canal') {
     const g = f.geometry;
     let lines = g.type === 'LineString' ? [g.coordinates] : g.coordinates;
     if (box) lines = lines.filter((l) => l.some((c) => inBox(box, c)));
-    result.push({ name, level, lines: round(lines) });
+    result.push({ name, level, ...(type ? { type } : {}), lines: round(lines) });
   }
   return result;
 }
@@ -430,11 +455,64 @@ async function buildSurfaces(id, cfg) {
   return round(polys);
 }
 
+/** Large water areas (see `waterAreas` in the config), land cut out. */
+async function buildWaterAreas(id, cfg) {
+  const entries = byLevel(cfg.waterAreas ?? {});
+  if (!entries.length) return [];
+  const ids = entries.map((e) => e.item.relation).filter(Boolean);
+  const data = ids.length
+    ? await overpass(`${id}-waterareas-${ids.join('-')}`, `[out:json][timeout:300];\n(${ids.map((r) => `relation(${r});`).join('')});\nout geom;`)
+    : { elements: [] };
+  const geo = JSON.parse(await fs.readFile(path.join(ROOT, 'src', 'maps', id, 'geo.json'), 'utf8'));
+  const land = {
+    type: 'FeatureCollection',
+    features: [...geo.home, ...geo.neighbours].map((coordinates) => ({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates } })),
+  };
+  const line = (geometry) => ({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: geometry.filter(Boolean).map((p) => [p.lon, p.lat]) } });
+  const result = [];
+  for (const { level, item } of entries) {
+    const shapes = [];
+    if (item.relation) {
+      const rel = data.elements.find((e) => e.type === 'relation' && e.id === item.relation);
+      if (!rel) {
+        console.warn(`  ! water area relation not found: ${item.name}`);
+        continue;
+      }
+      const outer = (rel.members ?? []).filter((m) => m.type === 'way' && m.role !== 'inner' && m.geometry).map((m) => line(m.geometry));
+      const inner = (rel.members ?? []).filter((m) => m.type === 'way' && m.role === 'inner' && m.geometry).map((m) => line(m.geometry));
+      const outerFc = await simplifyGeo({ type: 'FeatureCollection', features: outer }, '-polygons gap-tolerance=0.0005');
+      shapes.push(...outerFc.features);
+      if (inner.length) {
+        const innerFc = await simplifyGeo({ type: 'FeatureCollection', features: inner }, '-polygons gap-tolerance=0.0005');
+        land.features.push(...innerFc.features.map((f) => ({ ...f, properties: {} })));
+      }
+    }
+    if (item.outline) shapes.push({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[...item.outline, item.outline[0]]] } });
+    const out = await mapshaper.applyCommands(
+      '-i area.json -dissolve -erase land.json -simplify interval=150 keep-shapes -filter-slivers -o out.json format=geojson',
+      { 'area.json': { type: 'FeatureCollection', features: shapes.map((f) => ({ ...f, properties: {} })) }, 'land.json': land },
+    );
+    const fc = JSON.parse(out['out.json']);
+    const polys = [];
+    for (const g of fc.features?.map((f) => f.geometry) ?? fc.geometries ?? []) {
+      if (g?.type === 'Polygon') polys.push(g.coordinates);
+      else if (g?.type === 'MultiPolygon') polys.push(...g.coordinates);
+    }
+    if (!polys.length) {
+      console.warn(`  ! water area empty after cutting out land: ${item.name}`);
+      continue;
+    }
+    // rings: outer rings; holes: islands (flying over an island is not over the water).
+    result.push({ name: item.name, level, ...(item.type ? { type: item.type } : {}), rings: round(polys.map((p) => p[0])), holes: round(polys.flatMap((p) => p.slice(1))) });
+  }
+  return result;
+}
+
 async function build(id, cfg) {
   console.log(`Building physical features for ${id}`);
   const out = {
     rivers: await buildRivers(id, cfg),
-    lakes: await buildLakes(id, cfg),
+    lakes: [...(await buildLakes(id, cfg)), ...(await buildWaterAreas(id, cfg))],
     mountains: await buildMountains(id, cfg),
   };
 
@@ -456,7 +534,8 @@ async function build(id, cfg) {
   out.draw = {
     rivers: [await clipToHome(id, riversOfLevel(1), 'line'), await clipToHome(id, riversOfLevel(2), 'line'), await clipToHome(id, riversOfLevel(3), 'line')],
     lines: await clipToHome(id, contextLines, 'line'),
-    water: await clipToHome(id, [...out.lakes.map((l) => l.rings), ...contextAreas], 'polygon'),
+    // Water areas (holes = islands) lie outside the land: drawn from their own shape in the game.
+    water: await clipToHome(id, [...out.lakes.filter((l) => !l.holes).map((l) => l.rings), ...contextAreas], 'polygon'),
   };
 
   const file = path.join(ROOT, 'src', 'maps', id, 'physical.json');
@@ -497,14 +576,21 @@ async function buildDerived(id, fromId) {
     if (lengthKm(lines) >= MIN_PROVINCE_RIVER_KM) rivers.push({ ...r, lines: round(lines) });
   }
   const file = path.join(ROOT, 'src', 'maps', id, 'physical.json');
-  if (!rivers.length) {
-    await fs.rm(file, { force: true });
-    console.log(`  ${id}: no rivers of ${MIN_PROVINCE_RIVER_KM}+ km`);
+
+  // Water areas (IJsselmeer, Oosterschelde, …) next to the province: kept whole.
+  const home = JSON.parse(await fs.readFile(path.join(ROOT, 'src', 'maps', id, 'geo.json'), 'utf8')).home;
+  const homePts = home.flat(2);
+  const near = (rings) =>
+    rings.some((r) => r.some(([x, y]) => homePts.some(([hx, hy]) => Math.abs(hx - x) < 0.02 && Math.abs(hy - y) < 0.014)));
+  const lakes = from.lakes.filter((l) => near(l.rings));
+  if (!rivers.length && !lakes.length) {
+    await fs.rm(path.join(ROOT, 'src', 'maps', id, 'physical.json'), { force: true });
+    console.log(`  ${id}: no rivers of ${MIN_PROVINCE_RIVER_KM}+ km and no waters`);
     return;
   }
   const out = {
     rivers,
-    lakes: [],
+    lakes,
     mountains: [],
     draw: {
       rivers: await Promise.all(from.draw.rivers.map((lines) => clipToHome(id, lines, 'line'))),
@@ -514,7 +600,7 @@ async function buildDerived(id, fromId) {
   };
   await fs.writeFile(file, JSON.stringify(out));
   const kb = ((await fs.stat(file)).size / 1024).toFixed(0);
-  console.log(`  ${id}: ${rivers.length} rivers (${rivers.map((r) => r.name).join(', ')}) -> ${kb} KB`);
+  console.log(`  ${id}: ${rivers.length} rivers/canals, ${lakes.length} waters (${[...rivers, ...lakes].map((r) => r.name).join(', ')}) -> ${kb} KB`);
 }
 
 const only = process.argv[2];
