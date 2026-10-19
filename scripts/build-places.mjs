@@ -184,11 +184,11 @@ for (const p of provinces) {
   }
   await fs.writeFile(path.join(ROOT, 'src', 'maps', p.id, 'cities.json'), '[\n' + cities.map((c) => JSON.stringify(c)).join(',\n') + '\n]\n');
 
-  // Zoom: show ~3/4 of the province's larger side, within limits.
+  // Zoom: show under half of the province's larger side (within limits), so you have to fly.
   const [w, s, e, n] = p.bbox;
   const widthKm = (e - w) * 111 * Math.cos(((s + n) / 2) * D);
   const heightKm = (n - s) * 111;
-  const viewKm = Math.round(Math.min(110, Math.max(55, 0.6 * Math.max(widthKm, heightKm))));
+  const viewKm = Math.round(Math.min(80, Math.max(40, 0.45 * Math.max(widthKm, heightKm))));
   manifest.push({ id: p.id, name: p.name, viewKm, ...(p.time ? { time: p.time } : {}) });
   console.log(`  ${p.name.padEnd(14)} ${String(cities.length).padStart(3)} places (capital ${p.capital}), view ${viewKm} km`);
 }

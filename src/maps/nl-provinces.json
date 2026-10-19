@@ -2,30 +2,30 @@
   {
     "id": "nl-groningen",
     "name": "Groningen",
-    "viewKm": 66,
+    "viewKm": 50,
     "areas": false
   },
   {
     "id": "nl-friesland",
     "name": "Friesland",
-    "viewKm": 81,
+    "viewKm": 61,
     "areas": true
   },
   {
     "id": "nl-drenthe",
     "name": "Drenthe",
-    "viewKm": 58
+    "viewKm": 44
   },
   {
     "id": "nl-overijssel",
     "name": "Overijssel",
-    "viewKm": 70,
+    "viewKm": 52,
     "areas": true
   },
   {
     "id": "nl-flevoland",
     "name": "Flevoland",
-    "viewKm": 58,
+    "viewKm": 44,
     "time": {
       "start": 120,
       "levelBonus": 30
@@ -35,43 +35,43 @@
   {
     "id": "nl-gelderland",
     "name": "Gelderland",
-    "viewKm": 93,
+    "viewKm": 70,
     "areas": true
   },
   {
     "id": "nl-utrecht",
     "name": "Utrecht",
-    "viewKm": 55,
+    "viewKm": 40,
     "areas": false
   },
   {
     "id": "nl-noord-holland",
     "name": "Noord-Holland",
-    "viewKm": 87,
+    "viewKm": 65,
     "areas": true
   },
   {
     "id": "nl-zuid-holland",
     "name": "Zuid-Holland",
-    "viewKm": 67,
+    "viewKm": 50,
     "areas": true
   },
   {
     "id": "nl-zeeland",
     "name": "Zeeland",
-    "viewKm": 56,
+    "viewKm": 42,
     "areas": true
   },
   {
     "id": "nl-noord-brabant",
     "name": "Noord-Brabant",
-    "viewKm": 95,
+    "viewKm": 71,
     "areas": true
   },
   {
     "id": "nl-limburg",
     "name": "Limburg",
-    "viewKm": 87,
+    "viewKm": 65,
     "areas": true
   }
 ]
