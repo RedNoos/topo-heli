@@ -15,6 +15,6 @@ export const PROVINCES = [
   { id: 'nl-noord-holland', name: 'Noord-Holland', cbs: 'Noord-Holland', ne: 'Noord-Holland', capital: 'Haarlem', abbr: 'NH' },
   { id: 'nl-zuid-holland', name: 'Zuid-Holland', cbs: 'Zuid-Holland', ne: 'Zuid-Holland', capital: 'Den Haag', abbr: 'ZH' },
   { id: 'nl-zeeland', name: 'Zeeland', cbs: 'Zeeland', ne: 'Zeeland', capital: 'Middelburg', abbr: 'Z' },
-  { id: 'nl-noord-brabant', name: 'Noord-Brabant', cbs: 'Noord-Brabant', ne: 'Noord-Brabant', capital: "'s-Hertogenbosch", abbr: 'NB' },
+  { id: 'nl-noord-brabant', name: 'Noord-Brabant', cbs: 'Noord-Brabant', ne: 'Noord-Brabant', capital: "'s-Hertogenbosch", abbr: 'NB', skipPhysical: ['Oosterschelde'] },
   { id: 'nl-limburg', name: 'Limburg', cbs: 'Limburg', ne: 'Limburg', capital: 'Maastricht', abbr: 'L' },
 ];

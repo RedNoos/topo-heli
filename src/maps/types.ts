@@ -34,20 +34,22 @@ export interface City {
   level?: number;
   /** Optional: not before this level, even if its population ranks it earlier. */
   minLevel?: number;
+  /** On a school list (the Dutch basislijst topografie): ranked and asked first. */
+  core?: boolean;
 }
 
 /** Optional physical-geography targets (scripts/build-physical.mjs). */
 export interface PhysicalData {
   /** type 'canal': shown as a canal (e.g. Noordzeekanaal); 'dike': a dam to follow (Afsluitdijk). */
-  rivers: { name: string; level: number; type?: 'canal' | 'dike'; lines: LonLat[][] }[];
+  rivers: { name: string; level: number; type?: 'canal' | 'dike'; core?: boolean; lines: LonLat[][] }[];
   /** type 'water': a sea or estuary (Waddenzee, Westerschelde); holes: islands in it. */
-  lakes: { name: string; level: number; type?: 'water'; rings: LonLat[][]; holes?: LonLat[][] }[];
+  lakes: { name: string; level: number; type?: 'water'; core?: boolean; rings: LonLat[][]; holes?: LonLat[][] }[];
   /** Located at the range's main peak. */
-  mountains: { name: string; level: number; lat: number; lon: number; ele: number | null }[];
+  mountains: { name: string; level: number; core?: boolean; lat: number; lon: number; ele: number | null }[];
   /** Regions found by flying into them (provinces, islands, Veluwe, ...). */
-  areas?: { name: string; level: number; type?: 'province' | 'island'; rings: LonLat[][]; holes?: LonLat[][] }[];
+  areas?: { name: string; level: number; type?: 'province' | 'island'; core?: boolean; rings: LonLat[][]; holes?: LonLat[][] }[];
   /** Point features other than mountains (Schiphol). */
-  landmarks?: { name: string; level: number; type: 'airport'; lat: number; lon: number }[];
+  landmarks?: { name: string; level: number; type: 'airport'; core?: boolean; lat: number; lon: number }[];
   /**
    * Drawing layers, pre-clipped to the country: rivers by level (1..3), background
    * waterways never asked (e.g. Nieuwe Waterweg) and water areas (lakes, river banks, harbours).
@@ -71,6 +73,8 @@ export interface MapDefinition {
   parent?: string;
   /** Cities in play per level: first + step × (level − 1), best known first. Default: CONFIG.poolSize. */
   pool?: { first: number; step: number };
+  /** Factor on CONFIG.revealRadius: < 1 shows targets later (dense province maps). Default 1. */
+  reveal?: number;
   /** Start time and extra time per level in seconds. Default: CONFIG.startTime / levelTimeBonus. */
   time?: { start: number; levelBonus: number };
   /**

@@ -156,6 +156,8 @@ const out = (c, name = c.name) => ({
   lon: round4(c.lon),
   pop: c.pop,
   ...(c.level ? { level: c.level } : {}),
+  // The curated places in levels 1-2 are the basislijst topografie: asked first.
+  ...(c.level && c.level <= 2 ? { core: true } : {}),
 });
 
 // Whole country: added places only from EXTRA_MIN_LEVEL; same names get the province, e.g. "Hengelo (O)".

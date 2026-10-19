@@ -19,6 +19,8 @@ export interface Target {
   level?: number;
   /** Not before this level, even if its population ranks it earlier. */
   minLevel?: number;
+  /** On the basislijst topografie: ranked and asked first. */
+  core?: boolean;
   /** Anchor: the place itself for points, a label position for lakes, rivers and areas. */
   x: number;
   y: number;
@@ -120,7 +122,7 @@ function deepestPoint(t: Target): { x: number; y: number; depth: number } {
 }
 
 export function cityTargets(cities: City[], proj: Projection): Target[] {
-  return cities.map((c) => ({ kind: 'city', name: c.name, pop: c.pop, level: c.level, minLevel: c.minLevel, ...proj.project(c.lon, c.lat) }));
+  return cities.map((c) => ({ kind: 'city', name: c.name, pop: c.pop, level: c.level, minLevel: c.minLevel, core: c.core, ...proj.project(c.lon, c.lat) }));
 }
 
 export function physicalTargets(data: PhysicalData, proj: Projection): Target[] {
@@ -128,7 +130,7 @@ export function physicalTargets(data: PhysicalData, proj: Projection): Target[] 
   const targets: Target[] = [];
 
   for (const m of data.mountains) {
-    targets.push({ kind: 'mountain', name: m.name, pop: 0, level: m.level, ...proj.project(m.lon, m.lat) });
+    targets.push({ kind: 'mountain', name: m.name, pop: 0, level: m.level, core: m.core, ...proj.project(m.lon, m.lat) });
   }
   for (const l of data.lakes) {
     const rings = l.rings.map(toPts);
@@ -136,21 +138,21 @@ export function physicalTargets(data: PhysicalData, proj: Projection): Target[] 
     const x = pts.reduce((s, p) => s + p.x, 0) / pts.length;
     const y = pts.reduce((s, p) => s + p.y, 0) / pts.length;
     const holes = l.holes?.map(toPts);
-    targets.push({ kind: 'lake', name: l.name, pop: 0, level: l.level, x, y, rings, holes, sub: l.type });
+    targets.push({ kind: 'lake', name: l.name, pop: 0, level: l.level, core: l.core, x, y, rings, holes, sub: l.type });
   }
   for (const a of data.areas ?? []) {
-    const t: Target = { kind: 'area', name: a.name, pop: 0, level: a.level, x: 0, y: 0, rings: a.rings.map(toPts), holes: a.holes?.map(toPts), sub: a.type };
+    const t: Target = { kind: 'area', name: a.name, pop: 0, level: a.level, core: a.core, x: 0, y: 0, rings: a.rings.map(toPts), holes: a.holes?.map(toPts), sub: a.type };
     const deep = deepestPoint(t);
     targets.push({ ...t, x: deep.x, y: deep.y, depth: Math.min(CONFIG.area.insideKm, deep.depth * CONFIG.area.maxShare) });
   }
   for (const m of data.landmarks ?? []) {
-    targets.push({ kind: 'landmark', name: m.name, pop: 0, level: m.level, sub: m.type, ...proj.project(m.lon, m.lat) });
+    targets.push({ kind: 'landmark', name: m.name, pop: 0, level: m.level, core: m.core, sub: m.type, ...proj.project(m.lon, m.lat) });
   }
   for (const r of data.rivers) {
     const lines = r.lines.map(toPts);
     const samples = resample(lines, CONFIG.river.sampleKm);
     const mid = samples[Math.floor(samples.length / 2)];
-    targets.push({ kind: 'river', name: r.name, pop: 0, level: r.level, x: mid.x, y: mid.y, lines, samples, sub: r.type });
+    targets.push({ kind: 'river', name: r.name, pop: 0, level: r.level, core: r.core, x: mid.x, y: mid.y, lines, samples, sub: r.type });
   }
   return targets;
 }

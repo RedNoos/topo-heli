@@ -1,8 +1,8 @@
 [
-{"name":"Emmen","lat":52.7792,"lon":6.9069,"pop":107000,"level":2},
-{"name":"Assen","lat":52.9967,"lon":6.5625,"pop":69000,"level":1},
-{"name":"Hoogeveen","lat":52.7225,"lon":6.4764,"pop":55000,"level":2},
-{"name":"Meppel","lat":52.6958,"lon":6.1944,"pop":34000,"level":2},
+{"name":"Emmen","lat":52.7792,"lon":6.9069,"pop":107000,"level":2,"core":true},
+{"name":"Assen","lat":52.9967,"lon":6.5625,"pop":69000,"level":1,"core":true},
+{"name":"Hoogeveen","lat":52.7225,"lon":6.4764,"pop":55000,"level":2,"core":true},
+{"name":"Meppel","lat":52.6958,"lon":6.1944,"pop":34000,"level":2,"core":true},
 {"name":"Roden","lat":53.1405,"lon":6.4275,"pop":15595},
 {"name":"Coevorden","lat":52.661,"lon":6.7405,"pop":15000},
 {"name":"Klazienaveen","lat":52.7242,"lon":6.9903,"pop":11919},

@@ -1,8 +1,8 @@
 [
-{"name":"Almere","lat":52.3702,"lon":5.2141,"pop":220000,"level":2},
-{"name":"Lelystad","lat":52.5083,"lon":5.475,"pop":80000,"level":1},
+{"name":"Almere","lat":52.3702,"lon":5.2141,"pop":220000,"level":2,"core":true},
+{"name":"Lelystad","lat":52.5083,"lon":5.475,"pop":80000,"level":1,"core":true},
 {"name":"Dronten","lat":52.5237,"lon":5.716,"pop":28086},
-{"name":"Emmeloord","lat":52.7108,"lon":5.7486,"pop":26000,"level":2},
+{"name":"Emmeloord","lat":52.7108,"lon":5.7486,"pop":26000,"level":2,"core":true},
 {"name":"Zeewolde","lat":52.3311,"lon":5.543,"pop":22457},
 {"name":"Urk","lat":52.6655,"lon":5.5988,"pop":20220},
 {"name":"Swifterbant","lat":52.5683,"lon":5.6431,"pop":6475},

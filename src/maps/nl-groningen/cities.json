@@ -1,9 +1,9 @@
 [
-{"name":"Groningen","lat":53.2192,"lon":6.5667,"pop":240000,"level":1},
+{"name":"Groningen","lat":53.2192,"lon":6.5667,"pop":240000,"level":1,"core":true},
 {"name":"Hoogezand","lat":53.1617,"lon":6.7611,"pop":34000},
 {"name":"Stadskanaal","lat":52.9895,"lon":6.9504,"pop":31000},
-{"name":"Veendam","lat":53.1067,"lon":6.8792,"pop":28000,"level":2},
-{"name":"Delfzijl","lat":53.33,"lon":6.9181,"pop":22000,"level":2},
+{"name":"Veendam","lat":53.1067,"lon":6.8792,"pop":28000,"level":2,"core":true},
+{"name":"Delfzijl","lat":53.33,"lon":6.9181,"pop":22000,"level":2,"core":true},
 {"name":"Winschoten","lat":53.1442,"lon":7.0347,"pop":18000},
 {"name":"Hoogkerk","lat":53.2108,"lon":6.5014,"pop":11405},
 {"name":"Appingedam","lat":53.3217,"lon":6.8583,"pop":11000},

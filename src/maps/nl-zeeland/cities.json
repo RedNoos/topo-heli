@@ -1,8 +1,8 @@
 [
-{"name":"Middelburg","lat":51.5,"lon":3.6139,"pop":49000,"level":1},
-{"name":"Vlissingen","lat":51.4425,"lon":3.5736,"pop":45000,"level":2},
+{"name":"Middelburg","lat":51.5,"lon":3.6139,"pop":49000,"level":1,"core":true},
+{"name":"Vlissingen","lat":51.4425,"lon":3.5736,"pop":45000,"level":2,"core":true},
 {"name":"Goes","lat":51.5042,"lon":3.8889,"pop":38000},
-{"name":"Terneuzen","lat":51.3358,"lon":3.8278,"pop":25000,"level":2},
+{"name":"Terneuzen","lat":51.3358,"lon":3.8278,"pop":25000,"level":2,"core":true},
 {"name":"Borssele","lat":51.4233,"lon":3.7347,"pop":22285},
 {"name":"Zierikzee","lat":51.65,"lon":3.9194,"pop":11000},
 {"name":"Hulst","lat":51.28,"lon":4.0528,"pop":11000},

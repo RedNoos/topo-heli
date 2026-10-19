@@ -181,7 +181,7 @@ async function selectMap(def: MapDefinition) {
 function newGame(start: boolean) {
   if (!mapData) return;
   const physical = physicalOn ? mapData.physical : undefined;
-  game = new Game(mapData, mapDef.viewKm, { physical: !!physical, pool: mapDef.pool, time: mapDef.time });
+  game = new Game(mapData, mapDef.viewKm, { physical: !!physical, pool: mapDef.pool, time: mapDef.time, reveal: mapDef.reveal });
   renderer = new Renderer(canvas, minimap, game, mapData.geo, mapDef.viewKm, physical);
   wasVisible = false;
   lastWholeSecond = Math.ceil(game.timeLeft);

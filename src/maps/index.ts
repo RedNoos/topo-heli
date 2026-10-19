@@ -57,6 +57,8 @@ export const MAPS: MapDefinition[] = [
       placeNames: 'native',
       viewKm: p.viewKm,
       pool: { first: 10, step: 10 },
+      // Places lie close together on the screen: show them a bit later.
+      reveal: 0.75,
       time: 'time' in p ? (p.time as MapDefinition['time']) : undefined,
       load: async () => ({
         geo: await json<MapData['geo']>(provinceGeo[`./${p.id}/geo.json`]),

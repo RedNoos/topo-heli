@@ -17,6 +17,8 @@ export interface GameOptions {
   pool?: { first: number; step: number };
   /** Start time and extra time per level (seconds); default CONFIG.startTime / levelTimeBonus. */
   time?: { start: number; levelBonus: number };
+  /** Factor on the reveal radius (see MapDefinition.reveal). */
+  reveal?: number;
 }
 
 export interface Found {
@@ -34,7 +36,10 @@ export type GameEvent =
 
 export class Game {
   readonly projection: Projection;
-  /** All targets, cities sorted from best to least known (physical features follow, by level). */
+  /**
+   * All targets: cities from best to least known, basislijst places first (so they enter
+   * the levels first); physical features follow and enter by level.
+   */
   readonly targets: Target[];
   /** World bounds in km; the helicopter cannot leave these. */
   readonly bounds: Bounds;
@@ -57,17 +62,19 @@ export class Game {
 
   /** Scale for the distances in CONFIG (see CONFIG.referenceViewKm). */
   readonly distScale: number;
+  private readonly revealFactor: number;
   /** Number of best-known cities in play at a level. */
   private readonly poolSize: (level: number) => number;
 
   constructor(data: MapData, viewKm: number, options: GameOptions = {}) {
     this.distScale = viewKm / CONFIG.referenceViewKm;
+    this.revealFactor = options.reveal ?? 1;
     this.timeLeft = options.time?.start ?? CONFIG.startTime;
     this.levelBonus = options.time?.levelBonus ?? CONFIG.levelTimeBonus;
     const pool = options.pool;
     this.poolSize = pool ? (level) => pool.first + pool.step * (level - 1) : CONFIG.poolSize;
     this.projection = new Projection(data.geo);
-    const cities = cityTargets(data.cities, this.projection).sort((a, b) => b.pop - a.pop);
+    const cities = cityTargets(data.cities, this.projection).sort((a, b) => Number(!!b.core) - Number(!!a.core) || b.pop - a.pop);
     const physical = options.physical && data.physical ? physicalTargets(data.physical, this.projection) : [];
     this.targets = [...cities, ...physical];
 
@@ -106,7 +113,7 @@ export class Game {
   }
 
   get revealRadius() {
-    return CONFIG.revealRadius(this.level) * this.distScale;
+    return CONFIG.revealRadius(this.level) * this.distScale * this.revealFactor;
   }
 
   get targetDistance() {
@@ -166,6 +173,9 @@ export class Game {
       this.asked.clear();
       pool = this.targets.filter((t) => t !== this.target);
     }
+    // Basislijst items first, as long as the level has some left.
+    const core = pool.filter((t) => t.core);
+    if (core.length > 0) pool = core;
     const farEnough = pool.filter((t) => distanceTo(t, this.heli) >= CONFIG.minTargetDistance * this.distScale);
     if (farEnough.length > 0) pool = farEnough;
 

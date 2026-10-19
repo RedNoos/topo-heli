@@ -88,6 +88,8 @@ const PHYSICAL = {
     },
     lakes: {},
     mountains: { 2: [['Vaalserberg', { lat: 50.7548, lon: 6.0207, ele: 322 }]] },
+    // On the basislijst topografie (asked first); all zones, landmarks and lines below are too.
+    core: ['Rijn', 'Waal', 'Maas', 'IJssel', 'Lek', 'Noordzeekanaal', 'Amsterdam-Rijnkanaal', 'Nieuwe Waterweg', 'Waddenzee', 'IJsselmeer', 'Markermeer', 'Oosterschelde', 'Westerschelde', 'Vaalserberg'],
     // Areas (gebieden) of the basislijst topografie: found by flying (well) into them.
     // Sources: a CBS province, the CBS land part (island) at a point, CBS municipalities, an OSM
     // relation or a rough outline; always cut to the land. ('areas' = Overpass country areas.)
@@ -657,6 +659,15 @@ async function build(id, cfg) {
   if (cfg.lines) out.rivers.push(...(await buildLines(id, cfg)));
   if (cfg.zones) out.areas = await buildAreas(id, cfg);
   if (cfg.landmarks) out.landmarks = byLevel(cfg.landmarks).map(({ level, item }) => ({ level, ...item }));
+  if (cfg.core) {
+    const mark = (list, all = false) => list?.forEach((x) => (all || cfg.core.includes(x.name)) && (x.core = true));
+    mark(out.rivers.filter((r) => r.type !== 'dike'));
+    mark(out.rivers.filter((r) => r.type === 'dike'), true);
+    mark(out.lakes);
+    mark(out.mountains);
+    mark(out.areas, true);
+    mark(out.landmarks, true);
+  }
 
   // Background water (never asked): connections to the sea, river banks, harbours, …
   let contextLines = [];
@@ -724,7 +735,9 @@ async function buildDerived(id, fromId) {
   const homePts = home.flat(2);
   const near = (rings) =>
     rings.some((r) => r.some(([x, y]) => homePts.some(([hx, hy]) => Math.abs(hx - x) < 0.02 && Math.abs(hy - y) < 0.014)));
-  const lakes = from.lakes.filter((l) => near(l.rings));
+  // Some waters touch a province only at its edge (Noord-Brabant and the Oosterschelde).
+  const skip = PROVINCES.find((p) => p.id === id)?.skipPhysical ?? [];
+  const lakes = from.lakes.filter((l) => near(l.rings) && !skip.includes(l.name));
   // Areas mostly inside the province (not the provinces themselves); points inside it.
   const inHome = (pt) => home.some((poly) => insideRingLL(pt, poly[0]));
   // Test points inside the area (a grid), not its outline: outline points lie on the very border.

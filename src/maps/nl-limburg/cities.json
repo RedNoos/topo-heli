@@ -1,8 +1,8 @@
 [
-{"name":"Maastricht","lat":50.8483,"lon":5.6889,"pop":120000,"level":1},
-{"name":"Venlo","lat":51.37,"lon":6.1681,"pop":100000,"level":2},
-{"name":"Heerlen","lat":50.8837,"lon":5.9815,"pop":87000,"level":2},
-{"name":"Roermond","lat":51.1942,"lon":5.9875,"pop":59000,"level":2},
+{"name":"Maastricht","lat":50.8483,"lon":5.6889,"pop":120000,"level":1,"core":true},
+{"name":"Venlo","lat":51.37,"lon":6.1681,"pop":100000,"level":2,"core":true},
+{"name":"Heerlen","lat":50.8837,"lon":5.9815,"pop":87000,"level":2,"core":true},
+{"name":"Roermond","lat":51.1942,"lon":5.9875,"pop":59000,"level":2,"core":true},
 {"name":"Weert","lat":51.2517,"lon":5.7069,"pop":50000},
 {"name":"Kerkrade","lat":50.8658,"lon":6.0625,"pop":45000},
 {"name":"Sittard","lat":50.9983,"lon":5.8694,"pop":45000},
