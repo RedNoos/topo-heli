@@ -55,17 +55,18 @@ const bestKey = (id: string) => `topo-heli:best:${id}`;
 /** Score key for the current map + mode. */
 const scoreId = () => (physicalOn ? `${mapDef.id}+physical` : mapDef.id);
 
-const optionKey = (id: string) => `topo-heli:physical:${id}`;
-function loadOption(id: string) {
+/** The physical option (mountains/rivers, waters & areas) is one choice for all maps. */
+const OPTION_KEY = 'topo-heli:physical';
+function loadOption() {
   try {
-    return localStorage.getItem(optionKey(id)) === '1';
+    return localStorage.getItem(OPTION_KEY) === '1';
   } catch {
     return false;
   }
 }
-function saveOption(id: string, on: boolean) {
+function saveOption(on: boolean) {
   try {
-    localStorage.setItem(optionKey(id), on ? '1' : '0');
+    localStorage.setItem(OPTION_KEY, on ? '1' : '0');
   } catch {
     /* not remembered */
   }
@@ -163,7 +164,7 @@ function renderMapSelect() {
 async function selectMap(def: MapDefinition) {
   mapDef = def;
   mapData = null;
-  physicalOn = !!def.loadPhysical && loadOption(def.id);
+  physicalOn = !!def.loadPhysical && loadOption();
   renderMapSelect();
   const [data, physical, serbianNames, dutchNames] = await Promise.all([
     def.load(),
@@ -387,7 +388,7 @@ $<HTMLSelectElement>('region').onchange = (e) => {
 };
 ui.physicalOption.onchange = async () => {
   physicalOn = ui.physicalOption.checked;
-  saveOption(mapDef.id, physicalOn);
+  saveOption(physicalOn);
   renderMapSelect();
   if (physicalOn && mapData && !mapData.physical) {
     const def = mapDef;

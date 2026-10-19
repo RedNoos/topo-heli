@@ -705,6 +705,9 @@ async function build(id, cfg) {
 async function buildDerived(id, fromId) {
   const from = JSON.parse(await fs.readFile(path.join(ROOT, 'src', 'maps', fromId, 'physical.json'), 'utf8'));
   const clip = await countryClip(id, 2);
+  // Length is measured just around the province: a river along the border counts (the Maas
+  // between Brabant and Gelderland), one only within the 2 km drawing margin does not (the Waal).
+  const clipNear = await countryClip(id, 0.5);
   const lengthKm = (lines) => {
     const d = Math.PI / 180;
     let L = 0;
@@ -715,10 +718,10 @@ async function buildDerived(id, fromId) {
     return L;
   };
   const rivers = [];
-  for (const r of from.rivers) {
+  const clipLines = async (r, area) => {
     const out = await mapshaper.applyCommands('-i in.json -clip clip.json -o out.json format=geojson', {
       'in.json': { type: 'FeatureCollection', features: r.lines.map((coordinates) => ({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates } })) },
-      'clip.json': clip,
+      'clip.json': area,
     });
     const fc = JSON.parse(out['out.json']);
     const lines = [];
@@ -726,7 +729,11 @@ async function buildDerived(id, fromId) {
       if (g?.type === 'LineString') lines.push(g.coordinates);
       else if (g?.type === 'MultiLineString') lines.push(...g.coordinates);
     }
-    if (lengthKm(lines) >= MIN_PROVINCE_RIVER_KM) rivers.push({ ...r, lines: round(lines) });
+    return lines;
+  };
+  for (const r of from.rivers) {
+    if (lengthKm(await clipLines(r, clipNear)) < MIN_PROVINCE_RIVER_KM) continue;
+    rivers.push({ ...r, lines: round(await clipLines(r, clip)) });
   }
   const file = path.join(ROOT, 'src', 'maps', id, 'physical.json');
 
