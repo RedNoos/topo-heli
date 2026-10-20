@@ -29,7 +29,7 @@ const ui = {
   physicalOption: $<HTMLInputElement>('opt-physical'),
   modeBox: $('mode-box'),
   modeFree: $('mode-free'),
-  modeList: $('mode-list'),
+  modeList: $<HTMLButtonElement>('mode-list'),
   score: $('score'),
   level: $('level'),
   toast: $('toast'),
@@ -158,26 +158,29 @@ function renderMapSelect() {
   // Sub-maps (provinces) of the chosen map: a list with the whole map first.
   const top = topMap(mapDef);
   const subs = MAPS.filter((x) => x.parent === top.id);
-  $('region-box').hidden = subs.length === 0;
-  $('region-label').hidden = subs.length === 0;
-  if (subs.length) {
-    $('region-label').textContent = t('region');
-    const select = $<HTMLSelectElement>('region');
-    select.innerHTML = '';
-    for (const m of [top, ...subs]) {
-      const o = document.createElement('option');
-      o.value = m.id;
-      o.textContent = m === top ? t('regionAll') : mapName(m);
-      o.selected = m === mapDef;
-      select.append(o);
-    }
+  // Every settings row is always there (what does not apply is disabled), so the menu keeps
+  // its layout when switching maps and modes.
+  $('region-box').hidden = false;
+  $('region-label').hidden = false;
+  $('region-label').textContent = t('region');
+  const select = $<HTMLSelectElement>('region');
+  select.innerHTML = '';
+  select.disabled = subs.length === 0;
+  for (const m of [top, ...subs]) {
+    const o = document.createElement('option');
+    o.value = m.id;
+    o.textContent = m !== top ? mapName(m) : subs.length ? t('regionAll') : mapName(m);
+    o.selected = m === mapDef;
+    select.append(o);
   }
   // Time bonus per level differs per map (e.g. Flevoland: +0:30).
   $('howto-levels').innerHTML = t('howtoLevels', { bonus: clock(mapDef.time?.levelBonus ?? CONFIG.levelTimeBonus) });
   // Game mode (Dutch maps): "Find them all" (Basislijst) always has its waters and areas, so
   // no physical switch then.
-  ui.modeBox.hidden = !mapDef.practice;
-  $('mode-label').hidden = !mapDef.practice;
+  ui.modeBox.hidden = false;
+  $('mode-label').hidden = false;
+  ui.modeList.disabled = !mapDef.practice;
+  ui.modeList.title = mapDef.practice ? '' : t('modeListOnlyNl');
   ui.modeFree.classList.toggle('active', !practiceOn);
   ui.modeList.classList.toggle('active', practiceOn);
   const list = '<i>basislijst topografie</i>';
@@ -189,10 +192,11 @@ function renderMapSelect() {
       : '';
   $('howto-levels').hidden = practiceOn;
   $('btn-skip').textContent = t(practiceOn ? 'skipPractice' : 'skip');
-  // The mode switch is only offered for maps that have physical data.
-  ui.physicalToggle.hidden = !mapDef.loadPhysical || practiceOn;
-  $('physical-row').hidden = ui.physicalToggle.hidden;
-  ui.physicalOption.checked = physicalOn;
+  // Physical features: off for maps without them; always on (fixed) in "Find them all".
+  ui.physicalToggle.hidden = false;
+  $('physical-row').hidden = false;
+  ui.physicalOption.disabled = !mapDef.loadPhysical || practiceOn;
+  ui.physicalOption.checked = !!mapDef.loadPhysical && (physicalOn || practiceOn);
   // The Netherlands: "Waters" or "Waters & areas" instead of mountains, rivers & lakes.
   const kind = mapDef.physicalKind;
   $('physical-label').innerHTML = t(kind === 'watersAreas' ? 'physicalOptionWatersAreas' : kind ? 'physicalOptionWaters' : 'physicalOption');

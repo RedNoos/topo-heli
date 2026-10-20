@@ -245,6 +245,9 @@ body {
   display: grid;
   place-items: center;
   padding: 16px;
+  /* Anchored near the top, not centred: a panel that changes height then does not move. */
+  align-items: start;
+  padding-top: max(16px, 6vh);
   background: rgba(40, 60, 70, 0.35);
   backdrop-filter: blur(3px);
   overflow-y: auto;
@@ -488,8 +491,13 @@ h1 {
   font-size: 14px;
 }
 
+/* Keeps its line when empty, so nothing below moves. */
+.best {
+  min-height: 1.4em;
+}
+
 .best:empty {
-  display: none;
+  visibility: hidden;
 }
 
 .best::before {
@@ -753,10 +761,27 @@ h1 {
   color: #fff;
 }
 
+/* Room for two lines, whatever the mode (no jumping). */
 .mode-desc {
   margin: 4px 0 0 4px;
   font-size: 13px;
+  line-height: 1.35;
+  min-height: 2.7em;
   color: var(--muted);
+}
+
+.segmented button:disabled {
+  color: #b5b0a2;
+  cursor: not-allowed;
+}
+
+#region-box select:disabled {
+  opacity: 0.6;
+}
+
+.toggle:has(input:disabled) {
+  opacity: 0.55;
+  cursor: default;
 }
 
 .howto-box {
