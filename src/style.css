@@ -624,3 +624,9 @@ h1 {
     bottom: calc(8px + var(--safe-bottom));
   }
 }
+
+/* Feedback: a quiet button under the menu and the end screen. */
+.btn.feedback {
+  align-self: center;
+  margin-top: 4px;
+}

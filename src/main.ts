@@ -5,6 +5,7 @@ import { Game } from './game';
 import { Input } from './input';
 import { MAPS } from './maps';
 import type { MapData, MapDefinition } from './maps/types';
+import { openFeedback } from './feedback';
 import { Renderer } from './renderer';
 import { initStats, scoreBucket, track } from './stats';
 import { flagSvg, getLang, LANGS, onLangChange, placeName, plural, setLang, setPlaceNames, t, type StringKey } from './i18n';
@@ -404,6 +405,7 @@ const STATIC_PARAMS = {
   maker: 'Radarsoft',
   platform: 'Commodore 64',
   goatcounter: '<a href="https://www.goatcounter.com/" target="_blank" rel="noopener">GoatCounter</a>',
+  tally: '<a href="https://tally.so/" target="_blank" rel="noopener">Tally</a>',
 };
 
 /** Fills every [data-i18n] element with its translation. */
@@ -502,6 +504,14 @@ $('btn-resume').onclick = togglePause;
 $('btn-pause').onclick = togglePause;
 $('btn-skip').onclick = () => state === 'playing' && game?.skip();
 ui.mute.onclick = toggleMute;
+/** Feedback form, told which map and mode the player was on. */
+const feedback = () => {
+  track('feedback');
+  const mode = practiceOn ? 'basislijst' : !physicalOn ? 'vrij' : mapDef.physicalKind ? 'wateren' : 'bergen-rivieren';
+  void openFeedback({ map: mapDef.id, mode, lang: getLang() });
+};
+$('btn-feedback').onclick = feedback;
+$('btn-feedback-over').onclick = feedback;
 
 window.addEventListener('keydown', (e) => {
   if (e.repeat) return;
