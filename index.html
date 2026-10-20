@@ -47,6 +47,11 @@
           <span id="region-label">Province</span>
           <select id="region"></select>
         </label>
+        <label class="toggle" id="practice-toggle" hidden>
+          <input type="checkbox" id="opt-practice" />
+          <span class="switch"></span>
+          <span id="practice-label">Basislijst</span>
+        </label>
         <label class="toggle" id="physical-toggle" hidden>
           <input type="checkbox" id="opt-physical" />
           <span class="switch"></span>
@@ -59,6 +64,7 @@
           <li data-i18n="howtoFlash"></li>
           <li id="howto-levels"></li>
           <li id="howto-physical" hidden></li>
+          <li id="howto-practice" hidden></li>
         </ul>
         <p class="credits" data-i18n="credits"></p>
         <p class="credits" data-i18n="inspiredBy"></p>
@@ -76,7 +82,7 @@
 
     <div class="overlay" id="over" hidden>
       <div class="panel">
-        <h2 data-i18n="timeUp">Time's up!</h2>
+        <h2 id="over-title" data-i18n="timeUp">Time's up!</h2>
         <div class="final"><b id="final-score">0</b> <span id="final-label">places found</span></div>
         <p class="best" id="final-best"></p>
         <p class="missed" id="final-missed"></p>

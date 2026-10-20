@@ -34,6 +34,7 @@ export const MAPS: MapDefinition[] = [
     }),
     loadPhysical: async () => (await import('./netherlands/physical.json')).default as never,
     physicalKind: 'watersAreas',
+    practice: true,
   },
   {
     id: 'europe',
@@ -59,6 +60,7 @@ export const MAPS: MapDefinition[] = [
       pool: { first: 10, step: 10 },
       // Places lie close together on the screen: show them a bit later.
       reveal: 0.75,
+      practice: true,
       time: 'time' in p ? (p.time as MapDefinition['time']) : undefined,
       load: async () => ({
         geo: await json<MapData['geo']>(provinceGeo[`./${p.id}/geo.json`]),

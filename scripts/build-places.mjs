@@ -21,6 +21,8 @@ const EXTRA_MIN_LEVEL = 6;
 const SAME_PLACE_KM = 2;
 /** Listed as a populated place in GeoNames, but not a town or village. */
 const NOT_A_PLACE = new Set(['Oostvaardersdiep']);
+/** Municipality seats tagged with the population of the whole municipality. */
+const POP_FIX = { 'Velsen-Zuid': 1500, Borssele: 1500 };
 
 const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
 
@@ -103,6 +105,8 @@ const nearDistance = (p, polys) => Math.min(...polys.flat(2).map(([lon, lat]) =>
 // ---------- build ----------
 
 const curated = JSON.parse(await fs.readFile(path.join(ROOT, 'data', 'netherlands-cities.json'), 'utf8'));
+/** Basislijst mode, province maps: well-known places added to the basislijst ones (see _about). */
+const provinceLists = JSON.parse(await fs.readFile(path.join(ROOT, 'data', 'province-lists.json'), 'utf8'));
 const provinces = [];
 for (const p of PROVINCES) {
   const geo = JSON.parse(await fs.readFile(path.join(ROOT, 'src', 'maps', p.id, 'geo.json'), 'utf8'));
@@ -122,6 +126,7 @@ let added = 0;
 /** Adds a candidate unless it is already listed or is a district of a listed place. */
 function addPlace(cand, extra) {
   if (NOT_A_PLACE.has(cand.name)) return false;
+  if (POP_FIX[cand.name]) cand = { ...cand, pop: POP_FIX[cand.name] };
   // Same place already listed (curated names win: "Den Haag" over "The Hague")?
   if (all.some((c) => km(c, cand) < SAME_PLACE_KM || (c.name === cand.name && km(c, cand) < 6))) return false;
   // A district of a nearby place ("Almere Duin", "Leusden-Zuid"), not a place of its own.
@@ -157,7 +162,7 @@ const out = (c, name = c.name) => ({
   pop: c.pop,
   ...(c.level ? { level: c.level } : {}),
   // The curated places in levels 1-2 are the basislijst topografie: asked first.
-  ...(c.level && c.level <= 2 ? { core: true } : {}),
+  ...(c.level && c.level <= 2 ? { core: true, listed: true } : {}),
 });
 
 // Whole country: added places only from EXTRA_MIN_LEVEL; same names get the province, e.g. "Hengelo (O)".
@@ -180,8 +185,10 @@ for (const p of provinces) {
   for (const c of list.sort((a, b) => b.pop - a.pop)) {
     if (seen.has(c.name)) continue; // same name twice in one province: keep the bigger one
     seen.add(c.name);
-    cities.push({ ...out(c), ...(c === capital ? { level: 1 } : {}) });
+    cities.push({ ...out(c), ...(c === capital ? { level: 1 } : {}), ...(provinceLists[p.id]?.includes(c.name) ? { listed: true } : {}) });
   }
+  const missing = (provinceLists[p.id] ?? []).filter((n) => !cities.some((c) => c.name === n));
+  if (missing.length) throw new Error(`${p.name}: practice list names not found: ${missing.join(', ')}`);
   await fs.writeFile(path.join(ROOT, 'src', 'maps', p.id, 'cities.json'), '[\n' + cities.map((c) => JSON.stringify(c)).join(',\n') + '\n]\n');
 
   // Zoom: show under half of the province's larger side (within limits), so you have to fly.

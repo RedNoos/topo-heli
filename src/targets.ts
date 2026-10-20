@@ -19,8 +19,10 @@ export interface Target {
   level?: number;
   /** Not before this level, even if its population ranks it earlier. */
   minLevel?: number;
-  /** On the basislijst topografie: ranked and asked first. */
+  /** On the basislijst topografie. */
   core?: boolean;
+  /** In the Basislijst mode's list: ranked and asked first (also in the free game). */
+  listed?: boolean;
   /** Anchor: the place itself for points, a label position for lakes, rivers and areas. */
   x: number;
   y: number;
@@ -122,7 +124,7 @@ function deepestPoint(t: Target): { x: number; y: number; depth: number } {
 }
 
 export function cityTargets(cities: City[], proj: Projection): Target[] {
-  return cities.map((c) => ({ kind: 'city', name: c.name, pop: c.pop, level: c.level, minLevel: c.minLevel, core: c.core, ...proj.project(c.lon, c.lat) }));
+  return cities.map((c) => ({ kind: 'city', name: c.name, pop: c.pop, level: c.level, minLevel: c.minLevel, core: c.core, listed: c.listed, ...proj.project(c.lon, c.lat) }));
 }
 
 export function physicalTargets(data: PhysicalData, proj: Projection): Target[] {
@@ -154,5 +156,7 @@ export function physicalTargets(data: PhysicalData, proj: Projection): Target[] 
     const mid = samples[Math.floor(samples.length / 2)];
     targets.push({ kind: 'river', name: r.name, pop: 0, level: r.level, core: r.core, x: mid.x, y: mid.y, lines, samples, sub: r.type });
   }
+  // Physical features: the basislijst ones are the listed ones.
+  for (const t of targets) t.listed = t.core;
   return targets;
 }

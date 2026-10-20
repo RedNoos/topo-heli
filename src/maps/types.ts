@@ -34,8 +34,10 @@ export interface City {
   level?: number;
   /** Optional: not before this level, even if its population ranks it earlier. */
   minLevel?: number;
-  /** On a school list (the Dutch basislijst topografie): ranked and asked first. */
+  /** On the Dutch basislijst topografie. */
   core?: boolean;
+  /** In the Basislijst mode's list (basislijst, plus well-known places on province maps): asked first. */
+  listed?: boolean;
 }
 
 /** Optional physical-geography targets (scripts/build-physical.mjs). */
@@ -73,6 +75,8 @@ export interface MapDefinition {
   parent?: string;
   /** Cities in play per level: first + step × (level − 1), best known first. Default: CONFIG.poolSize. */
   pool?: { first: number; step: number };
+  /** Offers the Basislijst mode: only the listed places and the basislijst waters and areas. */
+  practice?: boolean;
   /** Factor on CONFIG.revealRadius: < 1 shows targets later (dense province maps). Default 1. */
   reveal?: number;
   /** Start time and extra time per level in seconds. Default: CONFIG.startTime / levelTimeBonus. */

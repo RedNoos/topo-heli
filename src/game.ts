@@ -19,6 +19,11 @@ export interface GameOptions {
   time?: { start: number; levelBonus: number };
   /** Factor on the reveal radius (see MapDefinition.reveal). */
   reveal?: number;
+  /**
+   * Basislijst mode: only the listed targets (physical features included), each once; the
+   * clock counts up and the game ends when all are found.
+   */
+  practice?: boolean;
 }
 
 export interface Found {
@@ -26,6 +31,8 @@ export interface Found {
   /** Where it was found (label position; for rivers the spot on the river). */
   x: number;
   y: number;
+  /** Seconds it took (since the previous find). */
+  secs: number;
 }
 
 export type GameEvent =
@@ -37,8 +44,8 @@ export type GameEvent =
 export class Game {
   readonly projection: Projection;
   /**
-   * All targets: cities from best to least known, basislijst places first (so they enter
-   * the levels first); physical features follow and enter by level.
+   * All targets: cities from best to least known, listed (basislijst) places first (so they
+   * enter the levels first); physical features follow and enter by level.
    */
   readonly targets: Target[];
   /** World bounds in km; the helicopter cannot leave these. */
@@ -54,6 +61,10 @@ export class Game {
   /** Undefined until start() (the menu shows an idle game). */
   target?: Target;
   over = false;
+  readonly practice: boolean;
+  /** Basislijst mode: skipped targets, asked again once the others are done. */
+  private later = new Set<Target>();
+  private lastFoundAt = 0;
   /** River target: indexes of the course samples covered so far. */
   private covered = new Set<number>();
 
@@ -69,14 +80,15 @@ export class Game {
   constructor(data: MapData, viewKm: number, options: GameOptions = {}) {
     this.distScale = viewKm / CONFIG.referenceViewKm;
     this.revealFactor = options.reveal ?? 1;
+    this.practice = !!options.practice;
     this.timeLeft = options.time?.start ?? CONFIG.startTime;
     this.levelBonus = options.time?.levelBonus ?? CONFIG.levelTimeBonus;
     const pool = options.pool;
     this.poolSize = pool ? (level) => pool.first + pool.step * (level - 1) : CONFIG.poolSize;
     this.projection = new Projection(data.geo);
-    const cities = cityTargets(data.cities, this.projection).sort((a, b) => Number(!!b.core) - Number(!!a.core) || b.pop - a.pop);
-    const physical = options.physical && data.physical ? physicalTargets(data.physical, this.projection) : [];
-    this.targets = [...cities, ...physical];
+    const cities = cityTargets(data.cities, this.projection).sort((a, b) => Number(!!b.listed) - Number(!!a.listed) || b.pop - a.pop);
+    const physical = (options.physical || this.practice) && data.physical ? physicalTargets(data.physical, this.projection) : [];
+    this.targets = [...cities, ...physical].filter((t) => !this.practice || t.listed);
 
     const rect = data.geo.projection?.rect;
     if (rect) {
@@ -153,7 +165,34 @@ export class Game {
     this.nextTarget();
   }
 
+  /** Basislijst mode: number of names left to find (the current one included). */
+  get remaining() {
+    return this.targets.length - this.found.length;
+  }
+
+  /** Basislijst mode: any name not found yet; skipped ones only once the rest is done. */
+  private nextPracticeTarget() {
+    const found = new Set(this.found.map((f) => f.target));
+    const left = this.targets.filter((t) => !found.has(t));
+    if (left.length === 0) {
+      this.target = undefined;
+      this.over = true;
+      this.emit({ type: 'over' });
+      return;
+    }
+    let pool = left.filter((t) => t !== this.target && !this.later.has(t));
+    if (pool.length === 0) pool = left.filter((t) => t !== this.target);
+    if (pool.length === 0) pool = left;
+    const farEnough = pool.filter((t) => distanceTo(t, this.heli) >= CONFIG.minTargetDistance * this.distScale);
+    if (farEnough.length > 0) pool = farEnough;
+    this.target = pool[Math.floor(Math.random() * pool.length)];
+    this.later.delete(this.target);
+    this.covered.clear();
+    this.emit({ type: 'target', target: this.target });
+  }
+
   private nextTarget() {
+    if (this.practice) return this.nextPracticeTarget();
     const poolFor = (level: number) => {
       const size = this.poolSize(level);
       return this.targets.filter(
@@ -173,9 +212,9 @@ export class Game {
       this.asked.clear();
       pool = this.targets.filter((t) => t !== this.target);
     }
-    // Basislijst items first, as long as the level has some left.
-    const core = pool.filter((t) => t.core);
-    if (core.length > 0) pool = core;
+    // Listed (basislijst) items first, as long as the level has some left.
+    const listed = pool.filter((t) => t.listed);
+    if (listed.length > 0) pool = listed;
     const farEnough = pool.filter((t) => distanceTo(t, this.heli) >= CONFIG.minTargetDistance * this.distScale);
     if (farEnough.length > 0) pool = farEnough;
 
@@ -188,7 +227,12 @@ export class Game {
   skip() {
     if (this.over || !this.target) return;
     this.skipped.push(this.target);
-    this.timeLeft = Math.max(0, this.timeLeft - CONFIG.skipPenalty);
+    if (this.practice) {
+      this.elapsed += CONFIG.practiceSkipPenalty;
+      this.later.add(this.target);
+    } else {
+      this.timeLeft = Math.max(0, this.timeLeft - CONFIG.skipPenalty);
+    }
     this.emit({ type: 'skipped', target: this.target });
     this.nextTarget();
   }
@@ -196,7 +240,7 @@ export class Game {
   update(dt: number, input: { x: number; y: number }) {
     if (this.over || !this.target) return;
     this.elapsed += dt;
-    this.timeLeft -= dt;
+    if (!this.practice) this.timeLeft -= dt;
     if (this.timeLeft <= 0) {
       this.timeLeft = 0;
       this.over = true;
@@ -235,8 +279,9 @@ export class Game {
     if (this.isFound()) {
       const target = this.target;
       const at = target.kind === 'river' ? nearestSample(target, h) : target.kind === 'lake' ? { x: h.x, y: h.y } : target;
-      this.found.push({ target, x: at.x, y: at.y });
-      const levelUp = this.found.length % CONFIG.citiesPerLevel === 0;
+      this.found.push({ target, x: at.x, y: at.y, secs: this.elapsed - this.lastFoundAt });
+      this.lastFoundAt = this.elapsed;
+      const levelUp = !this.practice && this.found.length % CONFIG.citiesPerLevel === 0;
       if (levelUp) this.timeLeft += this.levelBonus;
       this.emit({ type: 'found', found: this.found[this.found.length - 1], levelUp });
       this.nextTarget();

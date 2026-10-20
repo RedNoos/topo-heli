@@ -26,6 +26,8 @@ const ui = {
   progress: $('river-progress'),
   physicalToggle: $('physical-toggle'),
   physicalOption: $<HTMLInputElement>('opt-physical'),
+  practiceToggle: $('practice-toggle'),
+  practiceOption: $<HTMLInputElement>('opt-practice'),
   score: $('score'),
   level: $('level'),
   toast: $('toast'),
@@ -48,28 +50,56 @@ let wasVisible = false;
 let toastTimer = 0;
 /** "Mountains, rivers & lakes" option, remembered per map. */
 let physicalOn = false;
+/** Basislijst mode (Dutch maps): one choice for all maps, like the physical option. */
+let practiceOn = false;
 
 // ---------- Best scores ----------
 
 const bestKey = (id: string) => `topo-heli:best:${id}`;
 /** Score key for the current map + mode. */
-const scoreId = () => (physicalOn ? `${mapDef.id}+physical` : mapDef.id);
+const scoreId = () => (practiceOn ? `${mapDef.id}+list` : physicalOn ? `${mapDef.id}+physical` : mapDef.id);
 
-/** The physical option (mountains/rivers, waters & areas) is one choice for all maps. */
+/** The options (physical features, Basislijst mode) are one choice for all maps. */
 const OPTION_KEY = 'topo-heli:physical';
-function loadOption() {
+const PRACTICE_KEY = 'topo-heli:practice';
+function loadOption(key = OPTION_KEY) {
   try {
-    return localStorage.getItem(OPTION_KEY) === '1';
+    return localStorage.getItem(key) === '1';
   } catch {
     return false;
   }
 }
-function saveOption(on: boolean) {
+function saveOption(on: boolean, key = OPTION_KEY) {
   try {
-    localStorage.setItem(OPTION_KEY, on ? '1' : '0');
+    localStorage.setItem(key, on ? '1' : '0');
   } catch {
     /* not remembered */
   }
+}
+/** Basislijst mode: fastest time in seconds (0 = none yet). */
+const bestTimeKey = (id: string) => `topo-heli:besttime:${id}`;
+function getBestTime(id: string): number {
+  try {
+    return Number(localStorage.getItem(bestTimeKey(id))) || 0;
+  } catch {
+    return 0;
+  }
+}
+function setBestTime(id: string, secs: number) {
+  try {
+    localStorage.setItem(bestTimeKey(id), String(secs));
+  } catch {
+    /* not remembered */
+  }
+}
+/** Physical data is needed for the physical option and for the Basislijst mode (waters, areas). */
+const wantsPhysical = () => physicalOn || practiceOn;
+/** Number of names in the Basislijst mode for the loaded map. */
+function practiceCount() {
+  if (!mapData) return 0;
+  const p = mapData.physical;
+  const physical = p ? [...p.rivers, ...p.lakes, ...p.mountains, ...(p.areas ?? []), ...(p.landmarks ?? [])].filter((x) => x.core).length : 0;
+  return mapData.cities.filter((c) => c.listed).length + physical;
 }
 function getBest(id: string): number {
   try {
@@ -141,14 +171,29 @@ function renderMapSelect() {
   }
   // Time bonus per level differs per map (e.g. Flevoland: +0:30).
   $('howto-levels').innerHTML = t('howtoLevels', { bonus: clock(mapDef.time?.levelBonus ?? CONFIG.levelTimeBonus) });
+  // Basislijst mode (Dutch maps): always with its waters and areas, so no physical switch then.
+  ui.practiceToggle.hidden = !mapDef.practice;
+  ui.practiceOption.checked = practiceOn;
+  $('practice-label').innerHTML = t('practiceOption');
+  $('howto-levels').hidden = practiceOn;
+  $('btn-skip').textContent = t(practiceOn ? 'skipPractice' : 'skip');
   // The mode switch is only offered for maps that have physical data.
-  ui.physicalToggle.hidden = !mapDef.loadPhysical;
+  ui.physicalToggle.hidden = !mapDef.loadPhysical || practiceOn;
   ui.physicalOption.checked = physicalOn;
   // The Netherlands: "Waters" or "Waters & areas" instead of mountains, rivers & lakes.
   const kind = mapDef.physicalKind;
   $('physical-label').innerHTML = t(kind === 'watersAreas' ? 'physicalOptionWatersAreas' : kind ? 'physicalOptionWaters' : 'physicalOption');
   $('howto-physical').innerHTML = kind ? t('howtoPhysicalWaters') + (kind === 'watersAreas' ? ' ' + t('howtoPhysicalAreas') : '') : t('howtoPhysical');
-  $('howto-physical').hidden = !physicalOn;
+  $('howto-physical').hidden = !physicalOn && !(practiceOn && mapDef.loadPhysical);
+  if (practiceOn) {
+    const n = practiceCount();
+    $('howto-practice').innerHTML = n ? t('howtoPractice', { n, extra: mapDef.parent ? t('practiceExtra') : '' }) : '';
+    const best = getBestTime(scoreId());
+    ui.best.innerHTML = best > 0 ? t('bestPractice', { map: mapName(mapDef), t: clock(best) }) : '';
+    $('howto-practice').hidden = false;
+    return;
+  }
+  $('howto-practice').hidden = true;
   const best = getBest(scoreId());
   const params = { map: mapName(mapDef), n: best };
   const bestKey: StringKey = !physicalOn
@@ -165,10 +210,11 @@ async function selectMap(def: MapDefinition) {
   mapDef = def;
   mapData = null;
   physicalOn = !!def.loadPhysical && loadOption();
+  practiceOn = !!def.practice && loadOption(PRACTICE_KEY);
   renderMapSelect();
   const [data, physical, serbianNames, dutchNames] = await Promise.all([
     def.load(),
-    physicalOn ? def.loadPhysical?.() : undefined,
+    wantsPhysical() ? def.loadPhysical?.() : undefined,
     def.loadSerbianNames?.(),
     def.loadDutchNames?.(),
   ]);
@@ -181,8 +227,14 @@ async function selectMap(def: MapDefinition) {
 
 function newGame(start: boolean) {
   if (!mapData) return;
-  const physical = physicalOn ? mapData.physical : undefined;
-  game = new Game(mapData, mapDef.viewKm, { physical: !!physical, pool: mapDef.pool, time: mapDef.time, reveal: mapDef.reveal });
+  const physical = wantsPhysical() ? mapData.physical : undefined;
+  game = new Game(mapData, mapDef.viewKm, {
+    physical: !!physical,
+    pool: mapDef.pool,
+    time: mapDef.time,
+    reveal: mapDef.reveal,
+    practice: practiceOn,
+  });
   renderer = new Renderer(canvas, minimap, game, mapData.geo, mapDef.viewKm, physical);
   wasVisible = false;
   lastWholeSecond = Math.ceil(game.timeLeft);
@@ -259,8 +311,39 @@ function showToast(title: string, detail: string) {
   toastTimer = window.setTimeout(() => (ui.toast.hidden = true), 2600);
 }
 
+/** Basislijst mode: all names found. */
+function endPractice(game: Game) {
+  sfx.levelUp();
+  const secs = Math.round(game.elapsed);
+  track(`finish/${scoreId()}/${Math.floor(secs / 60)}m`);
+  const prevBest = getBestTime(scoreId());
+  if (!prevBest || secs < prevBest) setBestTime(scoreId(), secs);
+  $('over-title').dataset.i18n = 'done';
+  $('over-title').textContent = t('done');
+  $('final-score').textContent = clock(secs);
+  $('final-label').textContent = t('timeLabel');
+  $('final-best').textContent = !prevBest || secs < prevBest ? t('newBestTime') : t('bestTime', { t: clock(prevBest) });
+  // Worth practising: the skipped names and the three that took longest.
+  const slow = [...game.found].sort((a, b) => b.secs - a.secs).slice(0, 3).map((f) => f.target);
+  const again = [...new Set([...game.skipped, ...slow])].map((c) => placeName(c.name));
+  $('final-missed').textContent = t('practiseAgain', { names: again.join(', ') });
+  const list = $('found-list');
+  list.innerHTML = '';
+  const skipped = new Set(game.skipped);
+  for (const f of game.found) {
+    const s = document.createElement('span');
+    s.textContent = placeName(f.target.name);
+    if (skipped.has(f.target)) s.className = 'later';
+    list.append(s);
+  }
+  show('over');
+}
+
 function endGame() {
   if (!game) return;
+  if (game.practice) return endPractice(game);
+  $('over-title').dataset.i18n = 'timeUp';
+  $('over-title').textContent = t('timeUp');
   sfx.over();
   const score = game.found.length;
   track(`finish/${scoreId()}/${scoreBucket(score)}`);
@@ -330,7 +413,7 @@ function translateStatic() {
   }
   updateMuteLabel();
   if (game?.target) setTargetLabel(game.target);
-  if (game) $('final-label').textContent = plural('placesFound', game.found.length);
+  if (game) $('final-label').textContent = game.practice ? t('timeLabel') : plural('placesFound', game.found.length);
   renderLangPicker();
   renderMapSelect();
   updateInsets();
@@ -386,19 +469,28 @@ $<HTMLSelectElement>('region').onchange = (e) => {
   const def = MAPS.find((m) => m.id === (e.target as HTMLSelectElement).value);
   if (def) void selectMap(def);
 };
-ui.physicalOption.onchange = async () => {
+ui.practiceOption.onchange = () => {
+  practiceOn = ui.practiceOption.checked;
+  saveOption(practiceOn, PRACTICE_KEY);
+  void optionChanged();
+};
+ui.physicalOption.onchange = () => {
   physicalOn = ui.physicalOption.checked;
   saveOption(physicalOn);
+  void optionChanged();
+};
+async function optionChanged() {
   renderMapSelect();
-  if (physicalOn && mapData && !mapData.physical) {
+  if (wantsPhysical() && mapData && !mapData.physical) {
     const def = mapDef;
     const physical = await def.loadPhysical?.();
     // Ignore if the player switched maps while it loaded.
     if (def !== mapDef || !mapData) return;
     mapData = { ...mapData, physical };
+    renderMapSelect(); // the Basislijst count includes the waters and areas
   }
   newGame(false); // redraw the menu background with/without the detailed water
-};
+}
 $('btn-again').onclick = start;
 $('btn-menu').onclick = () => {
   newGame(false);
@@ -434,11 +526,13 @@ window.addEventListener('resize', () => {
 
 function updateHud() {
   if (!game) return;
-  const secs = Math.ceil(game.timeLeft);
-  ui.timer.textContent = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
-  ui.timer.classList.toggle('low', secs <= 15 && state === 'playing');
-  ui.score.textContent = String(game.found.length);
+  // Basislijst mode: the clock counts up and the score shows found / total.
+  const secs = game.practice ? Math.floor(game.elapsed) : Math.ceil(game.timeLeft);
+  ui.timer.textContent = clock(secs);
+  ui.timer.classList.toggle('low', !game.practice && secs <= 15 && state === 'playing');
+  ui.score.textContent = game.practice ? `${game.found.length}/${game.targets.length}` : String(game.found.length);
   ui.level.textContent = String(game.level);
+  ui.level.parentElement!.hidden = game.practice;
 
   const visible = game.targetVisible;
   const kind = game.target?.kind;
@@ -457,7 +551,7 @@ function updateHud() {
   if (visible && !wasVisible) sfx.reveal();
   wasVisible = visible;
 
-  if (secs < lastWholeSecond && secs <= 10 && secs > 0) sfx.tick();
+  if (!game.practice && secs < lastWholeSecond && secs <= 10 && secs > 0) sfx.tick();
   lastWholeSecond = secs;
 }
 

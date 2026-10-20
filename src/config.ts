@@ -41,6 +41,9 @@ export const CONFIG = {
   /** Number of best-known cities (by population) in play at a level. */
   poolSize: (level: number) => 15 + (level - 1) * 15,
 
+  /** Basislijst mode: skipping adds this many seconds to the time (the name comes back later). */
+  practiceSkipPenalty: 20,
+
   /** New targets are not picked this close to the helicopter (when possible). */
   minTargetDistance: 40,
 };
