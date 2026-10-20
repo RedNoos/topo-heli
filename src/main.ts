@@ -27,8 +27,9 @@ const ui = {
   progress: $('river-progress'),
   physicalToggle: $('physical-toggle'),
   physicalOption: $<HTMLInputElement>('opt-physical'),
-  practiceToggle: $('practice-toggle'),
-  practiceOption: $<HTMLInputElement>('opt-practice'),
+  modeBox: $('mode-box'),
+  modeFree: $('mode-free'),
+  modeList: $('mode-list'),
   score: $('score'),
   level: $('level'),
   toast: $('toast'),
@@ -172,10 +173,18 @@ function renderMapSelect() {
   }
   // Time bonus per level differs per map (e.g. Flevoland: +0:30).
   $('howto-levels').innerHTML = t('howtoLevels', { bonus: clock(mapDef.time?.levelBonus ?? CONFIG.levelTimeBonus) });
-  // Basislijst mode (Dutch maps): always with its waters and areas, so no physical switch then.
-  ui.practiceToggle.hidden = !mapDef.practice;
-  ui.practiceOption.checked = practiceOn;
-  $('practice-label').innerHTML = t('practiceOption');
+  // Game mode (Dutch maps): "Find them all" (Basislijst) always has its waters and areas, so
+  // no physical switch then.
+  ui.modeBox.hidden = !mapDef.practice;
+  ui.modeFree.classList.toggle('active', !practiceOn);
+  ui.modeList.classList.toggle('active', practiceOn);
+  const list = '<i>basislijst topografie</i>';
+  const n = practiceCount();
+  $('mode-desc').innerHTML = !practiceOn
+    ? t('modeFreeDesc')
+    : n
+      ? t('modeListDesc', { n, list, extra: mapDef.parent ? t('modeListExtra') : '' })
+      : '';
   $('howto-levels').hidden = practiceOn;
   $('btn-skip').textContent = t(practiceOn ? 'skipPractice' : 'skip');
   // The mode switch is only offered for maps that have physical data.
@@ -187,8 +196,7 @@ function renderMapSelect() {
   $('howto-physical').innerHTML = kind ? t('howtoPhysicalWaters') + (kind === 'watersAreas' ? ' ' + t('howtoPhysicalAreas') : '') : t('howtoPhysical');
   $('howto-physical').hidden = !physicalOn && !(practiceOn && mapDef.loadPhysical);
   if (practiceOn) {
-    const n = practiceCount();
-    $('howto-practice').innerHTML = n ? t('howtoPractice', { n, list: '<i>basislijst topografie</i>', extra: mapDef.parent ? t('practiceExtra') : '' }) : '';
+    $('howto-practice').innerHTML = n ? t('howtoPractice', { n, list, extra: mapDef.parent ? t('practiceExtra') : '' }) : '';
     const best = getBestTime(scoreId());
     ui.best.innerHTML = best > 0 ? t('bestPractice', { map: mapName(mapDef), t: clock(best) }) : '';
     $('howto-practice').hidden = false;
@@ -471,11 +479,14 @@ $<HTMLSelectElement>('region').onchange = (e) => {
   const def = MAPS.find((m) => m.id === (e.target as HTMLSelectElement).value);
   if (def) void selectMap(def);
 };
-ui.practiceOption.onchange = () => {
-  practiceOn = ui.practiceOption.checked;
+const setMode = (practice: boolean) => {
+  if (practice === practiceOn) return;
+  practiceOn = practice;
   saveOption(practiceOn, PRACTICE_KEY);
   void optionChanged();
 };
+ui.modeFree.onclick = () => setMode(false);
+ui.modeList.onclick = () => setMode(true);
 ui.physicalOption.onchange = () => {
   physicalOn = ui.physicalOption.checked;
   saveOption(physicalOn);

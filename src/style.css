@@ -403,6 +403,32 @@ h1 {
   color: #fff;
 }
 
+/* Game mode (Dutch maps): two buttons like the map choice, the chosen one described below. */
+.mode {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mode-desc {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* Game mode (Dutch maps): two buttons like the map choice, the chosen one described below. */
+.mode {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mode-desc {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
 .toggle {
   align-self: center;
   display: inline-flex;

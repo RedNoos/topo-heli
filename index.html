@@ -47,11 +47,13 @@
           <span id="region-label">Province</span>
           <select id="region"></select>
         </label>
-        <label class="toggle" id="practice-toggle" hidden>
-          <input type="checkbox" id="opt-practice" />
-          <span class="switch"></span>
-          <span id="practice-label">Basislijst</span>
-        </label>
+        <div class="mode" id="mode-box" hidden>
+          <div class="map-select">
+            <button type="button" id="mode-free" data-i18n="modeFree">Against the clock</button>
+            <button type="button" id="mode-list" data-i18n="modeList">Find them all</button>
+          </div>
+          <p class="mode-desc" id="mode-desc"></p>
+        </div>
         <label class="toggle" id="physical-toggle" hidden>
           <input type="checkbox" id="opt-physical" />
           <span class="switch"></span>
