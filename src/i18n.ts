@@ -115,7 +115,7 @@ const en = {
   credits: 'Map data: © {osm} contributors, {ne}, {gn}, {cbs}',
   inspiredBy: 'Inspired by {game} ({maker}, {platform}, 1984)',
   privacy: 'Anonymous visitor statistics via {goatcounter}, without cookies.',
-  feedback: 'Feedback',
+  feedback: '💬 Feedback',
   feedbackPrivacy: 'Feedback is sent via {tally} (EU); only what you fill in is stored.',
 };
 
@@ -219,7 +219,7 @@ const nl: Record<StringKey, string> = {
   credits: 'Kaartgegevens: © {osm}-bijdragers, {ne}, {gn}, {cbs}',
   inspiredBy: 'Geïnspireerd op {game} ({maker}, {platform}, 1984)',
   privacy: 'Anonieme bezoekersstatistieken via {goatcounter}, zonder cookies.',
-  feedback: 'Feedback geven',
+  feedback: '💬 Feedback geven',
   feedbackPrivacy: 'Feedback gaat via {tally} (EU); alleen wat je zelf invult wordt bewaard.',
 };
 
@@ -321,7 +321,7 @@ const srLatn: Record<StringKey, string> = {
   credits: 'Podaci za mape: © saradnici {osm}, {ne}, {gn}, {cbs}',
   inspiredBy: 'Inspirisano igrom {game} ({maker}, {platform}, 1984)',
   privacy: 'Anonimna statistika poseta preko {goatcounter}, bez kolačića.',
-  feedback: 'Utisci i predlozi',
+  feedback: '💬 Utisci i predlozi',
   feedbackPrivacy: 'Utisci se šalju preko {tally} (EU); čuva se samo ono što sam upišeš.',
 };
 
