@@ -327,6 +327,31 @@ function showToast(title: string, detail: string) {
   toastTimer = window.setTimeout(() => (ui.toast.hidden = true), 2600);
 }
 
+/** End screen name groups; kept so a language switch can redraw them. */
+let overGroups: { title: StringKey; names: string[]; cls: string; note?: StringKey }[] = [];
+function renderOverGroups() {
+  const box = $('over-groups');
+  box.innerHTML = '';
+  for (const g of overGroups) {
+    if (g.names.length === 0 && !g.note) continue;
+    const div = document.createElement('div');
+    div.className = g.cls;
+    const h = document.createElement('h3');
+    h.textContent = t(g.title);
+    const list = document.createElement('div');
+    list.className = 'found-list';
+    for (const n of g.names) {
+      const s = document.createElement('span');
+      s.className = g.cls;
+      s.textContent = placeName(n);
+      list.append(s);
+    }
+    if (g.note && g.names.length === 0) list.textContent = t(g.note);
+    div.append(h, list);
+    box.append(div);
+  }
+}
+
 /** Basislijst mode: all names found. */
 function endPractice(game: Game) {
   sfx.levelUp();
@@ -339,19 +364,12 @@ function endPractice(game: Game) {
   $('final-score').textContent = clock(secs);
   $('final-label').textContent = t('timeLabel');
   $('final-best').textContent = !prevBest || secs < prevBest ? t('newBestTime') : t('bestTime', { t: clock(prevBest) });
-  // Worth practising: the skipped names and the three that took longest.
-  const slow = [...game.found].sort((a, b) => b.secs - a.secs).slice(0, 3).map((f) => f.target);
-  const again = [...new Set([...game.skipped, ...slow])].map((c) => placeName(c.name));
-  $('final-missed').textContent = t('practiseAgain', { names: again.join(', ') });
-  const list = $('found-list');
-  list.innerHTML = '';
-  const skipped = new Set(game.skipped);
-  for (const f of game.found) {
-    const s = document.createElement('span');
-    s.textContent = placeName(f.target.name);
-    if (skipped.has(f.target)) s.className = 'later';
-    list.append(s);
-  }
+  // Worth practising: the skipped names and the three that took longest (if clearly long).
+  const avg = game.elapsed / Math.max(1, game.found.length);
+  const slow = [...game.found].sort((a, b) => b.secs - a.secs).slice(0, 3).filter((f) => f.secs > avg * 1.5).map((f) => f.target);
+  const again = [...new Set([...game.skipped, ...slow])].map((c) => c.name);
+  overGroups = [{ title: 'groupPractise', names: again, cls: 'practise', note: 'perfect' }];
+  renderOverGroups();
   show('over');
 }
 
@@ -370,19 +388,13 @@ function endGame() {
   $('final-label').textContent = plural('placesFound', score);
   $('final-best').textContent =
     score > prevBest && score > 0 ? t('newBest') : prevBest > 0 ? t('bestShort', { n: prevBest }) : '';
-  $('final-missed').textContent = game.target ? t('lastOne', { name: placeName(game.target.name) }) : '';
-  const list = $('found-list');
-  list.innerHTML = '';
-  const all = [
-    ...game.found.map((f) => ({ c: f.target, skipped: false })),
-    ...game.skipped.map((c) => ({ c, skipped: true })),
+  // Not found: the skipped names and the one you were looking for when time ran out.
+  const missed = [...new Set([...game.skipped, ...(game.target ? [game.target] : [])])].map((c) => c.name);
+  overGroups = [
+    { title: 'groupFound', names: game.found.map((f) => f.target.name), cls: 'found' },
+    { title: 'groupMissed', names: missed, cls: 'missed' },
   ];
-  for (const { c, skipped } of all) {
-    const s = document.createElement('span');
-    s.textContent = placeName(c.name);
-    if (skipped) s.className = 'skipped';
-    list.append(s);
-  }
+  renderOverGroups();
   show('over');
 }
 
@@ -431,6 +443,7 @@ function translateStatic() {
   updateMuteLabel();
   if (game?.target) setTargetLabel(game.target);
   if (game) $('final-label').textContent = game.practice ? t('timeLabel') : plural('placesFound', game.found.length);
+  renderOverGroups();
   renderLangPicker();
   renderMapSelect();
   updateInsets();

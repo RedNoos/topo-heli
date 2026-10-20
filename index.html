@@ -94,15 +94,17 @@
     </div>
 
     <div class="overlay" id="over" hidden>
-      <div class="panel">
+      <div class="panel over-panel">
         <h2 id="over-title" data-i18n="timeUp">Time's up!</h2>
         <div class="final"><b id="final-score">0</b> <span id="final-label">places found</span></div>
         <p class="best" id="final-best"></p>
-        <p class="missed" id="final-missed"></p>
-        <div class="found-list" id="found-list"></div>
+        <!-- Name groups: found / not found, or (Basislijst mode) the ones to practise again. -->
+        <div class="over-groups" id="over-groups"></div>
         <button class="btn primary" id="btn-again" data-i18n="playAgain">Play again</button>
-        <button class="btn ghost" id="btn-menu" data-i18n="menu">Menu</button>
-        <button class="btn small ghost feedback" id="btn-feedback-over" data-i18n="feedback">Feedback</button>
+        <div class="over-actions">
+          <button class="btn small ghost" id="btn-menu" data-i18n="menu">Menu</button>
+          <button class="btn small ghost" id="btn-feedback-over" data-i18n="feedback">Feedback</button>
+        </div>
       </div>
     </div>
 

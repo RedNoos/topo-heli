@@ -592,16 +592,63 @@ h1 {
   font-size: 13px;
 }
 
-.found-list span.skipped {
+.found-list span.missed {
   background: #f3dcd6;
   color: #7a2a1c;
-  text-decoration: line-through;
 }
 
-/* Basislijst mode: skipped first, found later. */
-.found-list span.later {
+/* Basislijst mode: names to practise again. */
+.found-list span.practise {
   background: #f8e3c4;
   color: #6b4313;
+}
+
+/* ---------- End screen ---------- */
+
+.over-panel {
+  gap: 10px;
+}
+
+.over-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.over-groups h3 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+/* Found names can be many: their list scrolls; the short groups never do. */
+.over-groups .found-list {
+  max-height: none;
+}
+
+.over-groups .found .found-list {
+  max-height: 120px;
+}
+
+.over-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .over-panel {
+    padding: 20px 18px;
+  }
+  .over-panel .final b {
+    font-size: 46px;
+  }
+  .over-panel h2 {
+    font-size: 22px;
+  }
 }
 
 /* ---------- Small screens ---------- */
