@@ -159,6 +159,7 @@ function renderMapSelect() {
   const top = topMap(mapDef);
   const subs = MAPS.filter((x) => x.parent === top.id);
   $('region-box').hidden = subs.length === 0;
+  $('region-label').hidden = subs.length === 0;
   if (subs.length) {
     $('region-label').textContent = t('region');
     const select = $<HTMLSelectElement>('region');
@@ -176,6 +177,7 @@ function renderMapSelect() {
   // Game mode (Dutch maps): "Find them all" (Basislijst) always has its waters and areas, so
   // no physical switch then.
   ui.modeBox.hidden = !mapDef.practice;
+  $('mode-label').hidden = !mapDef.practice;
   ui.modeFree.classList.toggle('active', !practiceOn);
   ui.modeList.classList.toggle('active', practiceOn);
   const list = '<i>basislijst topografie</i>';
@@ -189,6 +191,7 @@ function renderMapSelect() {
   $('btn-skip').textContent = t(practiceOn ? 'skipPractice' : 'skip');
   // The mode switch is only offered for maps that have physical data.
   ui.physicalToggle.hidden = !mapDef.loadPhysical || practiceOn;
+  $('physical-row').hidden = ui.physicalToggle.hidden;
   ui.physicalOption.checked = physicalOn;
   // The Netherlands: "Waters" or "Waters & areas" instead of mountains, rivers & lakes.
   const kind = mapDef.physicalKind;
@@ -521,7 +524,10 @@ const feedback = () => {
   const mode = practiceOn ? 'basislijst' : !physicalOn ? 'vrij' : mapDef.physicalKind ? 'wateren' : 'bergen-rivieren';
   void openFeedback({ map: mapDef.id, mode, lang: getLang() });
 };
-$('btn-feedback').onclick = feedback;
+$('btn-feedback').onclick = (e) => {
+  e.preventDefault();
+  feedback();
+};
 $('btn-feedback-over').onclick = feedback;
 
 window.addEventListener('keydown', (e) => {
@@ -588,6 +594,23 @@ function frame(now: number) {
   }
   requestAnimationFrame(frame);
 }
+
+// "How to play" is open until the player has seen it once, then stays as they leave it.
+const HOWTO_KEY = 'topo-heli:howto';
+const howtoBox = $<HTMLDetailsElement>('howto-box');
+try {
+  howtoBox.open = localStorage.getItem(HOWTO_KEY) !== 'closed';
+  if (!localStorage.getItem(HOWTO_KEY)) localStorage.setItem(HOWTO_KEY, 'closed');
+} catch {
+  howtoBox.open = true;
+}
+howtoBox.ontoggle = () => {
+  try {
+    localStorage.setItem(HOWTO_KEY, howtoBox.open ? 'open' : 'closed');
+  } catch {
+    /* not remembered */
+  }
+};
 
 document.documentElement.lang = getLang();
 translateStatic();

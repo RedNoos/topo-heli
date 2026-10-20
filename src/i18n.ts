@@ -18,7 +18,10 @@ export const LANGS: { id: Lang; short: string; label: string; flag: Flag }[] = [
 ];
 
 const en = {
-  subtitle: 'Fly your helicopter to as many cities as you can before time runs out.',
+  subtitle: 'Fly your helicopter to the right place.',
+  mapLabel: 'Map',
+  modeLabel: 'Mode',
+  howtoTitle: 'How to play',
   physicalOption: 'Mountains, rivers &amp; lakes',
   physicalOptionWaters: 'Waters',
   physicalOptionWatersAreas: 'Waters &amp; areas',
@@ -111,14 +114,17 @@ const en = {
   credits: 'Map data: © {osm} contributors, {ne}, {gn}, {cbs}',
   inspiredBy: 'Inspired by {game} ({maker}, {platform}, 1984)',
   privacy: 'Anonymous visitor statistics via {goatcounter}, without cookies.',
-  feedback: '💬 Feedback',
+  feedback: 'Feedback',
   feedbackPrivacy: 'Feedback is sent via {tally} (EU); only what you fill in is stored.',
 };
 
 export type StringKey = keyof typeof en;
 
 const nl: Record<StringKey, string> = {
-  subtitle: 'Vlieg met je helikopter naar zoveel mogelijk steden voordat de tijd om is.',
+  subtitle: 'Vlieg met je helikopter naar de juiste plek.',
+  mapLabel: 'Kaart',
+  modeLabel: 'Spelvorm',
+  howtoTitle: 'Hoe speel je?',
   physicalOption: 'Bergen, rivieren &amp; meren',
   physicalOptionWaters: 'Wateren',
   physicalOptionWatersAreas: 'Wateren &amp; gebieden',
@@ -211,12 +217,15 @@ const nl: Record<StringKey, string> = {
   credits: 'Kaartgegevens: © {osm}-bijdragers, {ne}, {gn}, {cbs}',
   inspiredBy: 'Geïnspireerd op {game} ({maker}, {platform}, 1984)',
   privacy: 'Anonieme bezoekersstatistieken via {goatcounter}, zonder cookies.',
-  feedback: '💬 Feedback geven',
+  feedback: 'Feedback geven',
   feedbackPrivacy: 'Feedback gaat via {tally} (EU); alleen wat je zelf invult wordt bewaard.',
 };
 
 const srLatn: Record<StringKey, string> = {
-  subtitle: 'Leti helikopterom do što više gradova pre nego što istekne vreme.',
+  subtitle: 'Leti helikopterom do pravog mesta.',
+  mapLabel: 'Karta',
+  modeLabel: 'Način igre',
+  howtoTitle: 'Kako se igra?',
   physicalOption: 'Planine, reke i jezera',
   physicalOptionWaters: 'Vode',
   physicalOptionWatersAreas: 'Vode i oblasti',
@@ -309,7 +318,7 @@ const srLatn: Record<StringKey, string> = {
   credits: 'Podaci za mape: © saradnici {osm}, {ne}, {gn}, {cbs}',
   inspiredBy: 'Inspirisano igrom {game} ({maker}, {platform}, 1984)',
   privacy: 'Anonimna statistika poseta preko {goatcounter}, bez kolačića.',
-  feedback: '💬 Utisci i predlozi',
+  feedback: 'Utisci i predlozi',
   feedbackPrivacy: 'Utisci se šalju preko {tally} (EU); čuva se samo ono što sam upišeš.',
 };
 

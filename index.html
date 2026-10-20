@@ -42,34 +42,41 @@
         <div class="logo">🚁</div>
         <h1>Topo Heli</h1>
         <p class="sub" data-i18n="subtitle">Fly your helicopter to as many cities as you can before time runs out.</p>
-        <div class="map-select" id="map-select"></div>
-        <label class="region" id="region-box" hidden>
-          <span id="region-label">Province</span>
-          <select id="region"></select>
-        </label>
-        <div class="mode" id="mode-box" hidden>
-          <div class="map-select">
-            <button type="button" id="mode-free" data-i18n="modeFree">Against the clock</button>
-            <button type="button" id="mode-list" data-i18n="modeList">Find them all</button>
+        <!-- Settings: a label column and the choices next to it. -->
+        <div class="settings">
+          <span class="row-label" data-i18n="mapLabel">Map</span>
+          <div class="map-select" id="map-select"></div>
+          <label class="row-label" for="region" id="region-label" hidden>Province</label>
+          <div class="row-value" id="region-box" hidden><select id="region"></select></div>
+          <span class="row-label" id="mode-label" data-i18n="modeLabel" hidden>Mode</span>
+          <div class="row-value" id="mode-box" hidden>
+            <div class="segmented">
+              <button type="button" id="mode-free" data-i18n="modeFree">Against the clock</button>
+              <button type="button" id="mode-list" data-i18n="modeList">Find them all</button>
+            </div>
+            <p class="mode-desc" id="mode-desc"></p>
           </div>
-          <p class="mode-desc" id="mode-desc"></p>
+          <span class="row-label" id="physical-row" hidden></span>
+          <label class="toggle row-value" id="physical-toggle" hidden>
+            <input type="checkbox" id="opt-physical" />
+            <span class="switch"></span>
+            <span id="physical-label">Mountains, rivers &amp; lakes</span>
+          </label>
         </div>
-        <label class="toggle" id="physical-toggle" hidden>
-          <input type="checkbox" id="opt-physical" />
-          <span class="switch"></span>
-          <span id="physical-label">Mountains, rivers &amp; lakes</span>
-        </label>
-        <p class="best" id="best"></p>
         <button class="btn primary" id="btn-start" data-i18n="start">Start</button>
-        <ul class="howto">
-          <li data-i18n="howtoFly"></li>
-          <li data-i18n="howtoFlash"></li>
-          <li id="howto-levels"></li>
-          <li id="howto-physical" hidden></li>
-          <li id="howto-practice" hidden></li>
-        </ul>
-        <button class="btn small ghost feedback" id="btn-feedback" data-i18n="feedback">Feedback</button>
+        <p class="best" id="best"></p>
+        <details class="howto-box" id="howto-box">
+          <summary data-i18n="howtoTitle">How to play</summary>
+          <ul class="howto">
+            <li data-i18n="howtoFly"></li>
+            <li data-i18n="howtoFlash"></li>
+            <li id="howto-levels"></li>
+            <li id="howto-physical" hidden></li>
+            <li id="howto-practice" hidden></li>
+          </ul>
+        </details>
         <div class="fine-print">
+          <a href="#" id="btn-feedback" data-i18n="feedback">Feedback</a>
           <span data-i18n="credits"></span>
           <span data-i18n="inspiredBy"></span>
           <span id="privacy" data-i18n="privacy" hidden></span>

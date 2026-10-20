@@ -387,7 +387,8 @@ h1 {
   font-weight: 600;
 }
 
-.region select {
+.region select,
+#region-box select {
   font: inherit;
   font-weight: 600;
   padding: 6px 10px;
@@ -482,9 +483,17 @@ h1 {
 }
 
 .best {
-  margin: 0;
+  margin: -4px 0 0;
   color: var(--muted);
-  min-height: 1.4em;
+  font-size: 14px;
+}
+
+.best:empty {
+  display: none;
+}
+
+.best::before {
+  content: '🏆 ';
 }
 
 .btn {
@@ -670,6 +679,113 @@ h1 {
   color: inherit;
 }
 
-.fine-print span:not([hidden]) ~ span:not([hidden])::before {
-  content: ' · ';
+.fine-print > :not([hidden]) ~ :not([hidden])::before {
+  content: '·';
+  margin-right: 0.35em;
+}
+
+.fine-print #btn-feedback {
+  font-weight: 700;
+}
+
+/* ---------- Menu settings ---------- */
+
+.settings {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 10px 12px;
+  text-align: left;
+  margin-top: 4px;
+}
+
+.row-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+/* The mode label sits next to the switch, not next to its description. */
+#mode-label {
+  align-self: start;
+  margin-top: 9px;
+}
+
+.settings .map-select {
+  justify-content: flex-start;
+}
+
+.settings .map-select button {
+  padding: 5px 13px;
+}
+
+#region-box select {
+  max-width: 100%;
+}
+
+.settings .toggle {
+  justify-self: start;
+  font-size: 15px;
+}
+
+/* One switch with two halves: clearly "either - or", unlike the map buttons. */
+.segmented {
+  display: inline-flex;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.segmented button {
+  border: 0;
+  background: #fff;
+  color: var(--ink);
+  padding: 5px 13px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.segmented button.active {
+  background: var(--ink);
+  color: #fff;
+}
+
+.mode-desc {
+  margin: 4px 0 0 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.howto-box {
+  text-align: left;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.howto-box summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--ink);
+  text-align: center;
+}
+
+/* Narrow phones: labels above their choices. */
+@media (max-width: 420px) {
+  .settings {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .settings .row-value,
+  .settings .map-select {
+    margin-bottom: 6px;
+  }
+  #mode-label {
+    margin-top: 0;
+  }
+  #physical-row {
+    display: none;
+  }
 }
