@@ -17,6 +17,11 @@ deploys via `.github/workflows/deploy.yml` (GitHub Pages).
 - Every UI text in all four languages (see i18n below). Answer the user in the language they write in.
 - Check UI changes on desktop and phone with `npm run shots` before reporting them done.
 
+## Skills
+
+`.claude/skills/`: `deploy` (push + Pages run), `check-ui` (screenshots + playtest), `add-text`
+(texts in four languages), `rebuild-data` (data builds in the right order, with checks).
+
 ## Layout
 
 - `src/main.ts`: menu, HUD, end screens, options (stored in localStorage `topo-heli:*`), stats.
