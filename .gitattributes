@@ -1,0 +1,8 @@
+# One line ending everywhere (LF), also in Windows working copies: mixed CRLF/LF breaks edits.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.zip binary
+*.pdf binary

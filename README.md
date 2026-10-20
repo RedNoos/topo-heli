@@ -5,7 +5,12 @@ A browser topography game: fly a helicopter over a map and find as many cities a
 ```sh
 npm install
 npm run dev      # http://localhost:5173
+npm run dev:lan  # http://localhost:5180, also reachable from a phone on the same network
 npm run build    # static site in dist/
+
+# with dev:lan running (needs Google Chrome):
+npm run playtest # plays a map through and reports problems
+npm run shots    # screenshots of menu, game and end screen (desktop + phone) in .shots/
 ```
 
 ## How it plays
