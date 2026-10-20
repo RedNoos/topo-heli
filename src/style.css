@@ -630,3 +630,20 @@ h1 {
   align-self: center;
   margin-top: 4px;
 }
+
+/* Credits, privacy and feedback notes: one compact block, the parts separated by dots. */
+.fine-print {
+  margin-top: 2px;
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--muted);
+  opacity: 0.85;
+}
+
+.fine-print a {
+  color: inherit;
+}
+
+.fine-print span:not([hidden]) ~ span:not([hidden])::before {
+  content: ' · ';
+}

@@ -188,7 +188,7 @@ function renderMapSelect() {
   $('howto-physical').hidden = !physicalOn && !(practiceOn && mapDef.loadPhysical);
   if (practiceOn) {
     const n = practiceCount();
-    $('howto-practice').innerHTML = n ? t('howtoPractice', { n, extra: mapDef.parent ? t('practiceExtra') : '' }) : '';
+    $('howto-practice').innerHTML = n ? t('howtoPractice', { n, list: '<i>basislijst topografie</i>', extra: mapDef.parent ? t('practiceExtra') : '' }) : '';
     const best = getBestTime(scoreId());
     ui.best.innerHTML = best > 0 ? t('bestPractice', { map: mapName(mapDef), t: clock(best) }) : '';
     $('howto-practice').hidden = false;
