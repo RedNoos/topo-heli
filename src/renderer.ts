@@ -12,6 +12,7 @@ const COLORS = {
   home: '#eef0d2',
   homeBorder: '#5e5038',
   district: 'rgba(120, 110, 80, 0.35)',
+  region: 'rgba(110, 95, 65, 0.55)',
   water: '#5c9fd0',
   found: '#2f7d32',
   target: '#e53935',
@@ -39,6 +40,7 @@ interface Layers {
   home: Path2D;
   lakes: Path2D;
   districts: Path2D;
+  regions: Path2D;
   /** One path per colour index (multi-country maps only). */
   countries: { color: string; path: Path2D; empty: boolean }[];
   borders: Path2D;
@@ -106,6 +108,7 @@ function buildLayers(geo: GeoData, proj: Projection, physical?: PhysicalData): L
     home: polygons(geo.home),
     lakes: polygons(geo.lakes),
     districts: lines(geo.districts),
+    regions: lines(geo.regions ?? []),
     rivers: byWidth(geo.rivers),
   };
 }
@@ -245,6 +248,11 @@ export class Renderer {
     ctx.lineWidth = px(1.2);
     ctx.setLineDash([px(5), px(4)]);
     ctx.stroke(L.districts);
+    // Provinces / regions: a bit clearer than the districts.
+    ctx.strokeStyle = COLORS.region;
+    ctx.lineWidth = px(1.6);
+    ctx.setLineDash([px(6), px(4)]);
+    ctx.stroke(L.regions);
     ctx.setLineDash([]);
 
     // Water: muted outside the playable area, full colour inside it. Both are split at build

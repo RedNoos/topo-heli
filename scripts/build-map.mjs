@@ -48,6 +48,7 @@ const MAPS = {
       return d[0];
     },
     simplify: '45%',
+    regions: SERBIA_REGIONS,
   },
   netherlands: {
     // Land and province borders from CBS (see cbsLand); province borders drawn as districts.
@@ -316,9 +317,11 @@ async function buildMap(id, cfg) {
   const neighbours = await shape(neighbourFc, `${area()} -filter-slivers`);
 
   let districts = [];
+  // Borders of the sub-maps (provinces, regions), drawn a bit clearer than districts.
+  let regions = [];
   if (prov?.provinces) {
     // Whole Netherlands: province borders.
-    districts = parts(await shape(prov.provinces, `-dissolve prov ${area()} -innerlines`));
+    regions = parts(await shape(prov.provinces, `-dissolve prov ${area()} -innerlines`));
   } else if (prov?.districts) {
     // Serbian region: the borders of its districts.
     districts = parts(await shape(prov.districts, `-dissolve district ${area()} -innerlines`));
@@ -326,7 +329,22 @@ async function buildMap(id, cfg) {
     const admin1 = await source(SOURCES.admin1);
     const homeAdmin = filterFeatures(admin1, (f) => homeTest({ ADM0_A3: f.properties.adm0_a3 }));
     for (const f of homeAdmin.features) f.properties = { district: cfg.districtOf(f.properties) };
-    districts = parts(await shape(homeAdmin, `-dissolve district ${area()} -innerlines`));
+    if (!cfg.regions) {
+      districts = parts(await shape(homeAdmin, `-dissolve district ${area()} -innerlines`));
+    } else {
+      // Regions: their borders, and the district borders inside each region (not on top of a
+      // region border). Simplified once, so the lines meet exactly.
+      const simple = await shape(homeAdmin, `-dissolve district ${area()}`);
+      for (const f of simple.features) {
+        const r = cfg.regions.find((x) => x.districts.includes(f.properties.district));
+        if (!r) throw new Error(`District in no region: ${f.properties.district}`);
+        f.properties.region = r.id;
+      }
+      regions = parts(await shape(simple, '-dissolve region -innerlines'));
+      for (const r of cfg.regions) {
+        districts.push(...parts(await shape(filterFeatures(simple, (f) => f.properties.region === r.id), '-innerlines')));
+      }
+    }
   }
 
   const riverFeatures = [];
@@ -382,6 +400,7 @@ async function buildMap(id, cfg) {
     home: parts(home),
     neighbours: parts(neighbours),
     districts,
+    ...(regions.length ? { regions } : {}),
     // Inside the playable area (drawn bright) and outside it (drawn muted).
     rivers: riverList(riverSplit.inside),
     riversOutside: riverList(riverSplit.outside),

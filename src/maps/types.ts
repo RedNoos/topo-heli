@@ -10,6 +10,8 @@ export interface GeoData {
   neighbours: LonLat[][][];
   /** Internal administrative borders as lines. */
   districts: LonLat[][];
+  /** Borders between the sub-maps (Dutch provinces, Serbian regions) as lines. */
+  regions?: LonLat[][];
   /** r = Natural Earth scalerank (lower = bigger river), l = line. */
   rivers: { r: number; l: LonLat[] }[];
   lakes: LonLat[][][];
