@@ -13,6 +13,8 @@ import { PROVINCES, SERBIA_REGIONS } from './provinces.mjs';
 
 /** Province maps: rivers with less than this inside the province are not asked. */
 const MIN_PROVINCE_RIVER_KM = 8;
+/** Region maps: a peak just outside the region is moved this far inside it. */
+const MOUNTAIN_INSIDE_KM = 4;
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const CACHE = path.join(ROOT, '.cache');
@@ -765,7 +767,31 @@ async function buildDerived(id, fromId) {
   // Peaks often lie on a border (Stara planina, Kopaonik): also those just outside, in both maps.
   const nearKm = (m, maxKm) =>
     homePts.some(([x, y]) => 111 * Math.hypot((x - m.lon) * Math.cos((m.lat * Math.PI) / 180), y - m.lat) < maxKm);
-  const mountains = (from.mountains ?? []).filter((m) => inHome([m.lon, m.lat]) || nearKm(m, 3));
+  // A peak just outside is moved to the nearest spot well inside the map (still within the
+  // range), so you find it by flying in your own region, not over the grey neighbours.
+  const kmX = 111 * Math.cos((homePts[0][1] * Math.PI) / 180);
+  const edges = home.flat().flatMap((r) => r.slice(1).map((b, i) => [r[i], b]));
+  const borderKm = ([x, y]) =>
+    Math.min(...edges.map(([[ax, ay], [bx, by]]) => {
+      const [px, py, dx, dy] = [(x - ax) * kmX, (y - ay) * 111, (bx - ax) * kmX, (by - ay) * 111];
+      const t = Math.max(0, Math.min(1, (px * dx + py * dy) / (dx * dx + dy * dy || 1)));
+      return Math.hypot(px - t * dx, py - t * dy);
+    }));
+  const moveInside = (m) => {
+    let best = null;
+    for (let i = -20; i <= 20; i++) for (let j = -20; j <= 20; j++) {
+      const p = [m.lon + (i * 0.5) / kmX, m.lat + (j * 0.5) / 111];
+      const d = Math.hypot(i, j) * 0.5;
+      if (d > 10 || !inHome(p) || borderKm(p) < MOUNTAIN_INSIDE_KM) continue;
+      if (!best || d < best.d) best = { d, p };
+    }
+    if (!best) return m;
+    console.log(`  ${id}: ${m.name} moved ${best.d.toFixed(1)} km inside`);
+    return { ...m, lon: +best.p[0].toFixed(4), lat: +best.p[1].toFixed(4) };
+  };
+  const mountains = (from.mountains ?? [])
+    .filter((m) => inHome([m.lon, m.lat]) || nearKm(m, 3))
+    .map((m) => (inHome([m.lon, m.lat]) ? m : moveInside(m)));
   const landmarks = (from.landmarks ?? []).filter((m) => inHome([m.lon, m.lat]));
   if (!rivers.length && !lakes.length && !areas.length && !mountains.length && !landmarks.length) {
     await fs.rm(path.join(ROOT, 'src', 'maps', id, 'physical.json'), { force: true });
