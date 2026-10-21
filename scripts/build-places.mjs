@@ -6,11 +6,13 @@
 //
 // Writes src/maps/netherlands/cities.json, src/maps/nl-<province>/cities.json and the province
 // manifest src/maps/nl-provinces.json. Downloads are cached in .cache/.
+// Also splits the Serbian places (src/maps/serbia/cities.json) into the Serbian regions:
+// src/maps/rs-<region>/cities.json and the manifest src/maps/rs-regions.json.
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { unzipSync, strFromU8 } from 'fflate';
-import { PROVINCES } from './provinces.mjs';
+import { PROVINCES, SERBIA_REGIONS } from './provinces.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const CACHE = path.join(ROOT, '.cache');
@@ -200,3 +202,33 @@ for (const p of provinces) {
   console.log(`  ${p.name.padEnd(14)} ${String(cities.length).padStart(3)} places (capital ${p.capital}), view ${viewKm} km`);
 }
 await fs.writeFile(path.join(ROOT, 'src', 'maps', 'nl-provinces.json'), JSON.stringify(manifest, null, 2) + '\n');
+
+// ---------- Serbian regions ----------
+
+const serbiaCities = JSON.parse(await fs.readFile(path.join(ROOT, 'src', 'maps', 'serbia', 'cities.json'), 'utf8'));
+const regions = [];
+for (const r of SERBIA_REGIONS) {
+  const geo = JSON.parse(await fs.readFile(path.join(ROOT, 'src', 'maps', r.id, 'geo.json'), 'utf8'));
+  regions.push({ ...r, home: geo.home, bbox: geo.bbox });
+}
+const regionOf = (c) => {
+  const pt = [c.lon, c.lat];
+  return regions.find((r) => insidePolys(pt, r.home)) ?? regions.reduce((best, r) => (nearDistance(c, r.home) < nearDistance(c, best.home) ? r : best));
+};
+const regionCities = new Map(regions.map((r) => [r, []]));
+for (const c of serbiaCities) regionCities.get(regionOf(c)).push(c);
+const regionManifest = [];
+for (const r of regions) {
+  const list = regionCities.get(r).sort((a, b) => b.pop - a.pop);
+  if (!list.some((c) => c.name === r.capital)) throw new Error(`Capital ${r.capital} not found in ${r.name}`);
+  const cities = list.map((c) => ({ ...c, ...(c.name === r.capital ? { level: 1 } : {}) }));
+  await fs.writeFile(path.join(ROOT, 'src', 'maps', r.id, 'cities.json'), '[\n' + cities.map((c) => JSON.stringify(c)).join(',\n') + '\n]\n');
+  // Zoom: about half of the region's larger side (within limits), so you have to fly.
+  const [w, s, e, n] = r.bbox;
+  const widthKm = (e - w) * 111 * Math.cos(((s + n) / 2) * D);
+  const heightKm = (n - s) * 111;
+  const viewKm = Math.round(Math.min(130, Math.max(70, 0.5 * Math.max(widthKm, heightKm))));
+  regionManifest.push({ id: r.id, nameKey: r.nameKey, viewKm });
+  console.log(`  ${r.name.padEnd(18)} ${String(cities.length).padStart(3)} places (capital ${r.capital}), view ${viewKm} km`);
+}
+await fs.writeFile(path.join(ROOT, 'src', 'maps', 'rs-regions.json'), JSON.stringify(regionManifest, null, 2) + '\n');

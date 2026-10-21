@@ -9,7 +9,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import mapshaper from 'mapshaper';
-import { PROVINCES } from './provinces.mjs';
+import { PROVINCES, SERBIA_REGIONS } from './provinces.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const CACHE = path.join(ROOT, '.cache');
@@ -41,7 +41,8 @@ const MAPS = {
     // Area to keep around the playable country: [minLon, minLat, maxLon, maxLat].
     bbox: [18.1, 41.5, 23.6, 46.55],
     districtOf: (p) => {
-      if (p.adm0_a3 !== 'KOS') return p.name;
+      // Natural Earth names Rasinski "Pomoravski" too.
+      if (p.adm0_a3 !== 'KOS') return p.adm1_code === 'SRB-833' ? 'Rasinski' : p.name;
       const d = Object.entries(KOSOVO_DISTRICTS).find(([, list]) => list.includes(p.name));
       if (!d) throw new Error(`Unmapped Kosovo municipality: ${p.name}`);
       return d[0];
@@ -236,6 +237,32 @@ async function cbsShapes(cfg) {
   return { home, neighbours, provinces: cfg.province ? null : land };
 }
 
+/**
+ * A Serbian region: its districts are the playable area, the rest of Serbia is shown like a
+ * neighbouring country (as for the Dutch provinces).
+ */
+async function regionShapes(cfg) {
+  const serbia = MAPS.serbia;
+  const admin1 = structuredClone(await source(SOURCES.admin1));
+  const all = filterFeatures(admin1, (f) => serbia.home.includes(f.properties.adm0_a3));
+  for (const f of all.features) f.properties = { district: serbia.districtOf(f.properties) };
+  const unknown = cfg.districts.filter((d) => !all.features.some((f) => f.properties.district === d));
+  if (unknown.length) throw new Error(`Unknown districts: ${unknown.join(', ')}`);
+  const isHome = (f) => cfg.districts.includes(f.properties.district);
+  const districts = filterFeatures(all, isHome);
+  const home = districts.features.map((f) => ({ ...f, properties: { code: 'HOME', home: true } }));
+  const rest = all.features.filter((f) => !isHome(f)).map((f) => ({ ...f, properties: { code: 'REST', home: false } }));
+  if (!cfg.bbox) {
+    // Region bbox plus a margin (~20 km) of surroundings.
+    const [w, s, e, n] = boundsOf(home);
+    cfg.bbox = [w - 0.25, s - 0.18, e + 0.25, n + 0.18].map((v) => +v.toFixed(3));
+  }
+  const countries = structuredClone(await source(SOURCES.countries));
+  const others = countries.features
+    .filter((f) => !serbia.home.includes(f.properties.ADM0_A3))
+    .map((f) => ({ ...f, properties: { code: f.properties.ADM0_A3, home: false } }));
+  return { home, neighbours: [...rest, ...others], districts };
+}
 
 const boundsOf = (features) => {
   const pts = features.flatMap((f) => parts({ features: [f] }).flat(2));
@@ -246,12 +273,12 @@ const boundsOf = (features) => {
 
 async function buildMap(id, cfg) {
   console.log(`Building ${id}`);
-  const prov = cfg.cbs ? await cbsShapes(cfg) : null;
+  const prov = cfg.cbs ? await cbsShapes(cfg) : cfg.districts ? await regionShapes(cfg) : null;
   const proj = cfg.projection;
   // Map data reaches a bit beyond the playable bbox: the camera may look past the edge (so
   // places near it are not hidden under the HUD), and that strip should still show the map.
   // Provinces are small: on wide screens the view is far wider than the province.
-  const DRAW_MARGIN = cfg.province ? 1.2 : 0.35;
+  const DRAW_MARGIN = cfg.province || cfg.districts ? 1.2 : 0.35;
   const [bw, bs, be, bn] = cfg.bbox;
   const bbox = (proj ? cfg.bbox : [bw - DRAW_MARGIN, bs - DRAW_MARGIN, be + DRAW_MARGIN, bn + DRAW_MARGIN]).join(',');
   const projStr = proj && `+proj=laea +lat_0=${proj.lat0} +lon_0=${proj.lon0} +R=6371000`;
@@ -292,6 +319,9 @@ async function buildMap(id, cfg) {
   if (prov?.provinces) {
     // Whole Netherlands: province borders.
     districts = parts(await shape(prov.provinces, `-dissolve prov ${area()} -innerlines`));
+  } else if (prov?.districts) {
+    // Serbian region: the borders of its districts.
+    districts = parts(await shape(prov.districts, `-dissolve district ${area()} -innerlines`));
   } else if (cfg.districtOf) {
     const admin1 = await source(SOURCES.admin1);
     const homeAdmin = filterFeatures(admin1, (f) => homeTest({ ADM0_A3: f.properties.adm0_a3 }));
@@ -379,6 +409,12 @@ async function buildMap(id, cfg) {
 // like a neighbouring country. The bbox is derived from the province's shape.
 for (const p of PROVINCES) {
   MAPS[p.id] = { cbs: true, province: p.cbs, simplify: '100%' };
+}
+
+// Serbian regions: a group of districts is the playable area, the rest of Serbia is shown
+// like a neighbouring country.
+for (const r of SERBIA_REGIONS) {
+  MAPS[r.id] = { districts: r.districts, simplify: '70%' };
 }
 
 const only = process.argv[2];

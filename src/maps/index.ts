@@ -1,10 +1,12 @@
 import provinces from './nl-provinces.json';
+import regions from './rs-regions.json';
+import type { StringKey } from '../i18n';
 import type { MapDefinition, MapData, PhysicalData } from './types';
 
-// Province maps (built by scripts/build-map.mjs, build-places.mjs and build-physical.mjs).
-const provinceGeo = import.meta.glob('./nl-*/geo.json');
-const provinceCities = import.meta.glob('./nl-*/cities.json');
-const provincePhysical = import.meta.glob('./nl-*/physical.json');
+// Province and region maps (built by scripts/build-map.mjs, build-places.mjs and build-physical.mjs).
+const provinceGeo = import.meta.glob(['./nl-*/geo.json', './rs-*/geo.json']);
+const provinceCities = import.meta.glob(['./nl-*/cities.json', './rs-*/cities.json']);
+const provincePhysical = import.meta.glob(['./nl-*/physical.json', './rs-*/physical.json']);
 const json = async <T>(load: () => Promise<unknown>) => ((await load()) as { default: T }).default;
 
 // To add a map: add its id + settings to MAPS in scripts/build-map.mjs, run
@@ -14,6 +16,7 @@ export const MAPS: MapDefinition[] = [
   {
     id: 'serbia',
     nameKey: 'mapSerbia',
+    allKey: 'regionAllSerbia',
     placeNames: 'sr-Latn',
     viewKm: 260,
     load: async () => ({
@@ -25,6 +28,7 @@ export const MAPS: MapDefinition[] = [
   {
     id: 'netherlands',
     nameKey: 'mapNetherlands',
+    allKey: 'regionAllNetherlands',
     // Dutch names are kept in every language.
     placeNames: 'native',
     viewKm: 160,
@@ -68,6 +72,24 @@ export const MAPS: MapDefinition[] = [
       }),
       loadPhysical: physical ? () => json<PhysicalData>(physical) : undefined,
       physicalKind: 'areas' in p && p.areas ? 'watersAreas' : 'waters',
+    };
+  }),
+  // Serbia per region: only that region's places, its main city always in level 1.
+  ...regions.map((r): MapDefinition => {
+    const physical = provincePhysical[`./${r.id}/physical.json`];
+    return {
+      id: r.id,
+      nameKey: r.nameKey as StringKey,
+      parent: 'serbia',
+      placeNames: 'sr-Latn',
+      viewKm: r.viewKm,
+      pool: { first: 8, step: 6 },
+      reveal: 0.75,
+      load: async () => ({
+        geo: await json<MapData['geo']>(provinceGeo[`./${r.id}/geo.json`]),
+        cities: await json<MapData['cities']>(provinceCities[`./${r.id}/cities.json`]),
+      }),
+      loadPhysical: physical ? () => json<PhysicalData>(physical) : undefined,
     };
   }),
 ];

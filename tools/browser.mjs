@@ -45,8 +45,8 @@ export async function launch() {
 }
 
 /**
- * Opens the game with a clean state. `map`: 'serbia', 'netherlands', 'europe' or a province id
- * ('nl-utrecht'); `mode`: 'free' (default), 'physical' (waters/mountains on) or 'list' (Alles vinden).
+ * Opens the game with a clean state. `map`: 'serbia', 'netherlands', 'europe' or a province/region id
+ * ('nl-utrecht', 'rs-vojvodina'); `mode`: 'free' (default), 'physical' (waters/mountains on) or 'list' (Alles vinden).
  * Collects page errors in `page.errors`.
  */
 export async function openGame(browser, { map = 'netherlands', mode = 'free', lang = 'nl', viewport = 'desktop' } = {}) {
@@ -71,7 +71,7 @@ export async function openGame(browser, { map = 'netherlands', mode = 'free', la
   );
   await page.reload({ waitUntil: 'networkidle0' });
   // Map buttons are the top-level maps in MAPS order; provinces are chosen in the area select.
-  const top = map.startsWith('nl-') ? 'netherlands' : map;
+  const top = map.startsWith('nl-') ? 'netherlands' : map.startsWith('rs-') ? 'serbia' : map;
   const index = { serbia: 0, netherlands: 1, europe: 2 }[top];
   await page.evaluate((i) => document.querySelectorAll('#map-select button')[i].click(), index);
   await wait(900);

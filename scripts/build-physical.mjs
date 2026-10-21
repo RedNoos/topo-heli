@@ -9,7 +9,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import mapshaper from 'mapshaper';
-import { PROVINCES } from './provinces.mjs';
+import { PROVINCES, SERBIA_REGIONS } from './provinces.mjs';
 
 /** Province maps: rivers with less than this inside the province are not asked. */
 const MIN_PROVINCE_RIVER_KM = 8;
@@ -744,9 +744,10 @@ async function buildDerived(id, fromId) {
     rings.some((r) => r.some(([x, y]) => homePts.some(([hx, hy]) => Math.abs(hx - x) < 0.02 && Math.abs(hy - y) < 0.014)));
   // Some waters touch a province only at its edge (Noord-Brabant and the Oosterschelde).
   const skip = PROVINCES.find((p) => p.id === id)?.skipPhysical ?? [];
-  const lakes = from.lakes.filter((l) => near(l.rings) && !skip.includes(l.name));
   // Areas mostly inside the province (not the provinces themselves); points inside it.
   const inHome = (pt) => home.some((poly) => insideRingLL(pt, poly[0]));
+  // Lakes inside the land (Serbia) or next to it (Dutch waters lie outside the CBS land).
+  const lakes = from.lakes.filter((l) => (near(l.rings) || l.rings.some((r) => r.some(inHome))) && !skip.includes(l.name));
   // Test points inside the area (a grid), not its outline: outline points lie on the very border.
   const interior = (a) => {
     const pts = a.rings.flat();
@@ -761,7 +762,10 @@ async function buildDerived(id, fromId) {
     const pts = interior(a);
     return pts.length > 0 && pts.filter(inHome).length >= 0.5 * pts.length;
   });
-  const mountains = (from.mountains ?? []).filter((m) => inHome([m.lon, m.lat]));
+  // Peaks often lie on a border (Stara planina, Kopaonik): also those just outside, in both maps.
+  const nearKm = (m, maxKm) =>
+    homePts.some(([x, y]) => 111 * Math.hypot((x - m.lon) * Math.cos((m.lat * Math.PI) / 180), y - m.lat) < maxKm);
+  const mountains = (from.mountains ?? []).filter((m) => inHome([m.lon, m.lat]) || nearKm(m, 3));
   const landmarks = (from.landmarks ?? []).filter((m) => inHome([m.lon, m.lat]));
   if (!rivers.length && !lakes.length && !areas.length && !mountains.length && !landmarks.length) {
     await fs.rm(path.join(ROOT, 'src', 'maps', id, 'physical.json'), { force: true });
@@ -801,4 +805,9 @@ for (const [id, cfg] of Object.entries(PHYSICAL)) {
 if (!only || only === 'netherlands' || only === 'provinces') {
   console.log('Deriving province rivers from netherlands');
   for (const p of PROVINCES) await buildDerived(p.id, 'netherlands');
+}
+// Serbian regions are derived from Serbia: `npm run build:physical -- regions` (or no argument).
+if (!only || only === 'serbia' || only === 'regions') {
+  console.log('Deriving region rivers from serbia');
+  for (const r of SERBIA_REGIONS) await buildDerived(r.id, 'serbia');
 }

@@ -155,7 +155,7 @@ function renderMapSelect() {
     b.onclick = () => void selectMap(m);
     box.append(b);
   }
-  // Sub-maps (provinces) of the chosen map: a list with the whole map first.
+  // Sub-maps (provinces, regions) of the chosen map: a list with the whole map first.
   const top = topMap(mapDef);
   const subs = MAPS.filter((x) => x.parent === top.id);
   // Every settings row is always there (what does not apply is disabled), so the menu keeps
@@ -169,7 +169,7 @@ function renderMapSelect() {
   for (const m of [top, ...subs]) {
     const o = document.createElement('option');
     o.value = m.id;
-    o.textContent = m !== top ? mapName(m) : subs.length ? t('regionAll') : mapName(m);
+    o.textContent = m !== top ? mapName(m) : subs.length && top.allKey ? t(top.allKey) : mapName(m);
     o.selected = m === mapDef;
     select.append(o);
   }

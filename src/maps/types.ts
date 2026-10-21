@@ -71,7 +71,9 @@ export interface MapDefinition {
   /** Translated map name (see i18n.ts); or a fixed `name` (e.g. a province). */
   nameKey?: StringKey;
   name?: string;
-  /** Sub-map of another map (e.g. a province of 'netherlands'): chosen in that map's list. */
+  /** Name of the whole map in the list of its sub-maps (e.g. "All of the Netherlands"). */
+  allKey?: StringKey;
+  /** Sub-map of another map (a province of 'netherlands', a region of 'serbia'): chosen in that map's list. */
   parent?: string;
   /** Cities in play per level: first + step × (level − 1), best known first. Default: CONFIG.poolSize. */
   pool?: { first: number; step: number };

@@ -1,0 +1,18 @@
+[
+{"name":"Požarevac","lat":44.6213,"lon":21.1878,"pop":42000},
+{"name":"Zaječar","lat":43.9036,"lon":22.2641,"pop":33000,"level":1},
+{"name":"Bor","lat":44.0749,"lon":22.0959,"pop":30000},
+{"name":"Knjaževac","lat":43.5663,"lon":22.257,"pop":17000},
+{"name":"Negotin","lat":44.2264,"lon":22.5308,"pop":15000},
+{"name":"Kostolac","lat":44.7136,"lon":21.1693,"pop":9000},
+{"name":"Kladovo","lat":44.6115,"lon":22.6095,"pop":8000},
+{"name":"Petrovac na Mlavi","lat":44.3783,"lon":21.4194,"pop":7500},
+{"name":"Sokobanja","lat":43.6433,"lon":21.8711,"pop":7000},
+{"name":"Majdanpek","lat":44.4277,"lon":21.946,"pop":7000},
+{"name":"Veliko Gradište","lat":44.7633,"lon":21.5165,"pop":5000},
+{"name":"Boljevac","lat":43.8303,"lon":21.9531,"pop":3500},
+{"name":"Kučevo","lat":44.4775,"lon":21.67,"pop":3500},
+{"name":"Donji Milanovac","lat":44.4659,"lon":22.1517,"pop":2500},
+{"name":"Žagubica","lat":44.1968,"lon":21.7884,"pop":2500},
+{"name":"Golubac","lat":44.653,"lon":21.632,"pop":1500}
+]

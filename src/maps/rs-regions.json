@@ -1,0 +1,32 @@
+[
+  {
+    "id": "rs-vojvodina",
+    "nameKey": "regionVojvodina",
+    "viewKm": 124
+  },
+  {
+    "id": "rs-sumadija",
+    "nameKey": "regionSumadija",
+    "viewKm": 128
+  },
+  {
+    "id": "rs-zapad",
+    "nameKey": "regionWestSerbia",
+    "viewKm": 130
+  },
+  {
+    "id": "rs-istok",
+    "nameKey": "regionEastSerbia",
+    "viewKm": 103
+  },
+  {
+    "id": "rs-jug",
+    "nameKey": "regionSouthSerbia",
+    "viewKm": 107
+  },
+  {
+    "id": "rs-kosovo",
+    "nameKey": "regionKosovo",
+    "viewKm": 99
+  }
+]
