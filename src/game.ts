@@ -24,6 +24,8 @@ export interface GameOptions {
    * clock counts up and the game ends when all are found.
    */
   practice?: boolean;
+  /** Basislijst mode asks every target, not only the listed ones (maps without a list). */
+  practiceAll?: boolean;
 }
 
 export interface Found {
@@ -88,7 +90,7 @@ export class Game {
     this.projection = new Projection(data.geo);
     const cities = cityTargets(data.cities, this.projection).sort((a, b) => Number(!!b.listed) - Number(!!a.listed) || b.pop - a.pop);
     const physical = (options.physical || this.practice) && data.physical ? physicalTargets(data.physical, this.projection) : [];
-    this.targets = [...cities, ...physical].filter((t) => !this.practice || t.listed);
+    this.targets = [...cities, ...physical].filter((t) => !this.practice || options.practiceAll || t.listed);
 
     const rect = data.geo.projection?.rect;
     if (rect) {

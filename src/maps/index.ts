@@ -85,6 +85,9 @@ export const MAPS: MapDefinition[] = [
       viewKm: r.viewKm,
       pool: { first: 8, step: 6 },
       reveal: 0.75,
+      // No official list for Serbia: "Find them all" asks all of the region's places and features.
+      practice: true,
+      practiceAll: true,
       load: async () => ({
         geo: await json<MapData['geo']>(provinceGeo[`./${r.id}/geo.json`]),
         cities: await json<MapData['cities']>(provinceCities[`./${r.id}/cities.json`]),

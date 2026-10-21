@@ -100,8 +100,9 @@ const wantsPhysical = () => physicalOn || practiceOn;
 function practiceCount() {
   if (!mapData) return 0;
   const p = mapData.physical;
-  const physical = p ? [...p.rivers, ...p.lakes, ...p.mountains, ...(p.areas ?? []), ...(p.landmarks ?? [])].filter((x) => x.core).length : 0;
-  return mapData.cities.filter((c) => c.listed).length + physical;
+  const all = !!mapDef.practiceAll;
+  const physical = p ? [...p.rivers, ...p.lakes, ...p.mountains, ...(p.areas ?? []), ...(p.landmarks ?? [])].filter((x) => all || x.core).length : 0;
+  return mapData.cities.filter((c) => all || c.listed).length + physical;
 }
 function getBest(id: string): number {
   try {
@@ -180,16 +181,18 @@ function renderMapSelect() {
   ui.modeBox.hidden = false;
   $('mode-label').hidden = false;
   ui.modeList.disabled = !mapDef.practice;
-  ui.modeList.title = mapDef.practice ? '' : t('modeListOnlyNl');
+  ui.modeList.title = mapDef.practice ? '' : t('modeListUnavailable');
   ui.modeFree.classList.toggle('active', !practiceOn);
   ui.modeList.classList.toggle('active', practiceOn);
   const list = '<i>basislijst topografie</i>';
   const n = practiceCount();
   $('mode-desc').innerHTML = !practiceOn
     ? t('modeFreeDesc')
-    : n
-      ? t('modeListDesc', { n, list, extra: mapDef.parent ? t('modeListExtra') : '' })
-      : '';
+    : !n
+      ? ''
+      : mapDef.practiceAll
+        ? t('modeListDescAll', { n })
+        : t('modeListDesc', { n, list, extra: mapDef.parent ? t('modeListExtra') : '' });
   $('howto-levels').hidden = practiceOn;
   $('btn-skip').textContent = t(practiceOn ? 'skipPractice' : 'skip');
   // Physical features: off for maps without them; always on (fixed) in "Find them all".
@@ -203,7 +206,11 @@ function renderMapSelect() {
   $('howto-physical').innerHTML = kind ? t('howtoPhysicalWaters') + (kind === 'watersAreas' ? ' ' + t('howtoPhysicalAreas') : '') : t('howtoPhysical');
   $('howto-physical').hidden = !physicalOn && !(practiceOn && mapDef.loadPhysical);
   if (practiceOn) {
-    $('howto-practice').innerHTML = n ? t('howtoPractice', { n, list, extra: mapDef.parent ? t('practiceExtra') : '' }) : '';
+    $('howto-practice').innerHTML = !n
+      ? ''
+      : mapDef.practiceAll
+        ? t('howtoPracticeAll', { n })
+        : t('howtoPractice', { n, list, extra: mapDef.parent ? t('practiceExtra') : '' });
     const best = getBestTime(scoreId());
     ui.best.innerHTML = best > 0 ? t('bestPractice', { map: mapName(mapDef), t: clock(best) }) : '';
     $('howto-practice').hidden = false;
@@ -250,6 +257,7 @@ function newGame(start: boolean) {
     time: mapDef.time,
     reveal: mapDef.reveal,
     practice: practiceOn,
+    practiceAll: mapDef.practiceAll,
   });
   renderer = new Renderer(canvas, minimap, game, mapData.geo, mapDef.viewKm, physical);
   wasVisible = false;

@@ -81,6 +81,8 @@ export interface MapDefinition {
   pool?: { first: number; step: number };
   /** Offers the Basislijst mode: only the listed places and the basislijst waters and areas. */
   practice?: boolean;
+  /** Basislijst mode without a list (Serbian regions): every place and physical feature of the map. */
+  practiceAll?: boolean;
   /** Factor on CONFIG.revealRadius: < 1 shows targets later (dense province maps). Default 1. */
   reveal?: number;
   /** Start time and extra time per level in seconds. Default: CONFIG.startTime / levelTimeBonus. */
