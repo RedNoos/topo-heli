@@ -55,6 +55,10 @@ const PHYSICAL = {
       2: [['Rtanj', 'Šiljak'], ['Suva planina', 'Trem'], ['Golija', 'Jankov kamen'], ['Avala', 'Avala'], ['Rudnik', 'Cvijićev vrh'], ['Šar planina', 'Ljuboten'], ['Prokletije', 'Đeravica'], ['Besna Kobila', 'Besna Kobila']],
       3: [['Maljen', 'Kraljev sto'], ['Povlen', 'Mali Povlen'], ['Jastrebac', 'Velika Đulica'], ['Radan', 'Šopot'], ['Zlatar', 'Golo brdo'], ['Goč', 'Krnja jela'], ['Kosmaj', 'Kosmaj'], ['Cer', { lat: 44.606, lon: 19.488, ele: 687 }], ['Ozren', 'Leskovik'], ['Vidlič', { lat: 43.137, lon: 22.819, ele: null }], ['Ovčar', 'Ovčar'], ['Kablar', 'Kablar']],
     },
+    // "Find them all": the level 1 and 2 waters and mountains (with 64 places in cities.json: 100 names).
+    core: ['Dunav', 'Sava', 'Tisa', 'Drina', 'Velika Morava', 'Zapadna Morava', 'Južna Morava', 'Ibar', 'Timok', 'Nišava', 'Tamiš', 'Begej', 'Kolubara', 'Lim',
+      'Đerdapsko jezero', 'Vlasinsko jezero', 'Palićko jezero', 'Srebrno jezero', 'Perućac', 'Zlatarsko jezero', 'Gazivode', 'Uvačko jezero', 'Borsko jezero',
+      'Kopaonik', 'Zlatibor', 'Fruška gora', 'Tara', 'Stara planina', 'Rtanj', 'Suva planina', 'Golija', 'Avala', 'Rudnik', 'Šar planina', 'Prokletije', 'Besna Kobila'],
   },
   netherlands: {
     areas: ['NL'],

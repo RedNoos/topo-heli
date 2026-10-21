@@ -100,7 +100,7 @@ const wantsPhysical = () => physicalOn || practiceOn;
 function practiceCount() {
   if (!mapData) return 0;
   const p = mapData.physical;
-  const all = !!mapDef.practiceAll;
+  const all = mapDef.practiceList === 'all';
   const physical = p ? [...p.rivers, ...p.lakes, ...p.mountains, ...(p.areas ?? []), ...(p.landmarks ?? [])].filter((x) => all || x.core).length : 0;
   return mapData.cities.filter((c) => all || c.listed).length + physical;
 }
@@ -190,9 +190,11 @@ function renderMapSelect() {
     ? t('modeFreeDesc')
     : !n
       ? ''
-      : mapDef.practiceAll
+      : mapDef.practiceList === 'all'
         ? t('modeListDescAll', { n })
-        : t('modeListDesc', { n, list, extra: mapDef.parent ? t('modeListExtra') : '' });
+        : mapDef.practiceList === 'selection'
+          ? t('modeListDescSelection', { n })
+          : t('modeListDesc', { n, list, extra: mapDef.parent ? t('modeListExtra') : '' });
   $('howto-levels').hidden = practiceOn;
   $('btn-skip').textContent = t(practiceOn ? 'skipPractice' : 'skip');
   // Physical features: off for maps without them; always on (fixed) in "Find them all".
@@ -208,9 +210,11 @@ function renderMapSelect() {
   if (practiceOn) {
     $('howto-practice').innerHTML = !n
       ? ''
-      : mapDef.practiceAll
+      : mapDef.practiceList === 'all'
         ? t('howtoPracticeAll', { n })
-        : t('howtoPractice', { n, list, extra: mapDef.parent ? t('practiceExtra') : '' });
+        : mapDef.practiceList === 'selection'
+          ? t('howtoPracticeSelection', { n })
+          : t('howtoPractice', { n, list, extra: mapDef.parent ? t('practiceExtra') : '' });
     const best = getBestTime(scoreId());
     ui.best.innerHTML = best > 0 ? t('bestPractice', { map: mapName(mapDef), t: clock(best) }) : '';
     $('howto-practice').hidden = false;
@@ -257,7 +261,7 @@ function newGame(start: boolean) {
     time: mapDef.time,
     reveal: mapDef.reveal,
     practice: practiceOn,
-    practiceAll: mapDef.practiceAll,
+    practiceAll: mapDef.practiceList === 'all',
   });
   renderer = new Renderer(canvas, minimap, game, mapData.geo, mapDef.viewKm, physical);
   wasVisible = false;

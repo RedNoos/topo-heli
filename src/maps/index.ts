@@ -24,6 +24,9 @@ export const MAPS: MapDefinition[] = [
       cities: (await import('./serbia/cities.json')).default,
     }),
     loadPhysical: async () => (await import('./serbia/physical.json')).default as never,
+    // No official list: our own selection of 100 names (64 places, 36 waters and mountains).
+    practice: true,
+    practiceList: 'selection',
   },
   {
     id: 'netherlands',
@@ -87,7 +90,7 @@ export const MAPS: MapDefinition[] = [
       reveal: 0.75,
       // No official list for Serbia: "Find them all" asks all of the region's places and features.
       practice: true,
-      practiceAll: true,
+      practiceList: 'all',
       load: async () => ({
         geo: await json<MapData['geo']>(provinceGeo[`./${r.id}/geo.json`]),
         cities: await json<MapData['cities']>(provinceCities[`./${r.id}/cities.json`]),
