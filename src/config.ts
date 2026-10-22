@@ -19,6 +19,13 @@ export const CONFIG = {
 
   /** How close the helicopter must be to the target to count as found. */
   catchRadius: 7,
+  /**
+   * Calm camera: still while the helicopter is inside the dead zone (share of the play area),
+   * then eases after it (`ease` per second). `edgeMargin`: closest the helicopter gets to the
+   * edge (share of the short screen side). `lead`: seconds ahead the camera looks at speed.
+   */
+  camera: { deadZoneX: 0.5, deadZoneY: 0.4, ease: 3, edgeMargin: 0.12, lead: 0.6 },
+
   /** Mountain ranges cover an area, so their (peak) target is easier to hit. */
   mountainCatchFactor: 2,
 

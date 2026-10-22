@@ -1,3 +1,4 @@
+import { CONFIG } from './config';
 import { JOYSTICK_RADIUS, type Joystick } from './input';
 import type { Found, Game } from './game';
 import { placeName } from './i18n';
@@ -131,6 +132,11 @@ export class Renderer {
   /** Pixels per km. */
   private scale = 1;
   private cam = { x: 0, y: 0 };
+  /**
+   * Calm camera (dead zone) instead of one that follows the helicopter all the time.
+   * No menu option yet; a preferences menu could offer the follow camera later.
+   */
+  calm = true;
   private rotor = 0;
   private time = 0;
   /** Screen space covered by HUD bars (px); the camera keeps the map clear of them. */
@@ -199,6 +205,43 @@ export class Renderer {
     this.cam.y = clamp(this.cam.y, b.minY + top, b.maxY - bottom);
   }
 
+  /** Camera follows the helicopter, leading a little in the flying direction. */
+  private followCamera(dt: number) {
+    const h = this.game.heli;
+    const lead = 0.6;
+    const k = 1 - Math.exp(-4 * dt);
+    this.cam.x += (h.x + h.vx * lead - this.cam.x) * k;
+    // Keep the helicopter centred in the area between the HUD bars.
+    const offsetY = (this.insets.top - this.insets.bottom) / 2 / this.scale;
+    this.cam.y += (h.y + h.vy * lead - offsetY - this.cam.y) * k;
+  }
+
+  /**
+   * Calm camera: stands still while the helicopter is inside a dead zone in the middle of the
+   * play area (between the HUD bars) and only scrolls, eased, once it flies out of it.
+   * At speed it keeps a point ahead of the helicopter in the zone, so there is more map ahead.
+   */
+  private calmCamera(dt: number) {
+    const h = this.game.heli;
+    const { deadZoneX, deadZoneY, ease, edgeMargin, lead } = CONFIG.camera;
+    const s = this.scale;
+    const playH = this.h - this.insets.top - this.insets.bottom;
+    const offsetY = (this.insets.top - this.insets.bottom) / 2 / s;
+    const k = 1 - Math.exp(-ease * dt);
+    /** One axis: size = play area size (px), share = dead zone share of it. */
+    const axis = (cam: number, pos: number, v: number, size: number, share: number) => {
+      const zone = (size * share) / 2 / s;
+      const d = pos + v * lead - cam; // a point ahead of the helicopter, so it sees more ahead at speed
+      cam += (d - Math.max(-zone, Math.min(zone, d))) * k;
+      // Never let the helicopter get closer than edgeMargin to the edge of the play area.
+      const max = Math.max(0, (size / 2 - Math.min(this.w, this.h) * edgeMargin) / s);
+      return Math.max(pos - max, Math.min(pos + max, cam));
+    };
+    this.cam.x = axis(this.cam.x, h.x, h.vx, this.w, deadZoneX);
+    // y works on the centre of the play area, which sits offsetY below the camera centre.
+    this.cam.y = axis(this.cam.y + offsetY, h.y, h.vy, playH, deadZoneY) - offsetY;
+  }
+
   private toScreen(x: number, y: number) {
     return { x: (x - this.cam.x) * this.scale + this.w / 2, y: (y - this.cam.y) * this.scale + this.h / 2 };
   }
@@ -208,14 +251,8 @@ export class Renderer {
     this.time += dt;
     this.rotor += dt * 28;
 
-    // Camera follows the helicopter, leading a little in the flying direction.
-    const h = game.heli;
-    const lead = 0.6;
-    const k = 1 - Math.exp(-4 * dt);
-    this.cam.x += (h.x + h.vx * lead - this.cam.x) * k;
-    // Keep the helicopter centred in the area between the HUD bars.
-    const offsetY = (this.insets.top - this.insets.bottom) / 2 / this.scale;
-    this.cam.y += (h.y + h.vy * lead - offsetY - this.cam.y) * k;
+    if (this.calm) this.calmCamera(dt);
+    else this.followCamera(dt);
     this.clampCamera();
 
     const s = this.scale;
