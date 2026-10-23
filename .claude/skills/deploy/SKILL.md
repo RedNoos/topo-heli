@@ -12,5 +12,5 @@ description: Push Topo Heli to GitHub and wait for the GitHub Pages deploy. Use 
    gh run watch "$id" --exit-status > /dev/null 2>&1
    gh run view "$id" --json conclusion,headSha --jq '.conclusion + " " + .headSha[0:7]'
    ```
-5. Report in one or two lines: success (live at https://rednoos.github.io/topo-heli/, refresh to see it)
+5. Report in one or two lines: success (live at https://topoheli.com/, refresh to see it)
    or the failure with the failing step (`gh run view "$id" --log-failed`).

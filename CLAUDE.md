@@ -4,7 +4,8 @@ Browser topography game: fly a helicopter to named places on a map. Vite 6 + Typ
 no framework. Maps: Serbia (Kosovo as part of Serbia; whole country + 6 region maps), the Netherlands
 (whole country + 12 province maps) and Europe. UI in English, Dutch, Serbian Latin and Serbian Cyrillic.
 
-Live at https://rednoos.github.io/topo-heli/ (public repo RedNoos/topo-heli). Every push to `main`
+Live at https://topoheli.com/ (custom domain, registered at Porkbun; public repo RedNoos/topo-heli;
+the old https://rednoos.github.io/topo-heli/ redirects there). Every push to `main`
 deploys via `.github/workflows/deploy.yml` (GitHub Pages).
 
 ## Working agreements
