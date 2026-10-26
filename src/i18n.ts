@@ -8,7 +8,7 @@
 
 export type Lang = 'en' | 'nl' | 'de' | 'sr-Latn' | 'sr-Cyrl';
 
-type Flag = 'gb' | 'nl' | 'de' | 'rs';
+export type Flag = 'gb' | 'nl' | 'de' | 'rs' | 'eu';
 
 export const LANGS: { id: Lang; short: string; label: string; flag: Flag }[] = [
   { id: 'en', short: 'EN', label: 'English', flag: 'gb' },
@@ -745,8 +745,23 @@ const SERBIA_FLAG = (() => {
     '</svg>',
   ].join('');
 })();
+/** EU flag: a ring of twelve gold stars on blue. */
+const EU_FLAG = (() => {
+  const star = (cx: number, cy: number) =>
+    Array.from({ length: 10 }, (_, i) => {
+      const r = i % 2 ? 0.55 : 1.3;
+      const a = (i * Math.PI) / 5 - Math.PI / 2;
+      return `${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)}`;
+    }).join(' ');
+  const stars = Array.from({ length: 12 }, (_, i) => {
+    const a = (i * Math.PI) / 6;
+    return `<polygon points="${star(15 + 6.5 * Math.sin(a), 10 - 6.5 * Math.cos(a))}"/>`;
+  }).join('');
+  return `<svg class="flag" viewBox="0 0 30 20" aria-hidden="true"><rect width="30" height="20" fill="#039"/><g fill="#fc0">${stars}</g></svg>`;
+})();
 export function flagSvg(flag: Flag): string {
   if (flag === 'rs') return SERBIA_FLAG;
+  if (flag === 'eu') return EU_FLAG;
   if (flag === 'de') {
     return '<svg class="flag" viewBox="0 0 9 6" aria-hidden="true"><rect width="9" height="6" fill="#ffce00"/><rect width="9" height="4" fill="#dd0000"/><rect width="9" height="2" fill="#000"/></svg>';
   }

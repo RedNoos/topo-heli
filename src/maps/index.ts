@@ -23,6 +23,7 @@ const json = async <T>(load: () => Promise<unknown>) => ((await load()) as { def
 export const MAPS: MapDefinition[] = [
   {
     id: 'serbia',
+    flag: 'rs',
     nameKey: 'mapSerbia',
     allKey: 'regionAllSerbia',
     placeNames: 'sr-Latn',
@@ -38,6 +39,7 @@ export const MAPS: MapDefinition[] = [
   },
   {
     id: 'netherlands',
+    flag: 'nl',
     nameKey: 'mapNetherlands',
     allKey: 'regionAllNetherlands',
     // Dutch names are kept in every language.
@@ -53,6 +55,7 @@ export const MAPS: MapDefinition[] = [
   },
   {
     id: 'germany',
+    flag: 'de',
     nameKey: 'mapGermany',
     allKey: 'regionAllGermany',
     // German names, translated where English, Dutch or Serbian has its own (Köln: Cologne, Keulen, Keln).
@@ -70,6 +73,7 @@ export const MAPS: MapDefinition[] = [
   },
   {
     id: 'europe',
+    flag: 'eu',
     nameKey: 'mapEurope',
     placeNames: 'native',
     loadSerbianNames: async () => (await import('./europe/names.sr.json')).default,

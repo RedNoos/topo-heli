@@ -151,7 +151,7 @@ function renderMapSelect() {
   box.innerHTML = '';
   for (const m of MAPS.filter((x) => !x.parent)) {
     const b = document.createElement('button');
-    b.textContent = mapName(m);
+    b.innerHTML = `${m.flag ? flagSvg(m.flag) : ''}<span>${mapName(m)}</span>`;
     b.classList.toggle('active', m === topMap(mapDef));
     b.onclick = () => void selectMap(m);
     box.append(b);

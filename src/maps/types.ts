@@ -1,4 +1,4 @@
-import type { StringKey } from '../i18n';
+import type { Flag, StringKey } from '../i18n';
 
 export type LonLat = [number, number];
 
@@ -73,6 +73,8 @@ export interface MapDefinition {
   /** Translated map name (see i18n.ts); or a fixed `name` (e.g. a province). */
   nameKey?: StringKey;
   name?: string;
+  /** Flag on the map's button in the menu (top-level maps). */
+  flag?: Flag;
   /** Name of the whole map in the list of its sub-maps (e.g. "All of the Netherlands"). */
   allKey?: StringKey;
   /** Sub-map of another map (a province of 'netherlands', a region of 'serbia'): chosen in that map's list. */
