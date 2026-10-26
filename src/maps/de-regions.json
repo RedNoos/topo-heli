@@ -1,0 +1,67 @@
+[
+  {
+    "id": "de-schleswig-holstein",
+    "nameKey": "regionSchleswigHolstein",
+    "viewKm": 128
+  },
+  {
+    "id": "de-niedersachsen",
+    "nameKey": "regionNiedersachsen",
+    "viewKm": 150
+  },
+  {
+    "id": "de-mecklenburg-vorpommern",
+    "nameKey": "regionMecklenburg",
+    "viewKm": 140
+  },
+  {
+    "id": "de-brandenburg",
+    "nameKey": "regionBrandenburg",
+    "viewKm": 142
+  },
+  {
+    "id": "de-sachsen-anhalt",
+    "nameKey": "regionSachsenAnhalt",
+    "viewKm": 138
+  },
+  {
+    "id": "de-sachsen",
+    "nameKey": "regionSachsen",
+    "viewKm": 127
+  },
+  {
+    "id": "de-thueringen",
+    "nameKey": "regionThueringen",
+    "viewKm": 114
+  },
+  {
+    "id": "de-nordrhein-westfalen",
+    "nameKey": "regionNordrheinWestfalen",
+    "viewKm": 142
+  },
+  {
+    "id": "de-hessen",
+    "nameKey": "regionHessen",
+    "viewKm": 145
+  },
+  {
+    "id": "de-rheinland-pfalz",
+    "nameKey": "regionRheinlandPfalz",
+    "viewKm": 130
+  },
+  {
+    "id": "de-saarland",
+    "nameKey": "regionSaarland",
+    "viewKm": 60
+  },
+  {
+    "id": "de-baden-wuerttemberg",
+    "nameKey": "regionBadenWuerttemberg",
+    "viewKm": 146
+  },
+  {
+    "id": "de-bayern",
+    "nameKey": "regionBayern",
+    "viewKm": 150
+  }
+]

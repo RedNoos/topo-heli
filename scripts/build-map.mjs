@@ -9,7 +9,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import mapshaper from 'mapshaper';
-import { PROVINCES, SERBIA_REGIONS } from './provinces.mjs';
+import { PROVINCES, SERBIA_REGIONS, GERMANY_REGIONS } from './provinces.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const CACHE = path.join(ROOT, '.cache');
@@ -49,6 +49,14 @@ const MAPS = {
     },
     simplify: '45%',
     regions: SERBIA_REGIONS,
+  },
+  germany: {
+    home: ['DEU'],
+    bbox: [5.6, 47.1, 15.2, 55.1],
+    // Districts are the Länder; the regions group the city states with the Land around them.
+    districtOf: (p) => p.name,
+    simplify: '45%',
+    regions: GERMANY_REGIONS.map((r) => ({ id: r.id, districts: r.lands })),
   },
   netherlands: {
     // Land and province borders from CBS (see cbsLand); province borders drawn as districts.
@@ -239,14 +247,14 @@ async function cbsShapes(cfg) {
 }
 
 /**
- * A Serbian region: its districts are the playable area, the rest of Serbia is shown like a
- * neighbouring country (as for the Dutch provinces).
+ * A region (Serbian, German): its districts are the playable area, the rest of the country is
+ * shown like a neighbouring country (as for the Dutch provinces).
  */
 async function regionShapes(cfg) {
-  const serbia = MAPS.serbia;
+  const country = MAPS[cfg.parent];
   const admin1 = structuredClone(await source(SOURCES.admin1));
-  const all = filterFeatures(admin1, (f) => serbia.home.includes(f.properties.adm0_a3));
-  for (const f of all.features) f.properties = { district: serbia.districtOf(f.properties) };
+  const all = filterFeatures(admin1, (f) => country.home.includes(f.properties.adm0_a3));
+  for (const f of all.features) f.properties = { district: country.districtOf(f.properties) };
   const unknown = cfg.districts.filter((d) => !all.features.some((f) => f.properties.district === d));
   if (unknown.length) throw new Error(`Unknown districts: ${unknown.join(', ')}`);
   const isHome = (f) => cfg.districts.includes(f.properties.district);
@@ -260,7 +268,7 @@ async function regionShapes(cfg) {
   }
   const countries = structuredClone(await source(SOURCES.countries));
   const others = countries.features
-    .filter((f) => !serbia.home.includes(f.properties.ADM0_A3))
+    .filter((f) => !country.home.includes(f.properties.ADM0_A3))
     .map((f) => ({ ...f, properties: { code: f.properties.ADM0_A3, home: false } }));
   return { home, neighbours: [...rest, ...others], districts };
 }
@@ -323,7 +331,7 @@ async function buildMap(id, cfg) {
     // Whole Netherlands: province borders.
     regions = parts(await shape(prov.provinces, `-dissolve prov ${area()} -innerlines`));
   } else if (prov?.districts) {
-    // Serbian region: the borders of its districts.
+    // Region: the borders of its districts (German regions: Berlin, Hamburg, Bremen).
     districts = parts(await shape(prov.districts, `-dissolve district ${area()} -innerlines`));
   } else if (cfg.districtOf) {
     const admin1 = await source(SOURCES.admin1);
@@ -433,7 +441,11 @@ for (const p of PROVINCES) {
 // Serbian regions: a group of districts is the playable area, the rest of Serbia is shown
 // like a neighbouring country.
 for (const r of SERBIA_REGIONS) {
-  MAPS[r.id] = { districts: r.districts, simplify: '70%' };
+  MAPS[r.id] = { parent: 'serbia', districts: r.districts, simplify: '70%' };
+}
+// German regions: a Land (with a city state inside it), the rest of Germany around it.
+for (const r of GERMANY_REGIONS) {
+  MAPS[r.id] = { parent: 'germany', districts: r.lands, simplify: '70%' };
 }
 
 const only = process.argv[2];

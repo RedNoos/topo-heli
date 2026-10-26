@@ -21,7 +21,7 @@ npm run shots    # screenshots of menu, game and end screen (desktop + phone) in
   to the pool and the dot appears later (smaller reveal radius).
 - `N` skips a city (−10 s), `P`/`Esc` pauses, `M` toggles sound.
 
-**Mountains, rivers & lakes** (Serbia) / **Waters** (Netherlands and provinces: rivers, canals, lakes and seas from the basislijst topografie; switch on the start screen): physical features are mixed in
+**Mountains, rivers & lakes** (Serbia) / **Waters** (Netherlands and provinces: rivers, canals, lakes and seas from the basislijst topografie) / **Mountains, waters & areas** (Germany: also the Länder, landscapes and islands); switch on the start screen: physical features are mixed in
 with the cities. Lakes and mountains are found by flying over them. Rivers are found by *following*
 them: the bar fills with the length of river you have flown along (40 km, or 60% of a short river);
 simply crossing a river covers only ~8 km. Best scores are kept per map and mode.
@@ -30,12 +30,15 @@ simply crossing a river covers only ~8 km. Best scores are kept per map and mode
 the default follows the browser's language list, falling back to English). UI text
 lives in [src/i18n.ts](src/i18n.ts); Serbian is written once in Latin script and transliterated to
 Cyrillic. Place names: Serbia uses its (Serbian Latin) names, Europe has Serbian and Dutch names in
-`src/maps/europe/names.sr.json` / `names.nl.json`, Dutch town names are kept as-is.
+`src/maps/europe/names.sr.json` / `names.nl.json`, Dutch town names are kept as-is, Germany uses
+German names with English, Dutch and Serbian ones in `src/maps/germany/names.{en,nl,sr}.json`.
 
 Tuning lives in [src/config.ts](src/config.ts).
 
-**Provinces** (Netherlands): pick a province in the list under the map buttons to play only that
-province: its map, its places (capital always in level 1) and, where there are any, its rivers.
+**Provinces** (Netherlands) / **regions** (Serbia, Germany): pick one in the list under the map
+buttons to play only that part: its map, its places (capital always in level 1) and, where there
+are any, its rivers. German regions are the Länder, with Hamburg, Bremen and Berlin inside the Land
+around them.
 
 ## Adding a map
 
@@ -59,6 +62,11 @@ Dutch places and provinces: the curated list is [data/netherlands-cities.json](d
 (GeoNames) and writes the per-province lists. In the whole-country map the added places only come
 up from level 6. Build order after changing map data: `build:map` → `build:places` → `build:physical`.
 Province definitions: [scripts/provinces.mjs](scripts/provinces.mjs).
+
+German places: towns and cities from OpenStreetMap (population from GeoNames where OSM has none),
+20,000+ inhabitants on the whole map, 10,000+ on the region maps. The *Find them all* list (60
+places, with 40 waters, mountains and areas: 100 names) and the translated names are in
+[data/germany.json](data/germany.json); the places are based on the TopoSite list of Germany.
 
 
 

@@ -2,7 +2,8 @@
 
 Browser topography game: fly a helicopter to named places on a map. Vite 6 + TypeScript + Canvas 2D,
 no framework. Maps: Serbia (Kosovo as part of Serbia; whole country + 6 region maps), the Netherlands
-(whole country + 12 province maps) and Europe. UI in English, Dutch, Serbian Latin and Serbian Cyrillic.
+(whole country + 12 province maps), Germany (whole country + 13 region maps: the Länder, city states
+inside the Land around them) and Europe. UI in English, Dutch, Serbian Latin and Serbian Cyrillic.
 
 Live at https://topoheli.com/ (custom domain, registered at Porkbun; public repo RedNoos/topo-heli;
 the old https://rednoos.github.io/topo-heli/ redirects there). Every push to `main`
@@ -36,16 +37,18 @@ deploys via `.github/workflows/deploy.yml` (GitHub Pages).
 - `src/feedback.ts`: Tally feedback forms, one per language (script loaded on first click).
 - `src/stats.ts`: GoatCounter events (production only).
 - `src/maps/index.ts`: map definitions (`MapDefinition` in `src/maps/types.ts`); province maps come
-  from `src/maps/nl-provinces.json`, Serbian region maps from `src/maps/rs-regions.json`.
+  from `src/maps/nl-provinces.json`, Serbian region maps from `src/maps/rs-regions.json`, German
+  ones from `src/maps/de-regions.json`.
 - Generated data (do not edit by hand): `src/maps/<id>/{geo,cities,physical}.json` (except
-  `serbia/cities.json`, curated), `nl-provinces.json`, `rs-regions.json`.
+  `serbia/cities.json`, curated), `germany/names.*.json`, `nl-provinces.json`, `rs-regions.json`,
+  `de-regions.json`.
 
 ## Data builds
 
 Order: `npm run build:map` → `npm run build:places` → `npm run build:physical`
 (`build:physical -- provinces` rebuilds only the province files; it also writes the `areas` flags
-into `nl-provinces.json`, so always run it after `build:places`; `-- regions` rebuilds only the
-Serbian region files).
+into `nl-provinces.json`, so always run it after `build:places`; `-- regions` / `-- de-regions`
+rebuilds only the Serbian / German region files).
 
 - Sources: Natural Earth, CBS/PDOK (Dutch provinces, municipalities), OpenStreetMap via Overpass,
   GeoNames. Downloads are cached in `.cache/`. The Overpass cache is keyed by name: bump the key
@@ -54,9 +57,12 @@ Serbian region files).
   - `netherlands-cities.json`: Dutch places; `level` ≤ 2 = the 60 basislijst places (`core`).
   - `province-lists.json`: per province the well-known places added in "Alles vinden"
     (from TopoSite, up to 20 places, Flevoland 12).
-- `scripts/provinces.mjs`: province settings (CBS name, capital, `minPop`, `time`, `skipPhysical`)
-  and the Serbian regions (`SERBIA_REGIONS`: districts, capital, name key). Region places are
-  split from `serbia/cities.json`, region physical data is cut from Serbia's.
+  - `germany.json`: the 60 listed German places ("Find them all", with 40 physical `core` names
+    in build-physical: 100), OSM name fixes, and English/Dutch/Serbian (Latin) names.
+- `scripts/provinces.mjs`: province settings (CBS name, capital, `minPop`, `time`, `skipPhysical`),
+  the Serbian regions (`SERBIA_REGIONS`: districts, capital, name key) and the German ones
+  (`GERMANY_REGIONS`: Länder, capital, name key). Serbian region places are split from
+  `serbia/cities.json`; region physical data is cut from the country's.
 - `scripts/build-physical.mjs`: per-map config of rivers, lakes, mountains, `zones` (areas),
   `landmarks`, `lines`, `waterAreas` and `core` (basislijst names). mapshaper gotchas: a field
   called `name` clashes with its `name=` option; attribute-less output is a GeometryCollection.

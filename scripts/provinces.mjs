@@ -1,4 +1,4 @@
-// Dutch provinces and Serbian regions, used to build one map each (build-map, build-places, build-physical).
+// Dutch provinces, Serbian and German regions, used to build one map each (build-map, build-places, build-physical).
 // `cbs` is the CBS (statistics Netherlands) province name, `ne` the Natural Earth admin-1 name, `capital` the provincial capital (always in level 1),
 // `abbr` the usual abbreviation used to tell same-named places apart, e.g. "Hengelo (O)".
 // Optional: `minPop` = also villages from this size (default 2000; small provinces need more
@@ -47,4 +47,23 @@ export const SERBIA_REGIONS = [
     id: 'rs-kosovo', name: 'Kosovo i Metohija', nameKey: 'regionKosovo', capital: 'Priština',
     districts: ['Kosovski', 'Pećki', 'Prizrenski', 'Kosovsko-Mitrovački', 'Kosovsko-Pomoravski'],
   },
+];
+
+// German regions: one map per Bundesland; the city states lie in the Land around them (Hamburg
+// with Schleswig-Holstein, Bremen with Niedersachsen, Berlin with Brandenburg). `lands` are the
+// Natural Earth admin-1 names, `abbr` tells same-named places apart on the whole map.
+export const GERMANY_REGIONS = [
+  { id: 'de-schleswig-holstein', name: 'Schleswig-Holstein', nameKey: 'regionSchleswigHolstein', capital: 'Kiel', abbr: 'SH', lands: ['Schleswig-Holstein', 'Hamburg'] },
+  { id: 'de-niedersachsen', name: 'Niedersachsen', nameKey: 'regionNiedersachsen', capital: 'Hannover', abbr: 'NI', lands: ['Niedersachsen', 'Bremen'] },
+  { id: 'de-mecklenburg-vorpommern', name: 'Mecklenburg-Vorpommern', nameKey: 'regionMecklenburg', capital: 'Schwerin', abbr: 'MV', lands: ['Mecklenburg-Vorpommern'] },
+  { id: 'de-brandenburg', name: 'Brandenburg', nameKey: 'regionBrandenburg', capital: 'Potsdam', abbr: 'BB', lands: ['Brandenburg', 'Berlin'] },
+  { id: 'de-sachsen-anhalt', name: 'Sachsen-Anhalt', nameKey: 'regionSachsenAnhalt', capital: 'Magdeburg', abbr: 'ST', lands: ['Sachsen-Anhalt'] },
+  { id: 'de-sachsen', name: 'Sachsen', nameKey: 'regionSachsen', capital: 'Dresden', abbr: 'SN', lands: ['Sachsen'] },
+  { id: 'de-thueringen', name: 'Thüringen', nameKey: 'regionThueringen', capital: 'Erfurt', abbr: 'TH', lands: ['Thüringen'] },
+  { id: 'de-nordrhein-westfalen', name: 'Nordrhein-Westfalen', nameKey: 'regionNordrheinWestfalen', capital: 'Düsseldorf', abbr: 'NW', lands: ['Nordrhein-Westfalen'] },
+  { id: 'de-hessen', name: 'Hessen', nameKey: 'regionHessen', capital: 'Wiesbaden', abbr: 'HE', lands: ['Hessen'] },
+  { id: 'de-rheinland-pfalz', name: 'Rheinland-Pfalz', nameKey: 'regionRheinlandPfalz', capital: 'Mainz', abbr: 'RP', lands: ['Rheinland-Pfalz'] },
+  { id: 'de-saarland', name: 'Saarland', nameKey: 'regionSaarland', capital: 'Saarbrücken', abbr: 'SL', lands: ['Saarland'] },
+  { id: 'de-baden-wuerttemberg', name: 'Baden-Württemberg', nameKey: 'regionBadenWuerttemberg', capital: 'Stuttgart', abbr: 'BW', lands: ['Baden-Württemberg'] },
+  { id: 'de-bayern', name: 'Bayern', nameKey: 'regionBayern', capital: 'München', abbr: 'BY', lands: ['Bayern'] },
 ];

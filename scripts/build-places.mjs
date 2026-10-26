@@ -8,11 +8,15 @@
 // manifest src/maps/nl-provinces.json. Downloads are cached in .cache/.
 // Also splits the Serbian places (src/maps/serbia/cities.json) into the Serbian regions:
 // src/maps/rs-<region>/cities.json and the manifest src/maps/rs-regions.json.
+// Germany: towns and cities from OpenStreetMap (population from GeoNames where OSM has none)
+// into src/maps/germany/ and src/maps/de-<region>/, the name translations into
+// src/maps/germany/names.{en,nl,sr}.json and the manifest src/maps/de-regions.json.
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { unzipSync, strFromU8 } from 'fflate';
-import { PROVINCES, SERBIA_REGIONS } from './provinces.mjs';
+import { PROVINCES, SERBIA_REGIONS, GERMANY_REGIONS } from './provinces.mjs';
+import { toCyrillic } from './serbian.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const CACHE = path.join(ROOT, '.cache');
@@ -40,15 +44,15 @@ async function cached(file, fetcher) {
   }
 }
 
-/** GeoNames country dump for the Netherlands (populated places with population). */
-async function geonames(minPop = MIN_POP) {
-  const zip = await cached('geonames-NL.zip', async () => {
-    console.log('  downloading GeoNames NL...');
-    const res = await fetch('https://download.geonames.org/export/dump/NL.zip');
+/** GeoNames country dump (populated places with population), default the Netherlands. */
+async function geonames(minPop = MIN_POP, country = 'NL') {
+  const zip = await cached(`geonames-${country}.zip`, async () => {
+    console.log(`  downloading GeoNames ${country}...`);
+    const res = await fetch(`https://download.geonames.org/export/dump/${country}.zip`);
     if (!res.ok) throw new Error(`GeoNames download failed (${res.status})`);
     return Buffer.from(await res.arrayBuffer());
   });
-  const text = strFromU8(unzipSync(new Uint8Array(zip))['NL.txt']);
+  const text = strFromU8(unzipSync(new Uint8Array(zip))[`${country}.txt`]);
   return text
     .split('\n')
     .map((l) => l.split('\t'))
@@ -57,15 +61,10 @@ async function geonames(minPop = MIN_POP) {
     .map((c) => ({ name: c[1], lat: +c[4], lon: +c[5], pop: +c[14] || 100, source: 'geonames' }));
 }
 
-/** Municipality seats ("admin_centre" of every gemeente) from OpenStreetMap. */
-async function seats() {
-  const query = `[out:json][timeout:300];
-area["ISO3166-1"="NL"]["admin_level"="2"]->.a;
-rel(area.a)["boundary"="administrative"]["admin_level"="8"]->.g;
-node(r.g:"admin_centre");
-out;`;
-  const raw = await cached('overpass-netherlands-seats.json', async () => {
-    console.log('  querying Overpass for municipality seats...');
+/** Cached Overpass query (tried on every server, twice). */
+async function overpass(file, query, what) {
+  return cached(file, async () => {
+    console.log(`  querying Overpass for ${what}...`);
     for (const [i, url] of [...OVERPASS, ...OVERPASS].entries()) {
       if (i === OVERPASS.length) await new Promise((r) => setTimeout(r, 15000));
       const res = await fetch(url, {
@@ -78,8 +77,18 @@ out;`;
         if (JSON.parse(text).elements?.length) return text;
       }
     }
-    throw new Error('Overpass failed for municipality seats');
+    throw new Error(`Overpass failed for ${what}`);
   });
+}
+
+/** Municipality seats ("admin_centre" of every gemeente) from OpenStreetMap. */
+async function seats() {
+  const query = `[out:json][timeout:300];
+area["ISO3166-1"="NL"]["admin_level"="2"]->.a;
+rel(area.a)["boundary"="administrative"]["admin_level"="8"]->.g;
+node(r.g:"admin_centre");
+out;`;
+  const raw = await overpass('overpass-netherlands-seats.json', query, 'municipality seats');
   return JSON.parse(raw)
     .elements.filter((e) => e.type === 'node' && e.tags?.name && e.lon > 3) // not the Caribbean
     .map((e) => ({ name: e.tags.name, lat: e.lat, lon: e.lon, pop: parseInt(e.tags.population, 10) || 1500, source: 'seat' }));
@@ -232,3 +241,94 @@ for (const r of regions) {
   console.log(`  ${r.name.padEnd(18)} ${String(cities.length).padStart(3)} places (capital ${r.capital}), view ${viewKm} km`);
 }
 await fs.writeFile(path.join(ROOT, 'src', 'maps', 'rs-regions.json'), JSON.stringify(regionManifest, null, 2) + '\n');
+
+// ---------- Germany ----------
+
+/** Whole Germany: towns from this size; region maps also smaller towns. */
+const DE_MIN_POP = 20000;
+const DE_REGION_MIN_POP = 10000;
+/** Region maps, Find them all: the listed places of the region, topped up with the biggest. */
+const DE_REGION_LIST = 20;
+
+const germany = JSON.parse(await fs.readFile(path.join(ROOT, 'data', 'germany.json'), 'utf8'));
+const deQuery = `[out:json][timeout:300];
+area["ISO3166-1"="DE"]["admin_level"="2"]->.a;
+node["place"~"^(city|town)$"](area.a);
+out;`;
+const deGeonames = await geonames(1, 'DE');
+/** OSM population, or GeoNames' for the same place (OSM misses some, and has a few typos). */
+function dePop(name, lat, lon, tag) {
+  const osm = parseInt((tag ?? '').replace(/\D/g, ''), 10) || 0;
+  const gn = deGeonames
+    .filter((g) => g.name === name && km(g, { lat, lon }) < 8)
+    .sort((a, b) => km(a, { lat, lon }) - km(b, { lat, lon }))[0]?.pop;
+  if (!osm) return gn ?? 0;
+  return gn && (osm > 3 * gn || gn > 3 * osm) ? gn : osm;
+}
+const deAll = JSON.parse(await overpass('overpass-germany-places.json', deQuery, 'German towns'))
+  .elements.filter((e) => e.tags?.name)
+  .map((e) => {
+    // name:de leaves out the Sorbian part ("Cottbus - Chóśebuz").
+    const osmName = e.tags['name:de'] ?? e.tags.name;
+    return { name: germany.rename[osmName] ?? osmName, lat: e.lat, lon: e.lon, pop: dePop(osmName, e.lat, e.lon, e.tags.population), sr: e.tags['name:sr'] };
+  })
+  .filter((c) => c.pop >= DE_REGION_MIN_POP)
+  .sort((a, b) => b.pop - a.pop);
+
+const deRegions = [];
+for (const r of GERMANY_REGIONS) {
+  const geo = JSON.parse(await fs.readFile(path.join(ROOT, 'src', 'maps', r.id, 'geo.json'), 'utf8'));
+  deRegions.push({ ...r, home: geo.home, bbox: geo.bbox });
+}
+for (const c of deAll) {
+  const pt = [c.lon, c.lat];
+  c.region = deRegions.find((r) => insidePolys(pt, r.home)) ?? deRegions.reduce((best, r) => (nearDistance(c, r.home) < nearDistance(c, best.home) ? r : best));
+}
+const missingDe = germany.listed.filter((n) => !deAll.some((c) => c.name === n));
+if (missingDe.length) throw new Error(`Germany: listed places not found: ${missingDe.join(', ')}`);
+const deOut = (c, name = c.name) => ({ name, lat: round4(c.lat), lon: round4(c.lon), pop: c.pop, ...(germany.listed.includes(c.name) ? { listed: true } : {}) });
+
+console.log('Building German place lists');
+// Whole country: same names get the region, e.g. "Friedberg (BY)".
+const deCountry = deAll.filter((c) => c.pop >= DE_MIN_POP);
+const deCount = {};
+for (const c of deCountry) deCount[c.name] = (deCount[c.name] || 0) + 1;
+const deCities = deCountry.map((c) => deOut(c, deCount[c.name] > 1 ? `${c.name} (${c.region.abbr})` : c.name));
+await fs.writeFile(path.join(ROOT, 'src', 'maps', 'germany', 'cities.json'), '[\n' + deCities.map((c) => JSON.stringify(c)).join(',\n') + '\n]\n');
+console.log(`  Germany ${deCities.length} places (${deCities.filter((c) => c.listed).length} listed)`);
+
+const deManifest = [];
+for (const r of deRegions) {
+  const seen = new Set();
+  const cities = [];
+  for (const c of deAll.filter((x) => x.region === r)) {
+    if (seen.has(c.name)) continue; // same name twice in one region: keep the bigger one
+    seen.add(c.name);
+    cities.push({ ...deOut(c), ...(c.name === r.capital ? { level: 1 } : {}) });
+  }
+  if (!cities.some((c) => c.name === r.capital)) throw new Error(`Capital ${r.capital} not found in ${r.name}`);
+  for (const c of cities) if (cities.filter((x) => x.listed).length < DE_REGION_LIST) c.listed = true;
+  await fs.writeFile(path.join(ROOT, 'src', 'maps', r.id, 'cities.json'), '[\n' + cities.map((c) => JSON.stringify(c)).join(',\n') + '\n]\n');
+  const [w, s, e, n] = r.bbox;
+  const widthKm = (e - w) * 111 * Math.cos(((s + n) / 2) * D);
+  const heightKm = (n - s) * 111;
+  const viewKm = Math.round(Math.min(150, Math.max(60, 0.5 * Math.max(widthKm, heightKm))));
+  deManifest.push({ id: r.id, nameKey: r.nameKey, viewKm });
+  console.log(`  ${r.name.padEnd(24)} ${String(cities.length).padStart(3)} places (capital ${r.capital}), view ${viewKm} km`);
+}
+await fs.writeFile(path.join(ROOT, 'src', 'maps', 'de-regions.json'), JSON.stringify(deManifest, null, 2) + '\n');
+
+// Translations: curated (data/germany.json), Serbian place names also from OSM.
+const names = { en: {}, nl: {}, sr: {} };
+for (const c of deAll) if (c.sr) names.sr[c.name] = c.sr;
+for (const [name, tr] of Object.entries(germany.names)) {
+  if (tr.en) names.en[name] = tr.en;
+  if (tr.nl) names.nl[name] = tr.nl;
+  if (tr.sr) names.sr[name] = toCyrillic(tr.sr);
+}
+// Same-named places shown with their region ("Friedberg (BY)") keep that in every language.
+for (const lang of Object.keys(names)) {
+  const sorted = Object.fromEntries(Object.entries(names[lang]).sort(([a], [b]) => a.localeCompare(b, 'de')));
+  await fs.writeFile(path.join(ROOT, 'src', 'maps', 'germany', `names.${lang}.json`), JSON.stringify(sorted, null, 2) + '\n');
+}
+console.log(`  names: ${Object.keys(names.en).length} en, ${Object.keys(names.nl).length} nl, ${Object.keys(names.sr).length} sr`);

@@ -1,12 +1,20 @@
 import provinces from './nl-provinces.json';
 import regions from './rs-regions.json';
+import germanRegions from './de-regions.json';
 import type { StringKey } from '../i18n';
 import type { MapDefinition, MapData, PhysicalData } from './types';
 
 // Province and region maps (built by scripts/build-map.mjs, build-places.mjs and build-physical.mjs).
-const provinceGeo = import.meta.glob(['./nl-*/geo.json', './rs-*/geo.json']);
-const provinceCities = import.meta.glob(['./nl-*/cities.json', './rs-*/cities.json']);
-const provincePhysical = import.meta.glob(['./nl-*/physical.json', './rs-*/physical.json']);
+const provinceGeo = import.meta.glob(['./nl-*/geo.json', './rs-*/geo.json', './de-*/geo.json']);
+const provinceCities = import.meta.glob(['./nl-*/cities.json', './rs-*/cities.json', './de-*/cities.json']);
+const provincePhysical = import.meta.glob(['./nl-*/physical.json', './rs-*/physical.json', './de-*/physical.json']);
+/** Place names of the German maps (data/germany.json, OSM). */
+const germanNames = {
+  placeNames: 'native',
+  loadEnglishNames: async () => (await import('./germany/names.en.json')).default,
+  loadDutchNames: async () => (await import('./germany/names.nl.json')).default,
+  loadSerbianNames: async () => (await import('./germany/names.sr.json')).default,
+} satisfies Partial<MapDefinition>;
 const json = async <T>(load: () => Promise<unknown>) => ((await load()) as { default: T }).default;
 
 // To add a map: add its id + settings to MAPS in scripts/build-map.mjs, run
@@ -42,6 +50,23 @@ export const MAPS: MapDefinition[] = [
     loadPhysical: async () => (await import('./netherlands/physical.json')).default as never,
     physicalKind: 'watersAreas',
     practice: true,
+  },
+  {
+    id: 'germany',
+    nameKey: 'mapGermany',
+    allKey: 'regionAllGermany',
+    // German names, translated where English, Dutch or Serbian has its own (Köln: Cologne, Keulen, Keln).
+    ...germanNames,
+    viewKm: 300,
+    load: async () => ({
+      geo: (await import('./germany/geo.json')).default as never,
+      cities: (await import('./germany/cities.json')).default,
+    }),
+    loadPhysical: async () => (await import('./germany/physical.json')).default as never,
+    physicalKind: 'all',
+    // No official list: our own selection of 100 names (60 places, 40 waters, mountains and areas).
+    practice: true,
+    practiceList: 'selection',
   },
   {
     id: 'europe',
@@ -96,6 +121,28 @@ export const MAPS: MapDefinition[] = [
         cities: await json<MapData['cities']>(provinceCities[`./${r.id}/cities.json`]),
       }),
       loadPhysical: physical ? () => json<PhysicalData>(physical) : undefined,
+    };
+  }),
+  // Germany per region (a Land, with the city state inside it): its places, capital in level 1.
+  ...germanRegions.map((r): MapDefinition => {
+    const physical = provincePhysical[`./${r.id}/physical.json`];
+    return {
+      id: r.id,
+      nameKey: r.nameKey as StringKey,
+      parent: 'germany',
+      ...germanNames,
+      viewKm: r.viewKm,
+      pool: { first: 8, step: 8 },
+      reveal: 0.75,
+      // Find them all: the region's names of the 100, topped up with its biggest places.
+      practice: true,
+      practiceList: 'selection',
+      load: async () => ({
+        geo: await json<MapData['geo']>(provinceGeo[`./${r.id}/geo.json`]),
+        cities: await json<MapData['cities']>(provinceCities[`./${r.id}/cities.json`]),
+      }),
+      loadPhysical: physical ? () => json<PhysicalData>(physical) : undefined,
+      physicalKind: 'all',
     };
   }),
 ];

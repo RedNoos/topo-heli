@@ -1,0 +1,23 @@
+[
+{"name":"Rostock","lat":54.0887,"lon":12.14,"pop":207830,"listed":true},
+{"name":"Schwerin","lat":53.6288,"lon":11.4148,"pop":98596,"listed":true,"level":1},
+{"name":"Neubrandenburg","lat":53.5574,"lon":13.2603,"pop":63437,"listed":true},
+{"name":"Stralsund","lat":54.3096,"lon":13.0821,"pop":57301,"listed":true},
+{"name":"Greifswald","lat":54.0958,"lon":13.3815,"pop":56445,"listed":true},
+{"name":"Wismar","lat":53.891,"lon":11.4648,"pop":42557,"listed":true},
+{"name":"Güstrow","lat":53.7936,"lon":12.1765,"pop":29556,"listed":true},
+{"name":"Waren (Müritz)","lat":53.5156,"lon":12.6851,"pop":21637,"listed":true},
+{"name":"Neustrelitz","lat":53.3617,"lon":13.063,"pop":20426,"listed":true},
+{"name":"Parchim","lat":53.4258,"lon":11.8475,"pop":17129,"listed":true},
+{"name":"Ribnitz-Damgarten","lat":54.2474,"lon":12.4609,"pop":17053,"listed":true},
+{"name":"Bergen auf Rügen","lat":54.4173,"lon":13.4306,"pop":14328,"listed":true},
+{"name":"Wolgast","lat":54.0536,"lon":13.7758,"pop":14055,"listed":true},
+{"name":"Anklam","lat":53.8561,"lon":13.6881,"pop":12930,"listed":true},
+{"name":"Hagenow","lat":53.4306,"lon":11.1905,"pop":12295,"listed":true},
+{"name":"Ludwigslust","lat":53.33,"lon":11.4994,"pop":12095,"listed":true},
+{"name":"Bad Doberan","lat":54.1059,"lon":11.9026,"pop":11785,"listed":true},
+{"name":"Demmin","lat":53.907,"lon":13.0328,"pop":11393,"listed":true},
+{"name":"Boizenburg/Elbe","lat":53.3751,"lon":10.7232,"pop":10731,"listed":true},
+{"name":"Grevesmühlen","lat":53.8645,"lon":11.1899,"pop":10594,"listed":true},
+{"name":"Pasewalk","lat":53.5054,"lon":13.9889,"pop":10047}
+]

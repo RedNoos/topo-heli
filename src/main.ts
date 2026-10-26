@@ -204,8 +204,9 @@ function renderMapSelect() {
   ui.physicalOption.checked = !!mapDef.loadPhysical && (physicalOn || practiceOn);
   // The Netherlands: "Waters" or "Waters & areas" instead of mountains, rivers & lakes.
   const kind = mapDef.physicalKind;
-  $('physical-label').innerHTML = t(kind === 'watersAreas' ? 'physicalOptionWatersAreas' : kind ? 'physicalOptionWaters' : 'physicalOption');
-  $('howto-physical').innerHTML = kind ? t('howtoPhysicalWaters') + (kind === 'watersAreas' ? ' ' + t('howtoPhysicalAreas') : '') : t('howtoPhysical');
+  $('physical-label').innerHTML = t(kind === 'all' ? 'physicalOptionAll' : kind === 'watersAreas' ? 'physicalOptionWatersAreas' : kind ? 'physicalOptionWaters' : 'physicalOption');
+  $('howto-physical').innerHTML =
+    kind === 'all' ? t('howtoPhysical') + ' ' + t('howtoPhysicalAreas') : kind ? t('howtoPhysicalWaters') + (kind === 'watersAreas' ? ' ' + t('howtoPhysicalAreas') : '') : t('howtoPhysical');
   $('howto-physical').hidden = !physicalOn && !(practiceOn && mapDef.loadPhysical);
   if (practiceOn) {
     $('howto-practice').innerHTML = !n
@@ -225,11 +226,13 @@ function renderMapSelect() {
   const params = { map: mapName(mapDef), n: best };
   const bestKey: StringKey = !physicalOn
     ? 'best'
-    : kind === 'watersAreas'
-      ? 'bestPhysicalWatersAreas'
-      : kind
-        ? 'bestPhysicalWaters'
-        : 'bestPhysical';
+    : kind === 'all'
+      ? 'bestPhysicalAll'
+      : kind === 'watersAreas'
+        ? 'bestPhysicalWatersAreas'
+        : kind
+          ? 'bestPhysicalWaters'
+          : 'bestPhysical';
   ui.best.innerHTML = best > 0 ? t(bestKey, params) : '';
 }
 
@@ -239,13 +242,14 @@ async function selectMap(def: MapDefinition) {
   physicalOn = !!def.loadPhysical && loadOption();
   practiceOn = !!def.practice && loadOption(PRACTICE_KEY);
   renderMapSelect();
-  const [data, physical, serbianNames, dutchNames] = await Promise.all([
+  const [data, physical, serbianNames, dutchNames, englishNames] = await Promise.all([
     def.load(),
     wantsPhysical() ? def.loadPhysical?.() : undefined,
     def.loadSerbianNames?.(),
     def.loadDutchNames?.(),
+    def.loadEnglishNames?.(),
   ]);
-  setPlaceNames(def.placeNames, serbianNames, dutchNames);
+  setPlaceNames(def.placeNames, serbianNames, dutchNames, englishNames);
   mapData = { ...data, physical };
   renderMapSelect();
   // A non-started game gives the menu a live map in the background.
@@ -306,12 +310,12 @@ function newGame(start: boolean) {
 }
 
 /** Texts per kind of target; subkinds (canal, sea, province, ...) have their own words. */
-const SUB = { canal: 'Canal', dike: 'Dike', water: 'Water', province: 'Province', island: 'Island', airport: 'Airport' } as const;
+const SUB = { canal: 'Canal', dike: 'Dike', water: 'Water', province: 'Province', state: 'State', island: 'Island', airport: 'Airport' } as const;
 const KIND = { city: 'City', river: 'River', lake: 'Lake', mountain: 'Mountain', area: 'Area', landmark: 'Airport' } as const;
 const word = (t: Target) => (t.sub ? SUB[t.sub] : KIND[t.kind]);
 const flyToKey = (t: Target): StringKey => (t.kind === 'city' ? 'flyTo' : `flyTo${word(t)}`) as StringKey;
 const kindKey = (t: Target): StringKey => `kind${word(t)}` as StringKey;
-/** Provinces and islands share the area hint. */
+/** Provinces, states and islands share the area hint. */
 const hintKey = (t: Target): StringKey => (t.kind === 'area' ? 'hintArea' : (`hint${word(t)}` as StringKey));
 
 /** Target card: name plus, for physical features, what kind of place it is. */
@@ -550,7 +554,7 @@ ui.mute.onclick = toggleMute;
 /** Feedback form, told which map and mode the player was on. */
 const feedback = () => {
   track('feedback');
-  const mode = practiceOn ? 'basislijst' : !physicalOn ? 'vrij' : mapDef.physicalKind ? 'wateren' : 'bergen-rivieren';
+  const mode = practiceOn ? 'basislijst' : !physicalOn ? 'vrij' : mapDef.physicalKind === 'all' ? 'alles' : mapDef.physicalKind ? 'wateren' : 'bergen-rivieren';
   void openFeedback({ map: mapDef.id, mode, lang: getLang() });
 };
 $('btn-feedback').onclick = (e) => {

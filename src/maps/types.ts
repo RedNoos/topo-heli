@@ -50,8 +50,8 @@ export interface PhysicalData {
   lakes: { name: string; level: number; type?: 'water'; core?: boolean; rings: LonLat[][]; holes?: LonLat[][] }[];
   /** Located at the range's main peak. */
   mountains: { name: string; level: number; core?: boolean; lat: number; lon: number; ele: number | null }[];
-  /** Regions found by flying into them (provinces, islands, Veluwe, ...). */
-  areas?: { name: string; level: number; type?: 'province' | 'island'; core?: boolean; rings: LonLat[][]; holes?: LonLat[][] }[];
+  /** Regions found by flying into them (provinces, German states, islands, Veluwe, ...). */
+  areas?: { name: string; level: number; type?: 'province' | 'state' | 'island'; core?: boolean; rings: LonLat[][]; holes?: LonLat[][] }[];
   /** Point features other than mountains (Schiphol). */
   landmarks?: { name: string; level: number; type: 'airport'; core?: boolean; lat: number; lon: number }[];
   /**
@@ -92,13 +92,15 @@ export interface MapDefinition {
   time?: { start: number; levelBonus: number };
   /**
    * Place names: 'sr-Latn' = written in Serbian Latin (transliterated for Cyrillic);
-   * 'native' = shown as-is, or via loadSerbianNames when Serbian is selected.
+   * 'native' = shown as-is, or via loadSerbianNames / loadDutchNames / loadEnglishNames.
    */
   placeNames: 'sr-Latn' | 'native';
   /** Serbian (Cyrillic) names by place name, for maps whose names are not Serbian. */
   loadSerbianNames?: () => Promise<Record<string, string>>;
   /** Dutch names by place name, where they differ (e.g. Vienna -> Wenen). */
   loadDutchNames?: () => Promise<Record<string, string>>;
+  /** English names by place name, for maps whose names are not English (e.g. München -> Munich). */
+  loadEnglishNames?: () => Promise<Record<string, string>>;
   /** Kilometres visible across the smaller side of the screen. Bigger regions want a bigger view. */
   viewKm: number;
   /** Lazily loaded so adding maps does not grow the initial bundle. */
@@ -107,7 +109,8 @@ export interface MapDefinition {
   loadPhysical?: () => Promise<PhysicalData>;
   /**
    * What the physical data holds, for the option's name: 'waters' (rivers, canals, lakes,
-   * seas) or 'watersAreas' (also regions and landmarks). Default: mountains, rivers & lakes.
+   * seas), 'watersAreas' (also regions and landmarks) or 'all' (also mountains). Default:
+   * mountains, rivers & lakes.
    */
-  physicalKind?: 'waters' | 'watersAreas';
+  physicalKind?: 'waters' | 'watersAreas' | 'all';
 }

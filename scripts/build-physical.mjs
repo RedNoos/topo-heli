@@ -9,7 +9,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import mapshaper from 'mapshaper';
-import { PROVINCES, SERBIA_REGIONS } from './provinces.mjs';
+import { PROVINCES, SERBIA_REGIONS, GERMANY_REGIONS } from './provinces.mjs';
+import { toCyrillic } from './serbian.mjs';
 
 /** Province maps: rivers with less than this inside the province are not asked. */
 const MIN_PROVINCE_RIVER_KM = 8;
@@ -60,6 +61,80 @@ const PHYSICAL = {
       'Đerdapsko jezero', 'Vlasinsko jezero', 'Palićko jezero', 'Srebrno jezero', 'Perućac', 'Zlatarsko jezero', 'Gazivode', 'Uvačko jezero', 'Borsko jezero',
       'Kopaonik', 'Zlatibor', 'Fruška gora', 'Tara', 'Stara planina', 'Rtanj', 'Suva planina', 'Golija', 'Avala', 'Rudnik', 'Šar planina', 'Prokletije', 'Besna Kobila'],
   },
+  germany: {
+    areas: ['DE'],
+    // OSM names in Germany are German: no need to search other name tags.
+    nameKeys: ['name'],
+    bbox: [5.6, 47.1, 15.2, 55.1],
+    rivers: {
+      1: [
+        // Border stretches carry both names in OSM.
+        { name: 'Rhein', osm: ['Rhein', 'Rhein / Rhin', 'Rhin / Rhein'] },
+        'Elbe', 'Donau', 'Weser',
+        // The border river is named in Polish (Odra) in OSM; not the Oder in the Harz.
+        { name: 'Oder', osm: ['Oder', 'Odra', 'Oder / Odra', 'Odra / Oder'], box: [13.5, 51.0, 15.2, 54.0] },
+      ],
+      2: [
+        { name: 'Mosel', osm: ['Mosel', 'Mosel / Moselle', 'Moselle / Mosel', 'Mosel / Musel', 'Musel / Mosel'] },
+        // Not the small Ems in Hessen.
+        ['Ems', [6.9, 51.7, 8.7, 53.6]],
+        'Main', 'Neckar', 'Ruhr', 'Isar', 'Inn', 'Saale', 'Spree', 'Havel',
+        { name: 'Nord-Ostsee-Kanal', type: 'canal', canals: true },
+        { name: 'Mittellandkanal', type: 'canal', canals: true },
+      ],
+      // No Fulda: also a city.
+      3: [
+        'Lahn', 'Werra', 'Lech', 'Aller', 'Leine', 'Mulde', 'Saar', 'Lippe',
+        { name: 'Main-Donau-Kanal', type: 'canal', canals: true },
+        { name: 'Dortmund-Ems-Kanal', type: 'canal', canals: true },
+      ],
+    },
+    lakes: {
+      1: ['Bodensee'],
+      2: ['Müritz', 'Chiemsee'],
+      // Not the Schweriner See: OSM splits it, and a lake in Brandenburg has the same name.
+      3: ['Starnberger See', 'Ammersee', 'Steinhuder Meer', 'Edersee'],
+    },
+    // Mountain ranges at their highest peak; fixed coordinates where a higher peak elsewhere has
+    // the same name (Lemberg, Schneeberg, ...).
+    mountains: {
+      1: [['Alpen', 'Zugspitze'], ['Schwarzwald', 'Feldberg'], ['Harz', 'Brocken']],
+      2: [['Sauerland', 'Kahler Asten'], ['Eifel', 'Hohe Acht'], ['Hunsrück', 'Erbeskopf'], ['Bayerischer Wald', 'Großer Arber'], ['Erzgebirge', 'Fichtelberg'], ['Thüringer Wald', 'Großer Beerberg'], ['Taunus', 'Großer Feldberg'], ['Rhön', 'Wasserkuppe'], ['Schwäbische Alb', { lat: 48.1503, lon: 8.7471, ele: 1015 }]],
+      3: [['Fichtelgebirge', { lat: 50.0478, lon: 11.8539, ele: 1051 }], ['Odenwald', { lat: 49.4728, lon: 9.0392, ele: 626 }], ['Spessart', { lat: 50.0119, lon: 9.3778, ele: 586 }], ['Vogelsberg', 'Taufstein'], ['Westerwald', 'Fuchskaute'], ['Teutoburger Wald', { lat: 51.8414, lon: 8.9358, ele: 468 }], ['Pfälzerwald', 'Kalmit'], ['Elbsandsteingebirge', 'Großer Zschirnstein']],
+    },
+    // Find them all: with the 60 listed places in data/germany.json, 100 names. Based on the
+    // TopoSite list of Germany, plus well-known rivers, lakes, ranges and islands.
+    core: ['Nordsee', 'Ostsee', 'Rhein', 'Elbe', 'Donau', 'Weser', 'Oder', 'Mosel', 'Ems', 'Ruhr', 'Main', 'Neckar', 'Isar', 'Inn', 'Saale', 'Spree', 'Havel',
+      'Nord-Ostsee-Kanal', 'Mittellandkanal', 'Bodensee', 'Müritz', 'Chiemsee',
+      'Alpen', 'Schwarzwald', 'Harz', 'Sauerland', 'Eifel', 'Hunsrück', 'Bayerischer Wald', 'Erzgebirge', 'Thüringer Wald', 'Taunus', 'Rhön', 'Schwäbische Alb',
+      'Norddeutsches Tiefland', 'Ostfriesland', 'Lüneburger Heide', 'Ruhrgebiet', 'Rügen', 'Sylt'],
+    // Länder (not the city states: same names as their cities), landscapes and islands.
+    // Outlines are rough (no official border), cut to the land.
+    zones: {
+      2: [
+        ...['Schleswig-Holstein', 'Niedersachsen', 'Mecklenburg-Vorpommern', 'Brandenburg', 'Sachsen-Anhalt', 'Sachsen', 'Thüringen', 'Nordrhein-Westfalen', 'Hessen', 'Rheinland-Pfalz', 'Saarland', 'Baden-Württemberg', 'Bayern'].map((name) => ({ name, type: 'state', admin1: ['DEU', name] })),
+        // The lowland north of the Mittelgebirge: Rheine - Osnabrück - Hannover - Magdeburg - Leipzig - Görlitz.
+        { name: 'Norddeutsches Tiefland', outline: [[5.8, 52.0], [7.0, 52.15], [7.6, 52.3], [8.3, 52.4], [9.0, 52.3], [9.7, 52.3], [10.5, 52.2], [11.2, 52.05], [11.8, 51.75], [12.3, 51.45], [13.0, 51.35], [13.8, 51.25], [15.1, 51.15], [15.1, 55.1], [5.8, 55.1]] },
+        // Districts Aurich, Wittmund and Leer, and Emden, with the East Frisian islands.
+        { name: 'Ostfriesland', outline: [[6.95, 53.05], [7.25, 53.0], [7.6, 53.05], [7.8, 53.25], [7.95, 53.45], [8.05, 53.55], [7.95, 53.85], [6.6, 53.85], [6.9, 53.35]] },
+        { name: 'Ruhrgebiet', outline: [[6.6, 51.35], [6.6, 51.65], [7.1, 51.72], [7.7, 51.72], [7.9, 51.6], [7.6, 51.38], [7.2, 51.32], [6.9, 51.33]] },
+        { name: 'Rügen', type: 'island', landAt: [13.4, 54.45] },
+        { name: 'Sylt', type: 'island', landAt: [8.31, 54.9] },
+      ],
+      3: [
+        { name: 'Lüneburger Heide', outline: [[9.6, 52.65], [10.4, 52.55], [10.85, 52.8], [10.75, 53.2], [10.2, 53.32], [9.75, 53.2], [9.5, 52.95]] },
+        { name: 'Fehmarn', type: 'island', landAt: [11.15, 54.47] },
+        { name: 'Usedom', type: 'island', landAt: [14.05, 53.95] },
+      ],
+    },
+    // Seas: rough outlines with their edges on land (the land is cut out).
+    waterAreas: {
+      1: [
+        { name: 'Nordsee', type: 'water', outline: [[5.2, 53.25], [7.2, 53.25], [8.3, 53.3], [9.35, 53.75], [9.3, 54.2], [9.0, 54.6], [8.9, 55.5], [5.2, 55.5]] },
+        { name: 'Ostsee', type: 'water', outline: [[9.6, 54.35], [10.3, 53.85], [11.2, 53.85], [12.3, 54.05], [13.2, 53.95], [14.0, 53.8], [15.6, 53.8], [15.6, 55.6], [9.6, 55.6]] },
+      ],
+    },
+  },
   netherlands: {
     areas: ['NL'],
     bbox: [2.9, 50.6, 7.6, 53.75],
@@ -95,6 +170,7 @@ const PHYSICAL = {
     lakes: {},
     mountains: { 2: [['Vaalserberg', { lat: 50.7548, lon: 6.0207, ele: 322 }]] },
     // On the basislijst topografie (asked first); all zones, landmarks and lines below are too.
+    zonesCore: 'all',
     core: ['Rijn', 'Waal', 'Maas', 'IJssel', 'Lek', 'Noordzeekanaal', 'Amsterdam-Rijnkanaal', 'Nieuwe Waterweg', 'Waddenzee', 'IJsselmeer', 'Markermeer', 'Oosterschelde', 'Westerschelde', 'Vaalserberg'],
     // Areas (gebieden) of the basislijst topografie: found by flying (well) into them.
     // Sources: a CBS province, the CBS land part (island) at a point, CBS municipalities, an OSM
@@ -158,29 +234,6 @@ const PHYSICAL = {
 
 // ---------- helpers ----------
 
-const LAT_CYR = [
-  ['dž', 'џ'], ['lj', 'љ'], ['nj', 'њ'], ['a', 'а'], ['b', 'б'], ['c', 'ц'], ['č', 'ч'], ['ć', 'ћ'], ['d', 'д'],
-  ['đ', 'ђ'], ['e', 'е'], ['f', 'ф'], ['g', 'г'], ['h', 'х'], ['i', 'и'], ['j', 'ј'], ['k', 'к'], ['l', 'л'],
-  ['m', 'м'], ['n', 'н'], ['o', 'о'], ['p', 'п'], ['r', 'р'], ['s', 'с'], ['š', 'ш'], ['t', 'т'], ['u', 'у'],
-  ['v', 'в'], ['z', 'з'], ['ž', 'ж'],
-];
-/** Serbian Latin -> Cyrillic (OSM names in Serbia are Cyrillic). */
-function toCyrillic(s) {
-  let out = '';
-  for (let i = 0; i < s.length; ) {
-    const lower = s.slice(i).toLowerCase();
-    const hit = LAT_CYR.find(([l]) => lower.startsWith(l));
-    if (!hit) {
-      out += s[i++];
-      continue;
-    }
-    const upper = s[i] !== s[i].toLowerCase();
-    out += upper ? hit[1].toUpperCase() : hit[1];
-    i += hit[0].length;
-  }
-  return out;
-}
-
 const norm = (s) => s.normalize('NFC').toLowerCase();
 
 async function overpass(key, query) {
@@ -194,15 +247,21 @@ async function overpass(key, query) {
     for (const [i, url] of attempts.entries()) {
       if (i > 0 && i % OVERPASS.length === 0) await new Promise((r) => setTimeout(r, 15000));
       console.log(`  querying ${new URL(url).host} (${key})...`);
-      res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          Accept: 'application/json',
-          'User-Agent': 'topo-heli-map-builder/0.1 (hobby geography game)',
-        },
-        body: new URLSearchParams({ data: query }),
-      });
+      try {
+        res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            Accept: 'application/json',
+            'User-Agent': 'topo-heli-map-builder/0.1 (hobby geography game)',
+          },
+          body: new URLSearchParams({ data: query }),
+        });
+      } catch (e) {
+        console.warn(`  ! ${e.cause?.code ?? e.message}, trying next server`);
+        res = { ok: false, status: 'no answer', text: async () => '' };
+        continue;
+      }
       // An empty answer is usually a server hiccup: try the next server instead of caching it.
       if (res.ok) {
         const text = await res.clone().text();
@@ -239,7 +298,7 @@ function matchName(tags, names) {
 function areaQuery(cfg) {
   return cfg.areas.map((cc, i) => `area["ISO3166-1"="${cc}"]["admin_level"="2"]->.a${i};`).join('\n');
 }
-const inAreas = (cfg, filter, keys = NAME_KEYS) =>
+const inAreas = (cfg, filter, keys = cfg.nameKeys ?? NAME_KEYS) =>
   cfg.areas.map((_, i) => keys.map((k) => `${filter}["${k}"~"__RE__",i](area.a${i});`).join('\n')).join('\n');
 
 /**
@@ -367,7 +426,7 @@ async function buildLakes(id, cfg, key = 'lakes') {
   if (!entries.length) return [];
   const names = entries.map((e) => e.item);
   const re = nameRegex(names);
-  const query = `[out:json][timeout:300];\n${areaQuery(cfg)}\n(\n${inAreas(cfg, 'nwr["natural"="water"]', ['name', 'name:sr']).replaceAll('__RE__', re)}\n);\nout geom;`;
+  const query = `[out:json][timeout:300];\n${areaQuery(cfg)}\n(\n${inAreas(cfg, 'nwr["natural"="water"]', cfg.nameKeys ?? ['name', 'name:sr']).replaceAll('__RE__', re)}\n);\nout geom;`;
   const data = await overpass(`${id}-${key}`, query);
 
   const features = [];
@@ -530,11 +589,23 @@ function insideRingLL([x, y], ring) {
   return inside;
 }
 
-/** Areas (gebieden): see `areas` in the config. Output like lakes: outer rings + holes. */
+/**
+ * Land of a map that is not built from CBS data: its own playable area (geo.json), and its
+ * Natural Earth admin-1 regions (e.g. the German Länder), cached by build-map.mjs.
+ */
+async function homeLand(id) {
+  const geo = JSON.parse(await fs.readFile(path.join(ROOT, 'src', 'maps', id, 'geo.json'), 'utf8'));
+  const admin1 = JSON.parse(await fs.readFile(path.join(CACHE, 'ne_10m_admin_1_states_provinces.geojson'), 'utf8').catch(() => {
+    throw new Error('Run "npm run build:map" first (it downloads the Natural Earth admin-1 regions).');
+  }));
+  return { land: { type: 'FeatureCollection', features: geo.home.map(featureOf) }, municipalities: { features: [] }, admin1 };
+}
+
+/** Areas (gebieden): see `zones` in the config. Output like lakes: outer rings + holes. */
 async function buildAreas(id, cfg) {
   const entries = byLevel(cfg.zones ?? {});
   if (!entries.length) return [];
-  const { land, municipalities } = await cbsData();
+  const { land, municipalities, admin1 } = cfg.areas.includes('NL') ? await cbsData() : await homeLand(id);
   const ids = entries.map((e) => e.item.relation).filter(Boolean);
   const data = ids.length
     ? await overpass(`${id}-arearelations-${ids.join('-')}`, `[out:json][timeout:300];\n(${ids.map((r) => `relation(${r});`).join('')});\nout geom;`)
@@ -545,6 +616,7 @@ async function buildAreas(id, cfg) {
   for (const { level, item } of entries) {
     let shapes = [];
     if (item.cbsProvince) shapes = land.features.filter((f) => f.properties.prov === item.cbsProvince);
+    if (item.admin1) shapes = admin1.features.filter((f) => f.properties.adm0_a3 === item.admin1[0] && f.properties.name === item.admin1[1]);
     if (item.landAt) {
       const part = polysOf(land).find((p) => insideRingLL(item.landAt, p[0]));
       if (part) shapes = [featureOf(part)];
@@ -671,7 +743,7 @@ async function build(id, cfg) {
     mark(out.rivers.filter((r) => r.type === 'dike'), true);
     mark(out.lakes);
     mark(out.mountains);
-    mark(out.areas, true);
+    mark(out.areas, cfg.zonesCore === 'all');
     mark(out.landmarks, true);
   }
 
@@ -764,7 +836,7 @@ async function buildDerived(id, fromId) {
     return grid.filter((p) => a.rings.some((r) => insideRingLL(p, r)));
   };
   const areas = (from.areas ?? []).filter((a) => {
-    if (a.type === 'province') return false;
+    if (a.type === 'province' || a.type === 'state') return false;
     const pts = interior(a);
     return pts.length > 0 && pts.filter(inHome).length >= 0.5 * pts.length;
   });
@@ -840,4 +912,9 @@ if (!only || only === 'netherlands' || only === 'provinces') {
 if (!only || only === 'serbia' || only === 'regions') {
   console.log('Deriving region rivers from serbia');
   for (const r of SERBIA_REGIONS) await buildDerived(r.id, 'serbia');
+}
+// German regions are derived from Germany: `npm run build:physical -- de-regions` (or no argument).
+if (!only || only === 'germany' || only === 'de-regions') {
+  console.log('Deriving region rivers from germany');
+  for (const r of GERMANY_REGIONS) await buildDerived(r.id, 'germany');
 }

@@ -71,8 +71,8 @@ export async function openGame(browser, { map = 'netherlands', mode = 'free', la
   );
   await page.reload({ waitUntil: 'networkidle0' });
   // Map buttons are the top-level maps in MAPS order; provinces are chosen in the area select.
-  const top = map.startsWith('nl-') ? 'netherlands' : map.startsWith('rs-') ? 'serbia' : map;
-  const index = { serbia: 0, netherlands: 1, europe: 2 }[top];
+  const top = map.startsWith('nl-') ? 'netherlands' : map.startsWith('rs-') ? 'serbia' : map.startsWith('de-') ? 'germany' : map;
+  const index = { serbia: 0, netherlands: 1, germany: 2, europe: 3 }[top];
   await page.evaluate((i) => document.querySelectorAll('#map-select button')[i].click(), index);
   await wait(900);
   if (map !== top) {
@@ -110,12 +110,14 @@ export function findCurrent(page) {
       return false;
     }
     if (t.kind === 'lake') {
-      // Its centre may lie on an island or on land: look for a point on the water.
+      // Its centre may lie on an island or on land: look for a point on the water, within the
+      // map (seas such as the Ostsee reach far beyond a region map).
       const pts = t.rings.flat();
+      const b = g.bounds;
       const xs = pts.map((q) => q.x);
       const ys = pts.map((q) => q.y);
-      outer: for (let x = Math.min(...xs); x < Math.max(...xs); x += 2)
-        for (let y = Math.min(...ys); y < Math.max(...ys); y += 2) {
+      outer: for (let x = Math.max(b.minX, Math.min(...xs)); x < Math.min(b.maxX, Math.max(...xs)); x += 2)
+        for (let y = Math.max(b.minY, Math.min(...ys)); y < Math.min(b.maxY, Math.max(...ys)); y += 2) {
           g.heli.x = x;
           g.heli.y = y;
           if (g.targetDistance === 0) break outer;
