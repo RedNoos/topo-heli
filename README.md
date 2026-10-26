@@ -85,8 +85,9 @@ are close.
 - Borders, rivers and lakes: [Natural Earth](https://www.naturalearthdata.com/) (public domain).
   The Europe map uses the internationally recognised borders (Natural Earth's German point of
   view), with Kosovo drawn as part of Serbia on every map.
-- Rivers, lakes and peaks: [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors (ODbL).
+- Rivers, lakes and peaks, and the German towns and cities: [OpenStreetMap](https://www.openstreetmap.org/copyright)
+  contributors (ODbL).
 - Dutch coastline and province borders: CBS / Kadaster via [PDOK](https://www.pdok.nl/) (CC BY 4.0):
   province areas minus the CBS "water" neighbourhoods, so islands and estuaries are separate.
-- City coordinates: [GeoNames](https://www.geonames.org/) (CC BY 4.0). Populations are rounded
-  approximations.
+- City coordinates: [GeoNames](https://www.geonames.org/) (CC BY 4.0); for Germany only the population
+  where OSM has none. Populations are rounded approximations.
