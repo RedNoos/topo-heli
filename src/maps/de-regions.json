@@ -7,7 +7,7 @@
   {
     "id": "de-niedersachsen",
     "nameKey": "regionNiedersachsen",
-    "viewKm": 150
+    "viewKm": 180
   },
   {
     "id": "de-mecklenburg-vorpommern",
@@ -62,6 +62,6 @@
   {
     "id": "de-bayern",
     "nameKey": "regionBayern",
-    "viewKm": 150
+    "viewKm": 180
   }
 ]

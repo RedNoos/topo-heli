@@ -312,7 +312,7 @@ for (const r of deRegions) {
   const [w, s, e, n] = r.bbox;
   const widthKm = (e - w) * 111 * Math.cos(((s + n) / 2) * D);
   const heightKm = (n - s) * 111;
-  const viewKm = Math.round(Math.min(150, Math.max(60, 0.5 * Math.max(widthKm, heightKm))));
+  const viewKm = Math.round(Math.min(180, Math.max(60, 0.5 * Math.max(widthKm, heightKm))));
   deManifest.push({ id: r.id, nameKey: r.nameKey, viewKm });
   console.log(`  ${r.name.padEnd(24)} ${String(cities.length).padStart(3)} places (capital ${r.capital}), view ${viewKm} km`);
 }

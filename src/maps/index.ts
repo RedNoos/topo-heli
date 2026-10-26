@@ -57,7 +57,7 @@ export const MAPS: MapDefinition[] = [
     allKey: 'regionAllGermany',
     // German names, translated where English, Dutch or Serbian has its own (Köln: Cologne, Keulen, Keln).
     ...germanNames,
-    viewKm: 300,
+    viewKm: 440,
     load: async () => ({
       geo: (await import('./germany/geo.json')).default as never,
       cities: (await import('./germany/cities.json')).default,
