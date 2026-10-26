@@ -418,7 +418,7 @@ const de: Record<StringKey, string> = {
   credits: 'Kartendaten: © {osm}-Mitwirkende, {ne}, {gn}, {cbs}',
   inspiredBy: 'Inspiriert von {game} ({maker}, {platform}, 1984)',
   privacy: 'Anonyme Besucherstatistik über {goatcounter}, ohne Cookies.',
-  feedback: '💬 Feedback',
+  feedback: '💬 Feedback geben',
   feedbackPrivacy: 'Feedback wird über {tally} (EU) gesendet; gespeichert wird nur, was du eingibst.',
 };
 
