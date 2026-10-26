@@ -74,6 +74,7 @@ export const MAPS: MapDefinition[] = [
     placeNames: 'native',
     loadSerbianNames: async () => (await import('./europe/names.sr.json')).default,
     loadDutchNames: async () => (await import('./europe/names.nl.json')).default,
+    loadGermanNames: async () => (await import('./europe/names.de.json')).default,
     viewKm: 1300,
     load: async () => ({
       geo: (await import('./europe/geo.json')).default as never,

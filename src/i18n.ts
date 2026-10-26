@@ -1,18 +1,19 @@
 /**
- * UI language: English, Dutch, Serbian Latin and Serbian Cyrillic.
+ * UI language: English, Dutch, German, Serbian Latin and Serbian Cyrillic.
  *
  * Serbian is written once, in Latin script; Cyrillic is derived by
  * transliteration (Serbian Latin <-> Cyrillic is one-to-one). Text inside
  * HTML tags and {placeholders} is never transliterated.
  */
 
-export type Lang = 'en' | 'nl' | 'sr-Latn' | 'sr-Cyrl';
+export type Lang = 'en' | 'nl' | 'de' | 'sr-Latn' | 'sr-Cyrl';
 
-type Flag = 'gb' | 'nl' | 'rs';
+type Flag = 'gb' | 'nl' | 'de' | 'rs';
 
 export const LANGS: { id: Lang; short: string; label: string; flag: Flag }[] = [
   { id: 'en', short: 'EN', label: 'English', flag: 'gb' },
   { id: 'nl', short: 'NL', label: 'Nederlands', flag: 'nl' },
+  { id: 'de', short: 'DE', label: 'Deutsch', flag: 'de' },
   { id: 'sr-Latn', short: 'SR', label: 'Srpski (latinica)', flag: 'rs' },
   { id: 'sr-Cyrl', short: 'СР', label: 'Српски (ћирилица)', flag: 'rs' },
 ];
@@ -287,6 +288,140 @@ const nl: Record<StringKey, string> = {
   feedbackPrivacy: 'Feedback gaat via {tally} (EU); alleen wat je zelf invult wordt bewaard.',
 };
 
+const de: Record<StringKey, string> = {
+  subtitle: 'Flieg mit deinem Hubschrauber an die richtige Stelle.',
+  mapLabel: 'Karte',
+  modeLabel: 'Spielart',
+  howtoTitle: 'So wird gespielt',
+  physicalOption: 'Berge, Flüsse &amp; Seen',
+  physicalOptionWaters: 'Gewässer',
+  physicalOptionWatersAreas: 'Gewässer &amp; Gebiete',
+  physicalOptionAll: 'Berge, Gewässer &amp; Gebiete',
+  start: 'Start',
+  howtoFly: '<b>Fliegen</b> mit den Pfeiltasten / {keys}, oder wisch mit dem Finger über den Bildschirm.',
+  howtoFlash: 'Kommst du nah heran, fängt die Stadt an zu <b>blinken</b>. Flieg genau darüber.',
+  howtoLevels: 'Alle <b>10 Städte</b>: +{bonus}, aber kleinere Orte und weniger Hilfe.',
+  howtoPhysical: '<b>Flüsse:</b> flieg den Fluss <i>entlang</i>, bis der Balken voll ist. Seen und Berge: flieg darüber.',
+  howtoPhysicalWaters: '<b>Flüsse und Kanäle:</b> flieg sie <i>entlang</i>, bis der Balken voll ist. Seen und Meere: flieg darüber.',
+  howtoPhysicalAreas: '<b>Gebiete</b> (Provinzen, Inseln, ...): flieg ein Stück <i>hinein</i>; den Rand berühren reicht nicht.',
+  best: 'Rekord auf {map}: {n} gefunden',
+  bestPhysical: 'Rekord auf {map} (mit Bergen, Flüssen &amp; Seen): {n} gefunden',
+  bestPhysicalWaters: 'Rekord auf {map} (mit Gewässern): {n} gefunden',
+  bestPhysicalWatersAreas: 'Rekord auf {map} (mit Gewässern &amp; Gebieten): {n} gefunden',
+  bestPhysicalAll: 'Rekord auf {map} (mit Bergen, Gewässern &amp; Gebieten): {n} gefunden',
+  flyTo: 'Flieg nach',
+  flyToRiver: 'Flieg zum Fluss',
+  flyToLake: 'Flieg zum See',
+  flyToMountain: 'Flieg zum Berg',
+  flyToCanal: 'Flieg zum Kanal',
+  flyToWater: 'Flieg zum Gewässer',
+  flyToArea: 'Flieg in das Gebiet',
+  flyToProvince: 'Flieg in die Provinz',
+  flyToState: 'Flieg in das Bundesland',
+  flyToIsland: 'Flieg zur Insel',
+  flyToAirport: 'Flieg zum Flughafen',
+  flyToDike: 'Flieg zum Deich',
+  kindRiver: 'Fluss',
+  kindLake: 'See',
+  kindMountain: 'Berg',
+  kindCanal: 'Kanal',
+  kindWater: 'Gewässer',
+  kindArea: 'Gebiet',
+  kindProvince: 'Provinz',
+  kindState: 'Bundesland',
+  kindIsland: 'Insel',
+  kindAirport: 'Flughafen',
+  kindDike: 'Deich',
+  found: 'gefunden',
+  level: 'Level',
+  pause: 'Pause',
+  skip: 'Überspringen −10s',
+  skipPractice: 'Überspringen +20s',
+  modeFree: 'Gegen die Uhr',
+  modeFreeDesc: 'Finde so viele wie möglich, Level für Level',
+  modeList: 'Alle finden',
+  modeListDesc: '{n} Namen aus der niederländischen {list}{extra}, so schnell wie möglich',
+  modeListExtra: ' + bekannte Orte',
+  modeListDescSelection: 'Die {n} bekanntesten Orte, Berge und Gewässer dieser Karte, so schnell wie möglich',
+  howtoPracticeSelection: '<b>Alle finden:</b> die {n} bekanntesten Orte, Berge und Gewässer dieser Karte. Finde sie alle so schnell wie möglich; Überspringen kostet 20 Sekunden und der Name kommt später wieder.',
+  modeListDescAll: 'Alle {n} Orte, Berge, Flüsse und Seen der Region, so schnell wie möglich',
+  howtoPracticeAll: '<b>Alle finden:</b> alle {n} Orte, Berge, Flüsse und Seen der Region. Finde sie alle so schnell wie möglich; Überspringen kostet 20 Sekunden und der Name kommt später wieder.',
+  howtoPractice: '<b>Alle finden:</b> die {n} Namen, die man kennen muss (die niederländische {list}{extra}). Finde sie alle so schnell wie möglich; Überspringen kostet 20 Sekunden und der Name kommt später wieder.',
+  bestPractice: 'Schnellste Zeit auf {map} (alle finden): {t}',
+  done: 'Alle gefunden!',
+  timeLabel: 'Zeit',
+  newBestTime: 'Neue Bestzeit!',
+  bestTime: 'Bestzeit: {t}',
+  groupPractise: 'Noch mal üben',
+  groupFound: 'Gefunden',
+  groupMissed: 'Nicht gefunden',
+  perfect: 'Nichts übersprungen und nirgends lange gebraucht. Super!',
+  practiceExtra: ', ergänzt um bekannte Orte der Provinz',
+  soundOn: 'Ton an',
+  soundOff: 'Ton aus',
+  hintCity: 'Ganz nah! Such den blinkenden Punkt',
+  hintRiver: 'Ganz nah! Folge dem leuchtenden Fluss',
+  hintLake: 'Ganz nah! Flieg über den blinkenden See',
+  hintMountain: 'Ganz nah! Such den blinkenden Gipfel',
+  hintCanal: 'Ganz nah! Folge dem leuchtenden Kanal',
+  hintWater: 'Ganz nah! Flieg über das blinkende Gewässer',
+  hintArea: 'Ganz nah! Flieg in das blinkende Gebiet',
+  hintAreaDeeper: 'Weiter hinein!',
+  hintAirport: 'Ganz nah! Such das blinkende Flugzeug',
+  hintDike: 'Ganz nah! Folge dem leuchtenden Deich',
+  followRiver: 'Folge dem Fluss: {p}%',
+  followCanal: 'Folge dem Kanal: {p}%',
+  followDike: 'Folge dem Deich: {p}%',
+  levelUp: 'Level {n}! +{bonus}',
+  levelUpDetail: 'Kleinere Orte, und der Punkt erscheint später',
+  levelUpDetailPhysical: 'Weniger bekannte Orte, und sie erscheinen später',
+  paused: 'Pause',
+  resume: 'Weiter',
+  quit: 'Zum Menü',
+  timeUp: 'Die Zeit ist um!',
+  placesFoundOne: 'Ort gefunden',
+  placesFoundFew: 'Orte gefunden',
+  placesFoundMany: 'Orte gefunden',
+  newBest: 'Neuer Rekord!',
+  bestShort: 'Rekord: {n}',
+  playAgain: 'Noch mal spielen',
+  menu: 'Anderes Spiel wählen',
+  language: 'Sprache',
+  mapSerbia: 'Serbien',
+  mapNetherlands: 'Niederlande',
+  mapGermany: 'Deutschland',
+  mapEurope: 'Europa',
+  region: 'Gebiet',
+  modeListUnavailable: 'Für diese Karte nicht verfügbar',
+  regionAllNetherlands: 'Ganze Niederlande',
+  regionAllSerbia: 'Ganz Serbien',
+  regionVojvodina: 'Vojvodina',
+  regionSumadija: 'Belgrad und Šumadija',
+  regionWestSerbia: 'Westserbien',
+  regionEastSerbia: 'Ostserbien',
+  regionSouthSerbia: 'Südserbien',
+  regionKosovo: 'Kosovo und Metohija',
+  regionAllGermany: 'Ganz Deutschland',
+  regionSchleswigHolstein: 'Schleswig-Holstein und Hamburg',
+  regionNiedersachsen: 'Niedersachsen und Bremen',
+  regionMecklenburg: 'Mecklenburg-Vorpommern',
+  regionBrandenburg: 'Brandenburg und Berlin',
+  regionSachsenAnhalt: 'Sachsen-Anhalt',
+  regionSachsen: 'Sachsen',
+  regionThueringen: 'Thüringen',
+  regionNordrheinWestfalen: 'Nordrhein-Westfalen',
+  regionHessen: 'Hessen',
+  regionRheinlandPfalz: 'Rheinland-Pfalz',
+  regionSaarland: 'Saarland',
+  regionBadenWuerttemberg: 'Baden-Württemberg',
+  regionBayern: 'Bayern',
+  credits: 'Kartendaten: © {osm}-Mitwirkende, {ne}, {gn}, {cbs}',
+  inspiredBy: 'Inspiriert von {game} ({maker}, {platform}, 1984)',
+  privacy: 'Anonyme Besucherstatistik über {goatcounter}, ohne Cookies.',
+  feedback: '💬 Feedback',
+  feedbackPrivacy: 'Feedback wird über {tally} (EU) gesendet; gespeichert wird nur, was du eingibst.',
+};
+
 const srLatn: Record<StringKey, string> = {
   subtitle: 'Leti helikopterom do pravog mesta.',
   mapLabel: 'Karta',
@@ -496,6 +631,7 @@ export function fromBrowser(prefs: readonly string[]): Lang {
   for (const raw of prefs) {
     const p = (raw || '').toLowerCase();
     if (p.startsWith('nl')) return 'nl';
+    if (p.startsWith('de')) return 'de';
     if (p.startsWith('sr')) return p.includes('latn') ? 'sr-Latn' : 'sr-Cyrl';
     if (p.startsWith('en')) return 'en';
   }
@@ -521,20 +657,20 @@ export function onLangChange(fn: () => void) {
 
 /** Translated string; {name} placeholders are filled from params (never transliterated). */
 export function t(key: StringKey, params: Record<string, string | number> = {}): string {
-  let s = lang === 'en' ? en[key] : lang === 'nl' ? nl[key] : srLatn[key];
+  let s = lang === 'en' ? en[key] : lang === 'nl' ? nl[key] : lang === 'de' ? de[key] : srLatn[key];
   if (lang === 'sr-Cyrl') s = toCyrillic(s);
   return s.replace(/\{(\w+)\}/g, (m, p: string) => (p in params ? String(params[p]) : m));
 }
 
 /**
  * Plural form for a count. Serbian: 1, 21, 31… -> One; 2–4, 22–24… -> Few; others
- * (incl. 11–14) -> Many. English only distinguishes 1.
+ * (incl. 11–14) -> Many. English, Dutch and German only distinguish 1.
  */
 export function plural(base: 'placesFound', n: number): string {
   const mod10 = n % 10;
   const mod100 = n % 100;
   const form =
-    lang === 'en' || lang === 'nl'
+    lang === 'en' || lang === 'nl' || lang === 'de'
       ? n === 1 ? 'One' : 'Many'
       : mod10 === 1 && mod100 !== 11
         ? 'One'
@@ -550,22 +686,25 @@ export function plural(base: 'placesFound', n: number): string {
  * How the current map's place names behave per language:
  * - 'sr-Latn': names are Serbian Latin (shown as-is, transliterated for Cyrillic);
  * - otherwise names are shown as-is, unless the table of the language (`serbian` in Cyrillic,
- *   `dutch`, `english`) has another name.
+ *   `dutch`, `german`, `english`) has another name.
  */
 let nameScript: 'sr-Latn' | 'native' = 'native';
 let serbianNames: Record<string, string> = {};
 let dutchNames: Record<string, string> = {};
+let germanNames: Record<string, string> = {};
 let englishNames: Record<string, string> = {};
 
 export function setPlaceNames(
   script: 'sr-Latn' | 'native',
   serbian: Record<string, string> = {},
   dutch: Record<string, string> = {},
+  german: Record<string, string> = {},
   english: Record<string, string> = {},
 ) {
   nameScript = script;
   serbianNames = serbian;
   dutchNames = dutch;
+  germanNames = german;
   englishNames = english;
 }
 
@@ -573,6 +712,7 @@ export function placeName(name: string): string {
   if (lang === 'en') return englishNames[name] ?? name;
   if (nameScript === 'sr-Latn') return lang === 'sr-Cyrl' ? toCyrillic(name) : name;
   if (lang === 'nl') return dutchNames[name] ?? name;
+  if (lang === 'de') return germanNames[name] ?? name;
   const sr = serbianNames[name];
   if (!sr) return name;
   return lang === 'sr-Cyrl' ? sr : toLatin(sr);
@@ -607,6 +747,9 @@ const SERBIA_FLAG = (() => {
 })();
 export function flagSvg(flag: Flag): string {
   if (flag === 'rs') return SERBIA_FLAG;
+  if (flag === 'de') {
+    return '<svg class="flag" viewBox="0 0 9 6" aria-hidden="true"><rect width="9" height="6" fill="#ffce00"/><rect width="9" height="4" fill="#dd0000"/><rect width="9" height="2" fill="#000"/></svg>';
+  }
   if (flag === 'nl') {
     return '<svg class="flag" viewBox="0 0 9 6" aria-hidden="true"><rect width="9" height="6" fill="#21468b"/><rect width="9" height="4" fill="#fff"/><rect width="9" height="2" fill="#ae1c28"/></svg>';
   }

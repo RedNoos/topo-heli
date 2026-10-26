@@ -10,8 +10,8 @@ description: Check a Topo Heli UI change in the browser on desktop and phone (me
    npm run shots -- --map netherlands --mode free --lang nl
    npm run shots -- --map nl-utrecht --mode list
    ```
-   Modes: `free`, `physical` (waters / mountains on), `list` (Alles vinden). Languages: `nl`, `en`,
-   `sr-Latn`, `sr-Cyrl`. Check a long language (Serbian) for texts that wrap or overflow.
+   Modes: `free`, `physical` (waters / mountains on), `list` (Alles vinden). Languages: `nl`, `en`, `de`,
+   `sr-Latn`, `sr-Cyrl`. Check a long language (Serbian, German) for texts that wrap or overflow.
 3. Read the PNGs in `.shots/` that matter (menu, game, end; desktop and phone) and look for:
    overflow, cut-off lists, elements that jump between states, untranslated or transliterated names.
 4. For gameplay changes: `npm run playtest -- --map <id> --mode <mode>`; it must report no page
