@@ -11,12 +11,14 @@
 // Germany: towns and cities from OpenStreetMap (population from GeoNames where OSM has none)
 // into src/maps/germany/ and src/maps/de-<region>/, the name translations into
 // src/maps/germany/names.{en,nl,sr}.json and the manifest src/maps/de-regions.json.
+// Finland: towns and cities from OpenStreetMap into src/maps/finland/, with the translations
+// in src/maps/finland/names.{en,nl,de,sr}.json.
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { unzipSync, strFromU8 } from 'fflate';
 import { PROVINCES, SERBIA_REGIONS, GERMANY_REGIONS } from './provinces.mjs';
-import { toCyrillic } from './serbian.mjs';
+import { toCyrillic, finnishToSerbian } from './serbian.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const CACHE = path.join(ROOT, '.cache');
@@ -255,16 +257,16 @@ const deQuery = `[out:json][timeout:300];
 area["ISO3166-1"="DE"]["admin_level"="2"]->.a;
 node["place"~"^(city|town)$"](area.a);
 out;`;
-const deGeonames = await geonames(1, 'DE');
 /** OSM population, or GeoNames' for the same place (OSM misses some, and has a few typos). */
-function dePop(name, lat, lon, tag) {
+const popLookup = (gnList) => (name, lat, lon, tag) => {
   const osm = parseInt((tag ?? '').replace(/\D/g, ''), 10) || 0;
-  const gn = deGeonames
+  const gn = gnList
     .filter((g) => g.name === name && km(g, { lat, lon }) < 8)
     .sort((a, b) => km(a, { lat, lon }) - km(b, { lat, lon }))[0]?.pop;
   if (!osm) return gn ?? 0;
   return gn && (osm > 3 * gn || gn > 3 * osm) ? gn : osm;
-}
+};
+const dePop = popLookup(await geonames(1, 'DE'));
 const deAll = JSON.parse(await overpass('overpass-germany-places.json', deQuery, 'German towns'))
   .elements.filter((e) => e.tags?.name)
   .map((e) => {
@@ -332,3 +334,53 @@ for (const lang of Object.keys(names)) {
   await fs.writeFile(path.join(ROOT, 'src', 'maps', 'germany', `names.${lang}.json`), JSON.stringify(sorted, null, 2) + '\n');
 }
 console.log(`  names: ${Object.keys(names.en).length} en, ${Object.keys(names.nl).length} nl, ${Object.keys(names.sr).length} sr`);
+
+// ---------- Finland ----------
+
+/** Whole Finland: towns from this size, and every town north of the Arctic Circle (Lapland). */
+const FI_MIN_POP = 4000;
+const ARCTIC_CIRCLE = 66.56;
+
+const finland = JSON.parse(await fs.readFile(path.join(ROOT, 'data', 'finland.json'), 'utf8'));
+const fiQuery = `[out:json][timeout:300];
+area["ISO3166-1"="FI"]["admin_level"="2"]->.a;
+node["place"~"^(city|town|village)$"](area.a);
+out;`;
+const fiPop = popLookup(await geonames(1, 'FI'));
+const fiAll = JSON.parse(await overpass('overpass-finland-places.json', fiQuery, 'Finnish towns'))
+  .elements.filter((e) => e.tags?.name && e.tags.place !== 'village')
+  .map((e) => {
+    // Finnish names, also where the Swedish one is the main name (Jakobstad: Pietarsaari).
+    const osmName = e.tags['name:fi'] ?? e.tags.name;
+    return { name: finland.rename[osmName] ?? osmName, lat: e.lat, lon: e.lon, pop: fiPop(e.tags.name, e.lat, e.lon, e.tags.population), sr: e.tags['name:sr'] };
+  })
+  .filter((c) => c.pop >= FI_MIN_POP || c.lat >= ARCTIC_CIRCLE || finland.listed.includes(c.name))
+  .sort((a, b) => b.pop - a.pop);
+const missingFi = finland.listed.filter((n) => !fiAll.some((c) => c.name === n));
+if (missingFi.length) throw new Error(`Finland: listed places not found: ${missingFi.join(', ')}`);
+
+console.log('Building Finnish place list');
+const fiSeen = new Set();
+const fiCities = [];
+for (const c of fiAll) {
+  if (fiSeen.has(c.name)) continue; // same name twice: keep the bigger one
+  fiSeen.add(c.name);
+  fiCities.push({ name: c.name, lat: round4(c.lat), lon: round4(c.lon), pop: c.pop, ...(finland.listed.includes(c.name) ? { listed: true } : {}) });
+}
+await fs.writeFile(path.join(ROOT, 'src', 'maps', 'finland', 'cities.json'), '[\n' + fiCities.map((c) => JSON.stringify(c)).join(',\n') + '\n]\n');
+console.log(`  Finland ${fiCities.length} places (${fiCities.filter((c) => c.listed).length} listed)`);
+
+// Translations: curated (data/finland.json); Serbian from OSM name:sr, else transcribed (the
+// physical features' names are added by scripts/build-physical.mjs).
+const fiNames = { en: {}, nl: {}, de: {}, sr: {} };
+for (const c of fiCities) fiNames.sr[c.name] = toCyrillic(finnishToSerbian(c.name));
+for (const c of fiAll) if (c.sr) fiNames.sr[c.name] = c.sr;
+for (const [name, tr] of Object.entries(finland.names)) {
+  for (const lang of ['en', 'nl', 'de']) if (tr[lang]) fiNames[lang][name] = tr[lang];
+  if (tr.sr) fiNames.sr[name] = toCyrillic(tr.sr);
+}
+for (const lang of Object.keys(fiNames)) {
+  const sorted = Object.fromEntries(Object.entries(fiNames[lang]).sort(([a], [b]) => a.localeCompare(b, 'fi')));
+  await fs.writeFile(path.join(ROOT, 'src', 'maps', 'finland', `names.${lang}.json`), JSON.stringify(sorted, null, 2) + '\n');
+}
+console.log(`  names: ${Object.keys(fiNames.en).length} en, ${Object.keys(fiNames.nl).length} nl, ${Object.keys(fiNames.de).length} de, ${Object.keys(fiNames.sr).length} sr`);

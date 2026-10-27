@@ -10,7 +10,7 @@ import { STORAGE_PREFIX } from './env';
 
 export type Lang = 'en' | 'nl' | 'de' | 'sr-Latn' | 'sr-Cyrl';
 
-export type Flag = 'gb' | 'nl' | 'de' | 'rs' | 'eu';
+export type Flag = 'gb' | 'nl' | 'de' | 'fi' | 'rs' | 'eu';
 
 export const LANGS: { id: Lang; short: string; label: string; flag: Flag }[] = [
   { id: 'en', short: 'EN', label: 'English', flag: 'gb' },
@@ -50,6 +50,7 @@ const en = {
   flyToArea: 'Fly into the area',
   flyToProvince: 'Fly into the province',
   flyToState: 'Fly into the state',
+  flyToRegion: 'Fly into the region',
   flyToIsland: 'Fly to the island',
   flyToAirport: 'Fly to the airport',
   flyToDike: 'Fly to the dike',
@@ -61,6 +62,7 @@ const en = {
   kindArea: 'area',
   kindProvince: 'province',
   kindState: 'state',
+  kindRegion: 'region',
   kindIsland: 'island',
   kindAirport: 'airport',
   kindDike: 'dike',
@@ -122,6 +124,7 @@ const en = {
   mapSerbia: 'Serbia',
   mapNetherlands: 'Netherlands',
   mapGermany: 'Germany',
+  mapFinland: 'Finland',
   mapEurope: 'Europe',
   region: 'Area',
   modeListUnavailable: 'Not available for this map',
@@ -186,6 +189,7 @@ const nl: Record<StringKey, string> = {
   flyToArea: 'Vlieg het gebied in',
   flyToProvince: 'Vlieg de provincie in',
   flyToState: 'Vlieg de deelstaat in',
+  flyToRegion: 'Vlieg de regio in',
   flyToIsland: 'Vlieg naar het eiland',
   flyToAirport: 'Vlieg naar de luchthaven',
   flyToDike: 'Vlieg naar de dijk',
@@ -197,6 +201,7 @@ const nl: Record<StringKey, string> = {
   kindArea: 'gebied',
   kindProvince: 'provincie',
   kindState: 'deelstaat',
+  kindRegion: 'regio',
   kindIsland: 'eiland',
   kindAirport: 'luchthaven',
   kindDike: 'dijk',
@@ -258,6 +263,7 @@ const nl: Record<StringKey, string> = {
   mapSerbia: 'Servië',
   mapNetherlands: 'Nederland',
   mapGermany: 'Duitsland',
+  mapFinland: 'Finland',
   mapEurope: 'Europa',
   region: 'Gebied',
   modeListUnavailable: 'Niet voor deze kaart',
@@ -320,6 +326,7 @@ const de: Record<StringKey, string> = {
   flyToArea: 'Flieg in das Gebiet',
   flyToProvince: 'Flieg in die Provinz',
   flyToState: 'Flieg in das Bundesland',
+  flyToRegion: 'Flieg in die Landschaft',
   flyToIsland: 'Flieg zur Insel',
   flyToAirport: 'Flieg zum Flughafen',
   flyToDike: 'Flieg zum Deich',
@@ -331,6 +338,7 @@ const de: Record<StringKey, string> = {
   kindArea: 'Gebiet',
   kindProvince: 'Provinz',
   kindState: 'Bundesland',
+  kindRegion: 'Landschaft',
   kindIsland: 'Insel',
   kindAirport: 'Flughafen',
   kindDike: 'Deich',
@@ -392,6 +400,7 @@ const de: Record<StringKey, string> = {
   mapSerbia: 'Serbien',
   mapNetherlands: 'Niederlande',
   mapGermany: 'Deutschland',
+  mapFinland: 'Finnland',
   mapEurope: 'Europa',
   region: 'Gebiet',
   modeListUnavailable: 'Für diese Karte nicht verfügbar',
@@ -454,6 +463,7 @@ const srLatn: Record<StringKey, string> = {
   flyToArea: 'Uleti u oblast',
   flyToProvince: 'Uleti u provinciju',
   flyToState: 'Uleti u saveznu državu',
+  flyToRegion: 'Uleti u oblast',
   flyToIsland: 'Leti do ostrva',
   flyToAirport: 'Leti do aerodroma',
   flyToDike: 'Leti do nasipa',
@@ -465,6 +475,7 @@ const srLatn: Record<StringKey, string> = {
   kindArea: 'oblast',
   kindProvince: 'provincija',
   kindState: 'savezna država',
+  kindRegion: 'oblast',
   kindIsland: 'ostrvo',
   kindAirport: 'aerodrom',
   kindDike: 'nasip',
@@ -526,6 +537,7 @@ const srLatn: Record<StringKey, string> = {
   mapSerbia: 'Srbija',
   mapNetherlands: 'Holandija',
   mapGermany: 'Nemačka',
+  mapFinland: 'Finska',
   mapEurope: 'Evropa',
   region: 'Oblast',
   modeListUnavailable: 'Nije dostupno za ovu kartu',
@@ -766,6 +778,10 @@ export function flagSvg(flag: Flag): string {
   if (flag === 'eu') return EU_FLAG;
   if (flag === 'de') {
     return '<svg class="flag" viewBox="0 0 9 6" aria-hidden="true"><rect width="9" height="6" fill="#ffce00"/><rect width="9" height="4" fill="#dd0000"/><rect width="9" height="2" fill="#000"/></svg>';
+  }
+  if (flag === 'fi') {
+    // Blue Nordic cross on white, 18:11 stretched to the same 3:2 box as the others.
+    return '<svg class="flag" viewBox="0 0 18 11" preserveAspectRatio="none" aria-hidden="true"><rect width="18" height="11" fill="#fff"/><rect x="5" width="3" height="11" fill="#002f6c"/><rect y="4" width="18" height="3" fill="#002f6c"/></svg>';
   }
   if (flag === 'nl') {
     return '<svg class="flag" viewBox="0 0 9 6" aria-hidden="true"><rect width="9" height="6" fill="#21468b"/><rect width="9" height="4" fill="#fff"/><rect width="9" height="2" fill="#ae1c28"/></svg>';

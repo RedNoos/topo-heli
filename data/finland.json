@@ -1,0 +1,43 @@
+{
+  "_about": "Finland. listed: the places in Find them all (with the 40 waters, mountains and areas in scripts/build-physical.mjs: 100 names): the biggest towns, the regional capitals and well-known places in Lapland and on the coast. rename: OSM name (Finnish) -> shown name (Åland keeps its Swedish names). names: translations (sr in Latin script) where they differ from the Finnish name; other Serbian names come from OSM name:sr or are transcribed (scripts/serbian.mjs).",
+  "rename": {
+    "Maarianhamina": "Mariehamn"
+  },
+  "listed": [
+    "Helsinki", "Espoo", "Tampere", "Vantaa", "Oulu", "Turku", "Jyväskylä", "Kuopio", "Lahti", "Pori",
+    "Kouvola", "Joensuu", "Lappeenranta", "Hämeenlinna", "Vaasa", "Seinäjoki", "Rovaniemi", "Mikkeli", "Kotka", "Salo",
+    "Porvoo", "Kokkola", "Hyvinkää", "Lohja", "Järvenpää", "Rauma", "Kajaani", "Kerava", "Savonlinna", "Nokia",
+    "Riihimäki", "Imatra", "Raahe", "Tornio", "Kemi", "Iisalmi", "Varkaus", "Valkeakoski", "Hamina", "Naantali",
+    "Pietarsaari", "Forssa", "Uusikaupunki", "Loviisa", "Hanko", "Mariehamn", "Kuusamo", "Kemijärvi", "Sodankylä", "Ivalo",
+    "Inari", "Kittilä", "Utsjoki", "Nurmes", "Lieksa", "Pieksämäki", "Kristiinankaupunki", "Ylivieska", "Muonio", "Salla"
+  ],
+  "names": {
+    "Mariehamn": { "sr": "Marijehamn" },
+
+    "Suomenlahti": { "en": "Gulf of Finland", "nl": "Finse Golf", "de": "Finnischer Meerbusen", "sr": "Finski zaliv" },
+    "Pohjanlahti": { "en": "Gulf of Bothnia", "nl": "Botnische Golf", "de": "Bottnischer Meerbusen", "sr": "Botnijski zaliv" },
+    "Saaristomeri": { "en": "Archipelago Sea", "nl": "Archipelzee", "de": "Schärenmeer", "sr": "Arhipelaško more" },
+    "Saimaa": { "en": "Lake Saimaa", "sr": "Sajma" },
+    "Päijänne": { "en": "Lake Päijänne", "sr": "Pejene" },
+    "Inarijärvi": { "en": "Lake Inari", "nl": "Inarimeer", "de": "Inarisee", "sr": "Inarijsko jezero" },
+    "Oulujärvi": { "en": "Lake Oulu", "de": "Oulusee", "sr": "Oulujsko jezero" },
+    "Lokan tekojärvi": { "en": "Lokka Reservoir", "nl": "Lokkastuwmeer", "de": "Lokka-Stausee", "sr": "Akumulaciono jezero Loka" },
+    "Porttipahdan tekojärvi": { "en": "Porttipahta Reservoir", "nl": "Porttipahtastuwmeer", "de": "Porttipahta-Stausee", "sr": "Akumulaciono jezero Portipahta" },
+    "Tenojoki": { "en": "Teno", "nl": "Teno", "de": "Tana", "sr": "Teno" },
+    "Tornionjoki": { "en": "Torne", "nl": "Torne", "de": "Torne", "sr": "Torne" },
+
+    "Lappi": { "en": "Lapland", "nl": "Lapland", "de": "Lappland", "sr": "Laponija" },
+    "Ahvenanmaa": { "en": "Åland", "nl": "Åland", "de": "Åland", "sr": "Olandska ostrva" },
+    "Järvi-Suomi": { "en": "Finnish Lakeland", "nl": "Fins Merenplateau", "de": "Finnische Seenplatte", "sr": "Finska jezerska oblast" },
+    "Pohjois-Pohjanmaa": { "en": "North Ostrobothnia", "nl": "Noord-Österbotten", "de": "Nordösterbotten", "sr": "Severna Ostrobotnija" },
+    "Pohjois-Karjala": { "en": "North Karelia", "nl": "Noord-Karelië", "de": "Nordkarelien", "sr": "Severna Karelija" },
+    "Etelä-Karjala": { "en": "South Karelia", "nl": "Zuid-Karelië", "de": "Südkarelien", "sr": "Južna Karelija" },
+    "Varsinais-Suomi": { "en": "Southwest Finland", "nl": "Egentliga Finland", "de": "Eigentliches Finnland", "sr": "Jugozapadna Finska" },
+    "Pohjanmaa": { "en": "Ostrobothnia", "nl": "Österbotten", "de": "Österbotten", "sr": "Ostrobotnija" },
+    "Keski-Pohjanmaa": { "en": "Central Ostrobothnia", "nl": "Centraal-Österbotten", "de": "Mittelösterbotten", "sr": "Centralna Ostrobotnija" },
+    "Etelä-Pohjanmaa": { "en": "South Ostrobothnia", "nl": "Zuid-Österbotten", "de": "Südösterbotten", "sr": "Južna Ostrobotnija" },
+    "Pohjois-Savo": { "en": "North Savo", "nl": "Noord-Savo", "de": "Nordsavo", "sr": "Severni Savo" },
+    "Etelä-Savo": { "en": "South Savo", "nl": "Zuid-Savo", "de": "Südsavo", "sr": "Južni Savo" },
+    "Keski-Suomi": { "en": "Central Finland", "nl": "Centraal-Finland", "de": "Mittelfinnland", "sr": "Centralna Finska" }
+  }
+}

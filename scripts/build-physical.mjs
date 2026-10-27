@@ -10,7 +10,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import mapshaper from 'mapshaper';
 import { PROVINCES, SERBIA_REGIONS, GERMANY_REGIONS } from './provinces.mjs';
-import { toCyrillic } from './serbian.mjs';
+import { toCyrillic, finnishToSerbian } from './serbian.mjs';
 
 /** Province maps: rivers with less than this inside the province are not asked. */
 const MIN_PROVINCE_RIVER_KM = 8;
@@ -34,7 +34,8 @@ const OVERPASS = [
 // for canals (shown as "canal" in the game).
 // Water areas (`waterAreas`): large waters played like lakes (fly over them), from an OSM
 // relation and/or a rough outline; the land is cut out, so the shape follows the real coast and
-// islands become holes. `type: 'water'` for seas/estuaries ("water" in the game). Lakes: 'Name' or ['Shown name', 'OSM name']. Mountains: ['Range', 'OSM peak name'] or
+// islands become holes (`inland: true`: only the lake's own islands, for a lake on Natural Earth
+// land). `type: 'water'` for seas/estuaries ("water" in the game). Lakes: 'Name' or ['Shown name', 'OSM name']. Mountains: ['Range', 'OSM peak name'] or
 // ['Range', { lat, lon, ele }] where OSM has no usable peak tag (coordinates taken from OSM
 // nodes for that summit/range).
 const PHYSICAL = {
@@ -132,6 +133,68 @@ const PHYSICAL = {
       1: [
         { name: 'Nordsee', type: 'water', outline: [[5.2, 53.25], [7.2, 53.25], [8.3, 53.3], [9.35, 53.75], [9.3, 54.2], [9.0, 54.6], [8.9, 55.5], [5.2, 55.5]] },
         { name: 'Ostsee', type: 'water', outline: [[9.6, 54.35], [10.3, 53.85], [11.2, 53.85], [12.3, 54.05], [13.2, 53.95], [14.0, 53.8], [15.6, 53.8], [15.6, 55.6], [9.6, 55.6]] },
+      ],
+    },
+  },
+  finland: {
+    areas: ['FI'],
+    nameKeys: ['name'],
+    bbox: [19.0, 59.5, 31.8, 70.2],
+    rivers: {
+      // Border rivers carry both names in OSM.
+      1: ['Kemijoki', 'Oulujoki', 'Kymijoki', 'Kokemäenjoki', { name: 'Tornionjoki', osm: ['Tornionjoki', 'Tornionjoki / Torne älv'] }],
+      2: ['Iijoki', 'Ounasjoki', { name: 'Tenojoki', osm: ['Tenojoki', 'Teno / Tana / Deatnu'] }, { name: 'Vuoksi', osm: ['Vuoksi', 'Vuoksi / Вуокса'] }],
+      3: ['Kitinen', { name: 'Muonionjoki', osm: ['Muonionjoki', 'Muonionjoki / Muonioälven'] }, 'Aurajoki', 'Porvoonjoki', 'Vantaanjoki'],
+    },
+    lakes: {
+      // Päijänne: from its relation (waterAreas); ponds elsewhere share the name.
+      1: ['Saimaa', 'Inarijärvi', 'Oulujärvi', 'Pielinen'],
+      2: ['Näsijärvi', 'Keitele', 'Kallavesi', 'Lokan tekojärvi', 'Lappajärvi'],
+      3: ['Porttipahdan tekojärvi', 'Höytiäinen', 'Lohjanjärvi', 'Vanajavesi'],
+    },
+    // Fells (tunturit) at their top; Halti's Finnish summit has no peak name in OSM.
+    mountains: {
+      1: [['Halti', { lat: 69.3086, lon: 21.2672, ele: 1324 }], ['Saana', 'Saana'], ['Koli', 'Ukko-Koli']],
+      2: [['Pallastunturi', 'Taivaskero'], ['Ylläs', 'Yllästunturi'], ['Levi', 'Levi'], ['Pyhätunturi', 'Noitatunturi'], ['Ruka', 'Ruka']],
+      3: [['Kaunispää', 'Kaunispää'], ['Kiilopää', 'Kiilopää'], ['Iso-Syöte', 'Iso-Syöte'], ['Aavasaksa', 'Aavasaksa']],
+    },
+    // Find them all: with the 60 listed places in data/finland.json, 100 names.
+    core: ['Suomenlahti', 'Pohjanlahti', 'Saaristomeri', 'Kemijoki', 'Oulujoki', 'Kymijoki', 'Kokemäenjoki', 'Tornionjoki', 'Iijoki', 'Ounasjoki', 'Tenojoki', 'Vuoksi',
+      'Saimaa', 'Päijänne', 'Inarijärvi', 'Oulujärvi', 'Pielinen', 'Näsijärvi', 'Keitele', 'Kallavesi', 'Lokan tekojärvi', 'Lappajärvi',
+      'Halti', 'Saana', 'Koli', 'Pallastunturi', 'Ylläs', 'Levi', 'Pyhätunturi', 'Ruka',
+      'Lappi', 'Ahvenanmaa', 'Järvi-Suomi', 'Uusimaa', 'Pohjois-Pohjanmaa', 'Pohjois-Karjala', 'Kainuu', 'Pirkanmaa', 'Varsinais-Suomi', 'Hailuoto'],
+    // Regions (maakunnat; Natural Earth names them in English), the Lakeland and islands.
+    zones: {
+      2: [
+        ...[
+          ['Lappi', 'Lapland'], ['Pohjois-Pohjanmaa', 'Northern Ostrobothnia'], ['Kainuu', 'Kainuu'], ['Pohjois-Karjala', 'North Karelia'],
+          ['Etelä-Karjala', 'South Karelia'], ['Kymenlaakso', 'Kymenlaakso'], ['Uusimaa', 'Uusimaa'], ['Varsinais-Suomi', 'Finland Proper'],
+          ['Satakunta', 'Satakunta'], ['Pohjanmaa', 'Ostrobothnia'], ['Keski-Pohjanmaa', 'Central Ostrobothnia'], ['Pohjois-Savo', 'Northern Savonia'],
+          ['Etelä-Savo', 'Southern Savonia'], ['Keski-Suomi', 'Central Finland'], ['Etelä-Pohjanmaa', 'Southern Ostrobothnia'], ['Pirkanmaa', 'Pirkanmaa'],
+          ['Kanta-Häme', 'Tavastia Proper'], ['Päijät-Häme', 'Päijät-Häme'],
+        ].map(([name, ne]) => ({ name, type: 'region', admin1: ['FIN', ne] })),
+        // Åland: all its municipalities.
+        { name: 'Ahvenanmaa', type: 'region', admin1: ['ALD'] },
+        // The lake district: Tampere - Lahti - Lappeenranta - Joensuu - Kuopio - Jyväskylä.
+        { name: 'Järvi-Suomi', outline: [[23.6, 61.2], [25.2, 61.0], [27.0, 61.0], [28.6, 61.1], [29.8, 61.7], [30.4, 62.5], [29.9, 63.4], [28.4, 63.6], [26.8, 63.5], [25.4, 63.2], [24.2, 62.5], [23.6, 61.8]] },
+      ],
+      3: [
+        { name: 'Hailuoto', type: 'island', landAt: [24.7, 65.0] },
+        { name: 'Kemiönsaari', type: 'island', landAt: [22.65, 60.15] },
+      ],
+    },
+    // Seas: rough outlines with their edges on land (the land is cut out).
+    waterAreas: {
+      1: [
+        // Hanko - Osmussaar to St Petersburg.
+        { name: 'Suomenlahti', type: 'water', outline: [[22.7, 59.25], [22.8, 59.9], [23.6, 60.15], [25.0, 60.35], [26.5, 60.6], [27.8, 60.7], [28.8, 60.85], [30.4, 60.1], [30.4, 59.5], [28.0, 59.25]] },
+        // Bothnian Sea and Bothnian Bay, from the Åland Sea to Tornio.
+        { name: 'Päijänne', relation: 1239779, inland: true },
+        { name: 'Pohjanlahti', type: 'water', outline: [[17.3, 60.3], [19.6, 60.4], [20.6, 60.6], [21.7, 60.8], [21.8, 61.5], [21.7, 62.4], [22.0, 63.0], [23.3, 63.75], [24.6, 64.4], [25.8, 64.9], [25.6, 65.6], [24.5, 66.1], [23.0, 66.2], [21.5, 65.6], [20.5, 64.4], [18.2, 63.2], [17.0, 62.0], [17.0, 61.0]] },
+      ],
+      2: [
+        // Between Åland and Turku.
+        { name: 'Saaristomeri', type: 'water', outline: [[20.6, 59.75], [20.6, 60.55], [21.3, 60.72], [21.7, 60.72], [22.3, 60.5], [22.85, 60.3], [22.85, 59.75]] },
       ],
     },
   },
@@ -456,7 +519,7 @@ async function buildLakes(id, cfg, key = 'lakes') {
 
   const result = [];
   for (const { level, item: osmName, shown } of entries) {
-    const f = fc.features.find((x) => x.properties.feat === osmName);
+    const f = fc.features.find((x) => x.properties.feat === osmName && x.geometry);
     if (!f) {
       console.warn(`  ! lake not found: ${osmName}`);
       continue;
@@ -616,7 +679,8 @@ async function buildAreas(id, cfg) {
   for (const { level, item } of entries) {
     let shapes = [];
     if (item.cbsProvince) shapes = land.features.filter((f) => f.properties.prov === item.cbsProvince);
-    if (item.admin1) shapes = admin1.features.filter((f) => f.properties.adm0_a3 === item.admin1[0] && f.properties.name === item.admin1[1]);
+    // [country, region]; [country] alone: all its regions (Åland).
+    if (item.admin1) shapes = admin1.features.filter((f) => f.properties.adm0_a3 === item.admin1[0] && (!item.admin1[1] || f.properties.name === item.admin1[1]));
     if (item.landAt) {
       const part = polysOf(land).find((p) => insideRingLL(item.landAt, p[0]));
       if (part) shapes = [featureOf(part)];
@@ -691,6 +755,8 @@ async function buildWaterAreas(id, cfg) {
   const result = [];
   for (const { level, item } of entries) {
     const shapes = [];
+    // An inland lake lies on the (Natural Earth) land: only its own islands are cut out.
+    const cut = item.inland ? { type: 'FeatureCollection', features: [] } : land;
     if (item.relation) {
       const rel = data.elements.find((e) => e.type === 'relation' && e.id === item.relation);
       if (!rel) {
@@ -703,13 +769,13 @@ async function buildWaterAreas(id, cfg) {
       shapes.push(...outerFc.features);
       if (inner.length) {
         const innerFc = await simplifyGeo({ type: 'FeatureCollection', features: inner }, '-polygons gap-tolerance=0.0005');
-        land.features.push(...innerFc.features.map((f) => ({ ...f, properties: {} })));
+        cut.features.push(...innerFc.features.map((f) => ({ ...f, properties: {} })));
       }
     }
     if (item.outline) shapes.push({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[...item.outline, item.outline[0]]] } });
     const out = await mapshaper.applyCommands(
       '-i area.json -dissolve -erase land.json -simplify interval=150 keep-shapes -filter-slivers -o out.json format=geojson',
-      { 'area.json': { type: 'FeatureCollection', features: shapes.map((f) => ({ ...f, properties: {} })) }, 'land.json': land },
+      { 'area.json': { type: 'FeatureCollection', features: shapes.map((f) => ({ ...f, properties: {} })) }, 'land.json': cut },
     );
     const fc = JSON.parse(out['out.json']);
     const polys = [];
@@ -773,6 +839,16 @@ async function build(id, cfg) {
   await fs.writeFile(file, JSON.stringify(out));
   const kb = ((await fs.stat(file)).size / 1024).toFixed(0);
   console.log(`  ${out.rivers.length} rivers, ${out.lakes.length} lakes, ${out.mountains.length} mountains -> ${path.relative(ROOT, file)} (${kb} KB)`);
+  if (id === 'finland') await addFinnishSerbianNames(out);
+}
+
+/** Finland: Serbian names of the features, transcribed where names.sr.json (build-places) has none. */
+async function addFinnishSerbianNames(out) {
+  const file = path.join(ROOT, 'src', 'maps', 'finland', 'names.sr.json');
+  const names = JSON.parse(await fs.readFile(file, 'utf8'));
+  for (const x of [...out.rivers, ...out.lakes, ...out.mountains, ...(out.areas ?? [])]) names[x.name] ??= toCyrillic(finnishToSerbian(x.name));
+  const sorted = Object.fromEntries(Object.entries(names).sort(([a], [b]) => a.localeCompare(b, 'fi')));
+  await fs.writeFile(file, JSON.stringify(sorted, null, 2) + '\n');
 }
 
 

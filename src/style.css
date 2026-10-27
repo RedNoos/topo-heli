@@ -371,6 +371,11 @@ h1 {
   gap: 6px;
 }
 
+/* An odd number of maps: the last one takes the whole row. */
+.map-select button:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
 .map-select button {
   display: flex;
   align-items: center;

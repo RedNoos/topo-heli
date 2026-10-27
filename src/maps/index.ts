@@ -72,6 +72,27 @@ export const MAPS: MapDefinition[] = [
     practiceList: 'selection',
   },
   {
+    id: 'finland',
+    flag: 'fi',
+    nameKey: 'mapFinland',
+    // Finnish names (Åland: Swedish), translated where a language has its own (Lappi: Lapland).
+    placeNames: 'native',
+    loadEnglishNames: async () => (await import('./finland/names.en.json')).default,
+    loadDutchNames: async () => (await import('./finland/names.nl.json')).default,
+    loadGermanNames: async () => (await import('./finland/names.de.json')).default,
+    loadSerbianNames: async () => (await import('./finland/names.sr.json')).default,
+    viewKm: 460,
+    load: async () => ({
+      geo: (await import('./finland/geo.json')).default as never,
+      cities: (await import('./finland/cities.json')).default,
+    }),
+    loadPhysical: async () => (await import('./finland/physical.json')).default as never,
+    physicalKind: 'all',
+    // No official list: our own selection of 100 names (60 places, 40 waters, mountains and areas).
+    practice: true,
+    practiceList: 'selection',
+  },
+  {
     id: 'europe',
     flag: 'eu',
     nameKey: 'mapEurope',

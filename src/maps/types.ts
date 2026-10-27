@@ -50,8 +50,8 @@ export interface PhysicalData {
   lakes: { name: string; level: number; type?: 'water'; core?: boolean; rings: LonLat[][]; holes?: LonLat[][] }[];
   /** Located at the range's main peak. */
   mountains: { name: string; level: number; core?: boolean; lat: number; lon: number; ele: number | null }[];
-  /** Regions found by flying into them (provinces, German states, islands, Veluwe, ...). */
-  areas?: { name: string; level: number; type?: 'province' | 'state' | 'island'; core?: boolean; rings: LonLat[][]; holes?: LonLat[][] }[];
+  /** Regions found by flying into them (provinces, German states, Finnish regions, islands, Veluwe, ...). */
+  areas?: { name: string; level: number; type?: 'province' | 'state' | 'region' | 'island'; core?: boolean; rings: LonLat[][]; holes?: LonLat[][] }[];
   /** Point features other than mountains (Schiphol). */
   landmarks?: { name: string; level: number; type: 'airport'; core?: boolean; lat: number; lon: number }[];
   /**

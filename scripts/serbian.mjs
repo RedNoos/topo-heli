@@ -23,3 +23,24 @@ export function toCyrillic(s) {
   }
   return out;
 }
+
+const FINNISH_LETTERS = { ä: 'e', ö: 'e', y: 'i', å: 'o', w: 'v', x: 'ks', q: 'k', c: 'k' };
+
+/**
+ * Finnish name -> Serbian Latin, as Serbian transcribes it: ä, ö -> e, y -> i, long vowels and
+ * double consonants single, i after a vowel -> j (Jyväskylä: Jiveskile, Saimaa: Sajma).
+ */
+export function finnishToSerbian(name) {
+  const single = (s) => s.replace(/(\p{L})\1+/giu, '$1');
+  let s = [...name]
+    .map((ch) => {
+      const m = FINNISH_LETTERS[ch.toLowerCase()];
+      if (m === undefined) return ch;
+      return ch === ch.toLowerCase() ? m : m[0].toUpperCase() + m.slice(1);
+    })
+    .join('');
+  s = single(s)
+    .replace(/(?<=[bdfghjklmnprstvz])ie/gi, 'ije')
+    .replace(/(?<=[aeiou])i(?![aeiou])/gi, 'j');
+  return single(s);
+}

@@ -3,7 +3,7 @@
 Browser topography game: fly a helicopter to named places on a map. Vite 6 + TypeScript + Canvas 2D,
 no framework. Maps: Serbia (Kosovo as part of Serbia; whole country + 6 region maps), the Netherlands
 (whole country + 12 province maps), Germany (whole country + 13 region maps: the Länder, city states
-inside the Land around them) and Europe. UI in English, Dutch, German, Serbian Latin and Serbian Cyrillic.
+inside the Land around them), Finland (whole country only; Lambert projection) and Europe. UI in English, Dutch, German, Serbian Latin and Serbian Cyrillic.
 
 Live at https://topoheli.com/ (custom domain, registered at Porkbun; public repo RedNoos/topo-heli;
 the old https://rednoos.github.io/topo-heli/ redirects there). Every push to `main`
@@ -62,6 +62,9 @@ rebuilds only the Serbian / German region files).
   - `netherlands-cities.json`: Dutch places; `level` ≤ 2 = the 60 basislijst places (`core`).
   - `province-lists.json`: per province the well-known places added in "Alles vinden"
     (from TopoSite, up to 20 places, Flevoland 12).
+  - `finland.json`: the 60 listed Finnish places (with 40 physical `core` names: 100), renames
+    (Åland keeps Swedish names) and translations; other Serbian names are transcribed
+    (`finnishToSerbian` in `scripts/serbian.mjs`).
   - `germany.json`: the 60 listed German places ("Find them all", with 40 physical `core` names
     in build-physical: 100), OSM name fixes, and English/Dutch/Serbian (Latin) names.
 - `scripts/provinces.mjs`: province settings (CBS name, capital, `minPop`, `time`, `skipPhysical`),

@@ -58,6 +58,17 @@ const MAPS = {
     simplify: '45%',
     regions: GERMANY_REGIONS.map((r) => ({ id: r.id, districts: r.lands })),
   },
+  finland: {
+    // Åland is a country of its own in Natural Earth.
+    home: ['FIN', 'ALD'],
+    bbox: [12, 58, 36, 71.5],
+    // 60-70° N: equal-area keeps Lapland and the south in shape (equirectangular would not).
+    // The rectangle also holds the Swedish and Estonian coasts around the gulfs.
+    projection: { type: 'laea', lon0: 25.5, lat0: 65, rect: [-460, -660, 380, 610] },
+    // Districts are the regions (maakunnat); Åland's municipalities form one.
+    districtOf: (p) => (p.adm0_a3 === 'ALD' ? 'Åland' : p.name),
+    simplify: '45%',
+  },
   netherlands: {
     // Land and province borders from CBS (see cbsLand); province borders drawn as districts.
     cbs: true,
