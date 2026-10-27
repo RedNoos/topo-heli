@@ -7,6 +7,10 @@ description: Push Topo Heli to GitHub and wait for the GitHub Pages deploy, live
 2. `npm run build` must pass; stop and report if it does not.
 3. Live: `git push origin main`. Test site: `git push --force origin <branch>:test` (the branch
    to playtest, e.g. a feature branch; `test` is only a deploy target, never worked on).
+   Before pushing to `test`: `git merge-base --is-ancestor origin/main <branch>` must succeed. A push
+   to `test` runs the workflow file from that branch, so a branch behind `main` deploys the live site
+   with an old `deploy.yml` (or none at all). If it fails, tell the user and offer to rebase the
+   branch on `main` first; do not push it as is.
 4. Wait for the Pages run and get its result:
    ```sh
    id=$(gh run list --limit 1 --json databaseId --jq '.[0].databaseId')
