@@ -1,8 +1,9 @@
 name: Deploy to GitHub Pages
 
 on:
+  # main = the live site; test = the test copy at /test/. Each run builds both.
   push:
-    branches: [main]
+    branches: [main, test]
   workflow_dispatch:
 
 permissions:
@@ -19,12 +20,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: npm run build
+      # The test copy (own storage keys, no stats, noindex), only if the test branch exists.
+      - id: test-branch
+        run: echo "exists=$(git ls-remote --heads origin test | grep -q . && echo yes || echo no)" >> "$GITHUB_OUTPUT"
+      - if: steps.test-branch.outputs.exists == 'yes'
+        uses: actions/checkout@v4
+        with:
+          ref: test
+          path: test-src
+      - if: steps.test-branch.outputs.exists == 'yes'
+        working-directory: test-src
+        run: |
+          npm ci
+          npx tsc
+          npx vite build --mode test --outDir ../dist/test --emptyOutDir
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

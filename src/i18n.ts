@@ -6,6 +6,8 @@
  * HTML tags and {placeholders} is never transliterated.
  */
 
+import { STORAGE_PREFIX } from './env';
+
 export type Lang = 'en' | 'nl' | 'de' | 'sr-Latn' | 'sr-Cyrl';
 
 export type Flag = 'gb' | 'nl' | 'de' | 'rs' | 'eu';
@@ -609,7 +611,7 @@ export function toLatin(s: string): string {
 
 // ---------- State ----------
 
-const STORAGE_KEY = 'topo-heli:lang';
+const STORAGE_KEY = `${STORAGE_PREFIX}lang`;
 let lang: Lang = detect();
 const listeners: (() => void)[] = [];
 

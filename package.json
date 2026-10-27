@@ -12,7 +12,8 @@
     "build:physical": "node scripts/build-physical.mjs",
     "build:places": "node scripts/build-places.mjs",
     "shots": "node tools/shots.mjs",
-    "playtest": "node tools/playtest.mjs"
+    "playtest": "node tools/playtest.mjs",
+    "build:test": "tsc && vite build --mode test"
   },
   "devDependencies": {
     "fflate": "^0.8.3",

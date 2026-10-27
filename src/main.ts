@@ -1,6 +1,7 @@
 import './style.css';
 import { Sfx } from './audio';
 import { CONFIG } from './config';
+import { STORAGE_PREFIX } from './env';
 import { Game } from './game';
 import { Input } from './input';
 import { MAPS } from './maps';
@@ -57,13 +58,13 @@ let practiceOn = false;
 
 // ---------- Best scores ----------
 
-const bestKey = (id: string) => `topo-heli:best:${id}`;
+const bestKey = (id: string) => `${STORAGE_PREFIX}best:${id}`;
 /** Score key for the current map + mode. */
 const scoreId = () => (practiceOn ? `${mapDef.id}+list` : physicalOn ? `${mapDef.id}+physical` : mapDef.id);
 
 /** The options (physical features, Basislijst mode) are one choice for all maps. */
-const OPTION_KEY = 'topo-heli:physical';
-const PRACTICE_KEY = 'topo-heli:practice';
+const OPTION_KEY = `${STORAGE_PREFIX}physical`;
+const PRACTICE_KEY = `${STORAGE_PREFIX}practice`;
 function loadOption(key = OPTION_KEY) {
   try {
     return localStorage.getItem(key) === '1';
@@ -79,7 +80,7 @@ function saveOption(on: boolean, key = OPTION_KEY) {
   }
 }
 /** Basislijst mode: fastest time in seconds (0 = none yet). */
-const bestTimeKey = (id: string) => `topo-heli:besttime:${id}`;
+const bestTimeKey = (id: string) => `${STORAGE_PREFIX}besttime:${id}`;
 function getBestTime(id: string): number {
   try {
     return Number(localStorage.getItem(bestTimeKey(id))) || 0;
@@ -630,7 +631,7 @@ function frame(now: number) {
 }
 
 // "How to play" is open until the player has seen it once, then stays as they leave it.
-const HOWTO_KEY = 'topo-heli:howto';
+const HOWTO_KEY = `${STORAGE_PREFIX}howto`;
 const howtoBox = $<HTMLDetailsElement>('howto-box');
 try {
   howtoBox.open = localStorage.getItem(HOWTO_KEY) !== 'closed';

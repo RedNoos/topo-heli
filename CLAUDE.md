@@ -8,6 +8,10 @@ inside the Land around them) and Europe. UI in English, Dutch, German, Serbian L
 Live at https://topoheli.com/ (custom domain, registered at Porkbun; public repo RedNoos/topo-heli;
 the old https://rednoos.github.io/topo-heli/ redirects there). Every push to `main`
 deploys via `.github/workflows/deploy.yml` (GitHub Pages).
+Test site for playtesters: https://topoheli.com/test/, built from the `test` branch (push a feature
+branch there with `git push --force origin <branch>:test`). Each deploy builds both branches; the
+test build (`npm run build:test`, Vite mode `test`, see `src/env.ts`) has its own localStorage
+prefix `topo-heli-test:`, no statistics, noindex and a TEST label.
 
 ## Working agreements
 
@@ -26,7 +30,7 @@ deploys via `.github/workflows/deploy.yml` (GitHub Pages).
 
 ## Layout
 
-- `src/main.ts`: menu, HUD, end screens, options (stored in localStorage `topo-heli:*`), stats.
+- `src/main.ts`: menu, HUD, end screens, options (stored in localStorage `topo-heli:*`, prefix from `src/env.ts`), stats.
 - `src/game.ts`: game state, target picking (levels, "Alles vinden"/practice mode), found rules.
 - `src/targets.ts`: target kinds (city, mountain, lake, river, area, landmark) and distances.
 - `src/renderer.ts`: canvas drawing (map layers as Path2D in km coordinates, targets, minimap).

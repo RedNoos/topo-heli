@@ -856,3 +856,20 @@ h1 {
     display: none;
   }
 }
+
+/* Test build only (vite.config.ts): marks topoheli.com/test/. */
+.test-badge {
+  position: fixed;
+  left: env(safe-area-inset-left);
+  top: 50%;
+  transform: translate(-50%, -50%) rotate(-90deg) translateY(50%);
+  z-index: 100;
+  padding: 1px 8px;
+  border-radius: 4px 4px 0 0;
+  background: #c0392b;
+  color: #fff;
+  font: 700 11px/1.4 system-ui, sans-serif;
+  letter-spacing: 0.08em;
+  opacity: 0.85;
+  pointer-events: none;
+}

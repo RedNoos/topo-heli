@@ -3,6 +3,8 @@
  * personal data. Only active on the live site and only when a site code is configured.
  */
 
+import { IS_TEST } from './env';
+
 /** GoatCounter site code: https://<code>.goatcounter.com. Empty = statistics off. */
 const GOATCOUNTER_CODE: string = 'rednoos';
 
@@ -15,7 +17,7 @@ declare global {
   }
 }
 
-const enabled = import.meta.env.PROD && GOATCOUNTER_CODE !== '';
+const enabled = import.meta.env.PROD && !IS_TEST && GOATCOUNTER_CODE !== '';
 /** Events sent before the script has loaded. */
 const queue: { path: string; title?: string }[] = [];
 
