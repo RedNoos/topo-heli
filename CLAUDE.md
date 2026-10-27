@@ -11,7 +11,8 @@ deploys via `.github/workflows/deploy.yml` (GitHub Pages).
 Test site for playtesters: https://topoheli.com/test/, built from the `test` branch (push a feature
 branch there with `git push --force origin <branch>:test`). Each deploy builds both branches; the
 test build (`npm run build:test`, Vite mode `test`, see `src/env.ts`) has its own localStorage
-prefix `topo-heli-test:`, no statistics, noindex and a TEST label.
+prefix `topo-heli-test:`, no statistics, noindex and a TEST label. Locally: `npm run dev:test`
+→ http://localhost:5181/.
 
 ## Working agreements
 
