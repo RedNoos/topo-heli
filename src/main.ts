@@ -266,6 +266,7 @@ function newGame(start: boolean) {
     pool: mapDef.pool,
     time: mapDef.time,
     reveal: mapDef.reveal,
+    speed: mapDef.speed,
     practice: practiceOn,
     practiceAll: mapDef.practiceList === 'all',
   });

@@ -19,6 +19,8 @@ export interface GameOptions {
   time?: { start: number; levelBonus: number };
   /** Factor on the reveal radius (see MapDefinition.reveal). */
   reveal?: number;
+  /** Factor on the helicopter speed (see MapDefinition.speed). */
+  speed?: number;
   /**
    * Basislijst mode: only the listed targets (physical features included), each once; the
    * clock counts up and the game ends when all are found.
@@ -76,12 +78,14 @@ export class Game {
   /** Scale for the distances in CONFIG (see CONFIG.referenceViewKm). */
   readonly distScale: number;
   private readonly revealFactor: number;
+  private readonly speedFactor: number;
   /** Number of best-known cities in play at a level. */
   private readonly poolSize: (level: number) => number;
 
   constructor(data: MapData, viewKm: number, options: GameOptions = {}) {
     this.distScale = viewKm / CONFIG.referenceViewKm;
     this.revealFactor = options.reveal ?? 1;
+    this.speedFactor = options.speed ?? 1;
     this.practice = !!options.practice;
     this.timeLeft = options.time?.start ?? CONFIG.startTime;
     this.levelBonus = options.time?.levelBonus ?? CONFIG.levelTimeBonus;
@@ -123,7 +127,7 @@ export class Game {
   }
 
   get maxSpeed() {
-    return CONFIG.heli.maxSpeed * this.distScale;
+    return CONFIG.heli.maxSpeed * this.distScale * this.speedFactor;
   }
 
   get revealRadius() {

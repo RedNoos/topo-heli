@@ -82,6 +82,8 @@ export const MAPS: MapDefinition[] = [
     loadGermanNames: async () => (await import('./finland/names.de.json')).default,
     loadSerbianNames: async () => (await import('./finland/names.sr.json')).default,
     viewKm: 460,
+    // 1270 km north to south: a faster helicopter instead of zooming out, so the towns stay readable.
+    speed: 1.35,
     load: async () => ({
       geo: (await import('./finland/geo.json')).default as never,
       cities: (await import('./finland/cities.json')).default,

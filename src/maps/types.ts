@@ -88,6 +88,8 @@ export interface MapDefinition {
    * (whole Serbia), 'all' = every place and physical feature of the map (Serbian regions).
    */
   practiceList?: 'basislijst' | 'selection' | 'all';
+  /** Factor on the helicopter speed, for long maps (Finland) whose zoom should stay. Default 1. */
+  speed?: number;
   /** Factor on CONFIG.revealRadius: < 1 shows targets later (dense province maps). Default 1. */
   reveal?: number;
   /** Start time and extra time per level in seconds. Default: CONFIG.startTime / levelTimeBonus. */
