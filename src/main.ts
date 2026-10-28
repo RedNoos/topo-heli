@@ -326,7 +326,7 @@ function setTargetLabel(target: Target) {
   ui.targetLabel.textContent = t(flyToKey(target));
   const name = placeName(target.name);
   ui.targetName.textContent = name;
-  if (target.kind !== 'city' && !name.toLowerCase().includes(t(kindKey(target)).toLowerCase())) {
+  if (target.kind !== 'city') {
     const tag = document.createElement('span');
     tag.className = `kind kind-${target.kind} kind-${target.sub ?? target.kind}`;
     tag.textContent = t(kindKey(target));
