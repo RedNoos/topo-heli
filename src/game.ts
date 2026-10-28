@@ -131,7 +131,8 @@ export class Game {
   }
 
   get revealRadius() {
-    return CONFIG.revealRadius(this.level) * this.distScale * this.revealFactor;
+    const level = this.practice ? CONFIG.practiceRevealLevel : this.level;
+    return CONFIG.revealRadius(level) * this.distScale * this.revealFactor;
   }
 
   get targetDistance() {
