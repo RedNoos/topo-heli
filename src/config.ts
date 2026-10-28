@@ -45,7 +45,7 @@ export const CONFIG = {
   /** Distance at which the target's flashing dot becomes visible, per level. */
   revealRadius: (level: number) => Math.max(12, 50 - (level - 1) * 7),
   /** "Find them all" has a fixed reveal distance: that of this level. */
-  practiceRevealLevel: 3,
+  practiceRevealLevel: 4,
 
   /** Number of best-known cities (by population) in play at a level. */
   poolSize: (level: number) => 15 + (level - 1) * 15,
