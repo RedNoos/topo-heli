@@ -143,7 +143,8 @@ const PHYSICAL = {
     rivers: {
       // Border rivers carry both names in OSM.
       1: ['Kemijoki', 'Oulujoki', 'Kymijoki', 'Kokemäenjoki', { name: 'Tornionjoki', osm: ['Tornionjoki', 'Tornionjoki / Torne älv'] }],
-      2: ['Iijoki', 'Ounasjoki', { name: 'Tenojoki', osm: ['Tenojoki', 'Teno / Tana / Deatnu'] }, { name: 'Vuoksi', osm: ['Vuoksi', 'Vuoksi / Вуокса'] }],
+      // Not the Iijoki stub near Savonlinna.
+      2: [['Iijoki', [24.9, 64.8, 30.2, 66.2]], 'Ounasjoki', { name: 'Tenojoki', osm: ['Tenojoki', 'Teno / Tana / Deatnu'] }, { name: 'Vuoksi', osm: ['Vuoksi', 'Vuoksi / Вуокса'] }],
       3: ['Kitinen', { name: 'Muonionjoki', osm: ['Muonionjoki', 'Muonionjoki / Muonioälven'] }, 'Aurajoki', 'Porvoonjoki', 'Vantaanjoki'],
     },
     lakes: {
