@@ -31,7 +31,8 @@ const OVERPASS = [
 // box (for names shared by several rivers), or { name, osm: [OSM names], box? } when the shown
 // river is made of differently named OSM rivers (e.g. Rijn = Bovenrijn + Nederrijn). Add
 // `canals: true` when stretches of the river are tagged as canal in OSM, and `type: 'canal'`
-// for canals (shown as "canal" in the game).
+// for canals (shown as "canal" in the game). `margin`: km beyond the border kept (default 2), for
+// a border river that wanders across the simplified border (Tenojoki).
 // Water areas (`waterAreas`): large waters played like lakes (fly over them), from an OSM
 // relation and/or a rough outline; the land is cut out, so the shape follows the real coast and
 // islands become holes (`inland: true`: only the lake's own islands, for a lake on Natural Earth
@@ -144,7 +145,7 @@ const PHYSICAL = {
       // Border rivers carry both names in OSM.
       1: ['Kemijoki', 'Oulujoki', 'Kymijoki', 'Kokemäenjoki', { name: 'Tornionjoki', osm: ['Tornionjoki', 'Tornionjoki / Torne älv'] }],
       // Not the Iijoki stub near Savonlinna.
-      2: [['Iijoki', [24.9, 64.8, 30.2, 66.2]], 'Ounasjoki', { name: 'Tenojoki', osm: ['Tenojoki', 'Teno / Tana / Deatnu'] }, { name: 'Vuoksi', osm: ['Vuoksi', 'Vuoksi / Вуокса'] }],
+      2: [['Iijoki', [24.9, 64.8, 30.2, 66.2]], 'Ounasjoki', { name: 'Tenojoki', osm: ['Tenojoki', 'Teno / Tana / Deatnu'], margin: 6 }, { name: 'Vuoksi', osm: ['Vuoksi', 'Vuoksi / Вуокса'] }],
       3: ['Kitinen', { name: 'Muonionjoki', osm: ['Muonionjoki', 'Muonionjoki / Muonioälven'] }, 'Aurajoki', 'Porvoonjoki', 'Vantaanjoki'],
     },
     lakes: {
@@ -419,7 +420,7 @@ async function buildRivers(id, cfg, key = 'rivers', waterways = 'river|canal') {
   const entries = byLevel(cfg.rivers).map(({ level, item }) => {
     if (typeof item === 'string') return { level, name: item, osm: [item] };
     if (Array.isArray(item)) return { level, name: item[0], osm: [item[0]], box: item[1] };
-    return { level, name: item.name, osm: item.osm ?? [item.name], box: item.box, canals: item.canals, type: item.type };
+    return { level, name: item.name, osm: item.osm ?? [item.name], box: item.box, canals: item.canals, type: item.type, margin: item.margin };
   });
   if (!entries.length) return [];
   const osmNames = [...new Set(entries.flatMap((e) => e.osm))];
@@ -462,12 +463,16 @@ async function buildRivers(id, cfg, key = 'rivers', waterways = 'river|canal') {
   for (const { river, coords } of ways.values()) {
     features.push({ type: 'Feature', properties: { feat: river }, geometry: { type: 'LineString', coordinates: coords } });
   }
-  const clip = await countryClip(id, 2);
-  const out = await mapshaper.applyCommands(
-    '-i in.json -clip clip.json -dissolve feat -simplify interval=400 -o out.json format=geojson',
-    { 'in.json': { type: 'FeatureCollection', features }, 'clip.json': clip },
-  );
-  const fc = JSON.parse(out['out.json']);
+  // Clipped per margin: 2 km, or more for a border river that wanders across the simplified border.
+  const marginOf = (river) => entries.find((en) => en.name === river)?.margin ?? 2;
+  const fc = { features: [] };
+  for (const margin of new Set(features.map((x) => marginOf(x.properties.feat)))) {
+    const out = await mapshaper.applyCommands(
+      '-i in.json -clip clip.json -dissolve feat -simplify interval=400 -o out.json format=geojson',
+      { 'in.json': { type: 'FeatureCollection', features: features.filter((x) => marginOf(x.properties.feat) === margin) }, 'clip.json': await countryClip(id, margin) },
+    );
+    fc.features.push(...JSON.parse(out['out.json']).features);
+  }
   const result = [];
   for (const { level, name, box, type } of entries) {
     const f = fc.features.find((x) => x.properties.feat === name);
@@ -828,9 +833,12 @@ async function build(id, cfg) {
 
   // Drawing layers, pre-clipped to the country so the game needs no per-frame clipping. The
   // targets above keep their full geometry (incl. a margin along border rivers) for finding them.
-  const riversOfLevel = (lv) => out.rivers.filter((r) => r.type !== 'dike' && Math.min(r.level, 3) === lv).flatMap((r) => r.lines);
+  // A border river with its own margin (Tenojoki) is drawn whole, or the simplified border cuts it up.
+  const wide = new Set(byLevel(cfg.rivers).filter(({ item }) => item.margin).map(({ item }) => item.name));
+  const riversOfLevel = (lv, w) => out.rivers.filter((r) => r.type !== 'dike' && Math.min(r.level, 3) === lv && wide.has(r.name) === w).flatMap((r) => r.lines);
+  const drawRivers = async (lv) => [...(await clipToHome(id, riversOfLevel(lv, false), 'line')), ...riversOfLevel(lv, true)];
   out.draw = {
-    rivers: [await clipToHome(id, riversOfLevel(1), 'line'), await clipToHome(id, riversOfLevel(2), 'line'), await clipToHome(id, riversOfLevel(3), 'line')],
+    rivers: [await drawRivers(1), await drawRivers(2), await drawRivers(3)],
     lines: await clipToHome(id, contextLines, 'line'),
     // Water areas (holes = islands) lie outside the land: drawn from their own shape in the game.
     water: await clipToHome(id, [...out.lakes.filter((l) => !l.holes).map((l) => l.rings), ...contextAreas], 'polygon'),
