@@ -11,6 +11,8 @@ const FORMS: Record<Lang, string> = {
 
 /** Filled in by the game, hidden in the form: what the feedback is about. */
 export interface FeedbackContext {
+  /** `map-request` makes the form skip straight to its "request a map" page. */
+  type: 'feedback' | 'map-request';
   map: string;
   mode: string;
   lang: Lang;
@@ -37,10 +39,14 @@ function loadTally(): Promise<TallyApi | undefined> {
 export async function openFeedback(context: FeedbackContext) {
   const id = FORMS[context.lang] ?? FORMS.en;
   const hiddenFields = {
+    type: context.type,
     map: context.map,
     mode: context.mode,
     lang: context.lang,
     device: matchMedia('(pointer: coarse)').matches ? 'telefoon' : 'computer',
+    // Where the player roughly is, without asking: browser language (e.g. nl-BE) and time zone.
+    locale: navigator.language,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? '',
   };
   const api = await loadTally();
   if (api) {

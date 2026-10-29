@@ -10,7 +10,8 @@ import { STORAGE_PREFIX } from './env';
 
 export type Lang = 'en' | 'nl' | 'de' | 'sr-Latn' | 'sr-Cyrl';
 
-export type Flag = 'gb' | 'nl' | 'de' | 'fi' | 'rs' | 'eu';
+/** `request` is the grey question-mark flag of the "Request a map" button. */
+export type Flag = 'gb' | 'nl' | 'de' | 'fi' | 'rs' | 'eu' | 'request';
 
 export const LANGS: { id: Lang; short: string; label: string; flag: Flag }[] = [
   { id: 'en', short: 'EN', label: 'English', flag: 'gb' },
@@ -155,6 +156,7 @@ const en = {
   privacy: 'Anonymous visitor statistics via {goatcounter}, without cookies; feedback via {tally} (EU).',
   feedback: '💬 Feedback',
   share: '🔗 Share',
+  requestMap: 'Request a map',
   linkCopied: '✓ Link copied',
   shareText: 'Fly a helicopter to places on the map and learn your topography!',
   shareScore: 'My score in {map}: {n}. Can you beat that?',
@@ -299,6 +301,7 @@ const nl: Record<StringKey, string> = {
   privacy: 'Anonieme bezoekersstatistieken via {goatcounter}, zonder cookies; feedback via {tally} (EU).',
   feedback: '💬 Feedback geven',
   share: '🔗 Delen',
+  requestMap: 'Kaart aanvragen',
   linkCopied: '✓ Link gekopieerd',
   shareText: 'Vlieg met een helikopter naar plaatsen op de kaart en leer je topografie!',
   shareScore: 'Mijn score in {map}: {n}. Kun jij dat verbeteren?',
@@ -441,6 +444,7 @@ const de: Record<StringKey, string> = {
   privacy: 'Anonyme Besucherstatistik über {goatcounter}, ohne Cookies; Feedback über {tally} (EU).',
   feedback: '💬 Feedback geben',
   share: '🔗 Teilen',
+  requestMap: 'Karte wünschen',
   linkCopied: '✓ Link kopiert',
   shareText: 'Flieg mit dem Hubschrauber zu Orten auf der Karte und lerne Topografie!',
   shareScore: 'Mein Ergebnis in {map}: {n}. Schaffst du mehr?',
@@ -583,6 +587,7 @@ const srLatn: Record<StringKey, string> = {
   privacy: 'Anonimna statistika poseta preko {goatcounter}, bez kolačića; utisci preko {tally} (EU).',
   feedback: '💬 Utisci i predlozi',
   share: '🔗 Podeli',
+  requestMap: 'Zatraži mapu',
   linkCopied: '✓ Link kopiran',
   shareText: 'Leti helikopterom do mesta na mapi i nauči geografiju!',
   shareScore: 'Moj rezultat – {map}: {n}. Možeš li bolje?',
@@ -796,6 +801,9 @@ const EU_FLAG = (() => {
 export function flagSvg(flag: Flag): string {
   if (flag === 'rs') return SERBIA_FLAG;
   if (flag === 'eu') return EU_FLAG;
+  if (flag === 'request') {
+    return '<svg class="flag" viewBox="0 0 9 6" aria-hidden="true"><rect x=".25" y=".25" width="8.5" height="5.5" fill="#eceae2" stroke="#8a8676" stroke-width=".5" stroke-dasharray="1 .6"/><text x="4.5" y="4.6" text-anchor="middle" font-size="4.6" font-weight="700" font-family="sans-serif" fill="#4a4738">?</text></svg>';
+  }
   if (flag === 'de') {
     return '<svg class="flag" viewBox="0 0 9 6" aria-hidden="true"><rect width="9" height="6" fill="#ffce00"/><rect width="9" height="4" fill="#dd0000"/><rect width="9" height="2" fill="#000"/></svg>';
   }

@@ -157,6 +157,12 @@ function renderMapSelect() {
     b.onclick = () => void selectMap(m);
     box.append(b);
   }
+  // Last in the row: not a map but the feedback form, opened on its "request a map" page.
+  const request = document.createElement('button');
+  request.className = 'map-request';
+  request.innerHTML = `${flagSvg('request')}<span>${t('requestMap')}</span>`;
+  request.onclick = () => feedback('map-request');
+  box.append(request);
   // Sub-maps (provinces, regions) of the chosen map: a list with the whole map first.
   const top = topMap(mapDef);
   const subs = MAPS.filter((x) => x.parent === top.id);
@@ -555,16 +561,16 @@ $('btn-pause').onclick = togglePause;
 $('btn-skip').onclick = () => state === 'playing' && game?.skip();
 ui.mute.onclick = toggleMute;
 /** Feedback form, told which map and mode the player was on. */
-const feedback = () => {
-  track('feedback');
+const feedback = (type: 'feedback' | 'map-request' = 'feedback') => {
+  track(type);
   const mode = practiceOn ? 'basislijst' : !physicalOn ? 'vrij' : mapDef.physicalKind === 'all' ? 'alles' : mapDef.physicalKind ? 'wateren' : 'bergen-rivieren';
-  void openFeedback({ map: mapDef.id, mode, lang: getLang() });
+  void openFeedback({ type, map: mapDef.id, mode, lang: getLang() });
 };
 $('btn-feedback').onclick = (e) => {
   e.preventDefault();
   feedback();
 };
-$('btn-feedback-over').onclick = feedback;
+$('btn-feedback-over').onclick = () => feedback();
 
 /** Share the game: the share sheet on phones, otherwise the text and link go to the clipboard. */
 async function share(button: HTMLElement) {

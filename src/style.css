@@ -371,8 +371,8 @@ h1 {
   gap: 6px;
 }
 
-/* An odd number of maps: the last one takes the whole row. */
-.map-select button:last-child:nth-child(odd) {
+/* An odd number of maps: the last one takes the whole row ("Request a map" comes after it). */
+.map-select button:nth-last-child(2):nth-child(odd) {
   grid-column: 1 / -1;
 }
 
@@ -407,6 +407,13 @@ h1 {
   border: 2px solid #c9c5b4;
   background: #fff;
   color: var(--ink);
+}
+
+/* "Request a map": not a map, so a dashed outline instead of the solid one. */
+.map-select button.map-request {
+  grid-column: 1 / -1;
+  border-style: dashed;
+  color: #5c5848;
 }
 
 .map-select button.active {
