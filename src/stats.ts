@@ -23,9 +23,12 @@ const queue: { path: string; title?: string }[] = [];
 
 export function initStats() {
   if (!enabled) return;
-  // Tell visitors (start screen) only when statistics are actually on.
+  // Tell visitors (start screen) only when statistics are actually on; that line also covers
+  // the feedback note, so the feedback-only line goes.
   const note = document.getElementById('privacy');
   if (note) note.hidden = false;
+  const feedbackNote = document.getElementById('feedback-privacy');
+  if (feedbackNote) feedbackNote.hidden = true;
   const script = document.createElement('script');
   script.async = true;
   script.src = 'https://gc.zgo.at/count.js';
