@@ -723,9 +723,12 @@ h1 {
   }
 }
 
-/* Feedback: a quiet button under the menu and the end screen. */
-.btn.feedback {
-  align-self: center;
+/* Share and feedback: quiet buttons side by side under the menu and the end screen. */
+.small-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-top: 4px;
 }
 

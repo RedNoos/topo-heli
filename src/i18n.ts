@@ -154,6 +154,11 @@ const en = {
   inspiredBy: 'Inspired by {game} ({maker}, {platform}, 1984)',
   privacy: 'Anonymous visitor statistics via {goatcounter}, without cookies.',
   feedback: '💬 Feedback',
+  share: '🔗 Share',
+  linkCopied: '✓ Link copied',
+  shareText: 'Fly a helicopter to places on the map and learn your topography!',
+  shareScore: 'My score in {map}: {n}. Can you beat that?',
+  shareTime: 'My time for {map}: {t}. Can you do it faster?',
   feedbackPrivacy: 'Feedback is sent via {tally} (EU); only what you fill in is stored.',
 };
 
@@ -293,6 +298,11 @@ const nl: Record<StringKey, string> = {
   inspiredBy: 'Geïnspireerd op {game} ({maker}, {platform}, 1984)',
   privacy: 'Anonieme bezoekersstatistieken via {goatcounter}, zonder cookies.',
   feedback: '💬 Feedback geven',
+  share: '🔗 Delen',
+  linkCopied: '✓ Link gekopieerd',
+  shareText: 'Vlieg met een helikopter naar plaatsen op de kaart en leer je topografie!',
+  shareScore: 'Mijn score in {map}: {n}. Kun jij dat verbeteren?',
+  shareTime: 'Mijn tijd voor {map}: {t}. Kun jij het sneller?',
   feedbackPrivacy: 'Feedback gaat via {tally} (EU); alleen wat je zelf invult wordt bewaard.',
 };
 
@@ -430,6 +440,11 @@ const de: Record<StringKey, string> = {
   inspiredBy: 'Inspiriert von {game} ({maker}, {platform}, 1984)',
   privacy: 'Anonyme Besucherstatistik über {goatcounter}, ohne Cookies.',
   feedback: '💬 Feedback geben',
+  share: '🔗 Teilen',
+  linkCopied: '✓ Link kopiert',
+  shareText: 'Flieg mit dem Hubschrauber zu Orten auf der Karte und lerne Topografie!',
+  shareScore: 'Mein Ergebnis in {map}: {n}. Schaffst du mehr?',
+  shareTime: 'Meine Zeit für {map}: {t}. Schaffst du es schneller?',
   feedbackPrivacy: 'Feedback wird über {tally} (EU) gesendet; gespeichert wird nur, was du eingibst.',
 };
 
@@ -567,6 +582,11 @@ const srLatn: Record<StringKey, string> = {
   inspiredBy: 'Inspirisano igrom {game} ({maker}, {platform}, 1984)',
   privacy: 'Anonimna statistika poseta preko {goatcounter}, bez kolačića.',
   feedback: '💬 Utisci i predlozi',
+  share: '🔗 Podeli',
+  linkCopied: '✓ Link kopiran',
+  shareText: 'Leti helikopterom do mesta na mapi i nauči geografiju!',
+  shareScore: 'Moj rezultat – {map}: {n}. Možeš li bolje?',
+  shareTime: 'Moje vreme – {map}: {t}. Možeš li brže?',
   feedbackPrivacy: 'Utisci se šalju preko {tally} (EU); čuva se samo ono što sam upišeš.',
 };
 

@@ -566,6 +566,30 @@ $('btn-feedback').onclick = (e) => {
 };
 $('btn-feedback-over').onclick = feedback;
 
+/** Share the game: the share sheet on phones, otherwise the text and link go to the clipboard. */
+async function share(button: HTMLElement) {
+  track('share');
+  const text = state !== 'over' || !game
+    ? t('shareText')
+    : game.practice
+      ? t('shareTime', { map: mapName(mapDef), t: clock(Math.round(game.elapsed)) })
+      : t('shareScore', { map: mapName(mapDef), n: game.found.length });
+  const url = new URL('./', location.href).href;
+  if (navigator.share && matchMedia('(pointer: coarse)').matches) {
+    await navigator.share({ title: 'Topo Heli', text, url }).catch(() => {}); // cancelled
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(`${text} ${url}`);
+  } catch {
+    return;
+  }
+  button.textContent = t('linkCopied');
+  setTimeout(() => (button.innerHTML = t(button.dataset.i18n as StringKey)), 2000);
+}
+$('btn-share').onclick = (e) => void share(e.currentTarget as HTMLElement);
+$('btn-share-over').onclick = $('btn-share').onclick;
+
 window.addEventListener('keydown', (e) => {
   if (e.repeat) return;
   if (e.code === 'Escape' || e.code === 'KeyP') togglePause();
