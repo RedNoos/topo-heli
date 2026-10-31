@@ -45,6 +45,8 @@ interface Layers {
   /** One path per colour index (multi-country maps only). */
   countries: { color: string; path: Path2D; empty: boolean }[];
   borders: Path2D;
+  /** Frames around insets (islands moved closer than they are). */
+  insets: Path2D;
   /** Rivers grouped by drawn width (px at default zoom); inside the playable area. */
   rivers: { width: number; path: Path2D }[];
   /** Base-map water outside the playable area (drawn muted). */
@@ -106,6 +108,13 @@ function buildLayers(geo: GeoData, proj: Projection, physical?: PhysicalData): L
       return { color, path: polygons(polys), empty: polys.length === 0 };
     }),
     borders: lines(geo.borders ?? []),
+    // Edges sampled along the box, so the frame follows the projection.
+    insets: polygons(
+      (geo.insets ?? []).map(({ box: [w, s, e, n] }) => {
+        const steps = Array.from({ length: 9 }, (_, i) => i / 8);
+        return [[...steps.map((f): [number, number] => [w + f * (e - w), n]), ...steps.map((f): [number, number] => [e - f * (e - w), s])]];
+      }),
+    ),
     home: polygons(geo.home),
     lakes: polygons(geo.lakes),
     districts: lines(geo.districts),
@@ -330,6 +339,7 @@ export class Renderer {
     ctx.strokeStyle = COLORS.homeBorder;
     ctx.lineWidth = px(2.2);
     ctx.stroke(L.home);
+    this.strokeInsets(ctx, px(1.4), [px(7), px(5)]);
 
     // --- Screen-space overlays ---
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
@@ -339,6 +349,16 @@ export class Renderer {
     this.drawHeli();
     if (joystick) this.drawJoystick(joystick);
     this.drawMinimap();
+  }
+
+  /** Dashed frames around the insets (islands drawn closer than they are). */
+  private strokeInsets(ctx: CanvasRenderingContext2D, width: number, dash: number[]) {
+    ctx.save();
+    ctx.strokeStyle = COLORS.homeBorder;
+    ctx.lineWidth = width;
+    ctx.setLineDash(dash);
+    ctx.stroke(this.layers.insets);
+    ctx.restore();
   }
 
   /** Fills the playable area: one colour, or a colour per country. */
@@ -744,6 +764,7 @@ export class Renderer {
       o.strokeStyle = COLORS.homeBorder;
       o.lineWidth = 1.2 / ms;
       o.stroke(this.layers.home);
+      this.strokeInsets(o, 1 / ms, [3 / ms, 2 / ms]);
       this.minimapStatic = off;
     }
 

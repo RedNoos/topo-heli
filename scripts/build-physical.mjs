@@ -10,7 +10,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import mapshaper from 'mapshaper';
 import { PROVINCES, SERBIA_REGIONS, GERMANY_REGIONS } from './provinces.mjs';
-import { toCyrillic, finnishToSerbian } from './serbian.mjs';
+import { toCyrillic, finnishToSerbian, isMaori, maoriToSerbian } from './serbian.mjs';
+import { INSETS, shiftGeoJSON, shiftOsm } from './insets.mjs';
 
 /** Province maps: rivers with less than this inside the province are not asked. */
 const MIN_PROVINCE_RIVER_KM = 8;
@@ -200,6 +201,83 @@ const PHYSICAL = {
       ],
     },
   },
+  'new-zealand': {
+    areas: ['NZ'],
+    nameKeys: ['name'],
+    // Mainland and Stewart Island; the Chatham Islands are shifted into their inset (scripts/insets.mjs).
+    bbox: [165, -47.9, 179.9, -33.6],
+    // Names as in OSM: official dual names where they exist (Clutha River / Mata-Au).
+    rivers: {
+      1: ['Waikato River', 'Clutha River / Mata-Au', 'Whanganui River', 'Waitaki River', 'Waimakariri River'],
+      2: ['Rakaia River', 'Buller River', 'Manawatū River', 'Rangitīkei River', 'Rangitata River', 'Clarence River'],
+      // Not the Wairau and Waihou in Northland.
+      3: [['Wairau River', [172.5, -42.2, 174.2, -41.3]], 'Mōkau River', 'Taieri River', ['Waihou River', [175.4, -38.2, 176.0, -37.1]], 'Rangitaiki River'],
+    },
+    lakes: {
+      1: ['Lake Taupō', 'Lake Wakatipu', 'Lake Te Anau', ['Lake Rotorua', 'Lake Rotorua / Te Rotorua nui ā Kahumatamomoe']],
+      2: ['Lake Wānaka', 'Lake Ellesmere / Te Waihora', 'Lake Tekapo / Takapō'],
+      3: ['Lake Hāwea', 'Lake Waikaremoana'],
+    },
+    // The volcanoes are tagged natural=volcano, not peak: their summits from OSM.
+    mountains: {
+      1: [['Aoraki / Mount Cook', 'Aoraki / Mount Cook'], ['Mount Ruapehu', 'Tahurangi'], ['Taranaki Maunga', { lat: -39.2968, lon: 174.0634, ele: 2518 }]],
+      2: [['Mount Tongariro', { lat: -39.1335, lon: 175.642, ele: 1967 }], ['Mount Ngāuruhoe', 'Mount Ngāuruhoe'], ['Mount Aspiring / Tititea', 'Mount Aspiring / Tititea']],
+      3: [['Mount Earnslaw / Pikirakatahi', 'Mount Earnslaw / Pikirakatahi'], ['Tapuae-o-Uenuku', 'Tapuae-o-Uenuku']],
+    },
+    // Find them all: with the 60 listed places in data/new-zealand.json, 100 names.
+    core: ['North Island / Te Ika-a-Māui', 'South Island / Te Waipounamu', 'Stewart Island / Rakiura', 'Chatham Islands / Rēkohu', 'Aotea / Great Barrier Island',
+      'Coromandel Peninsula', 'Banks Peninsula', 'Fiordland', 'Southern Alps / Kā Tiritiri o te Moana', 'Northland', 'Canterbury', 'Otago',
+      'Tasman Sea', 'Te Moana-o-Raukawa / Cook Strait', 'Te Ara-a-Kiwa / Foveaux Strait', 'Hauraki Gulf / Tīkapa Moana', 'Bay of Plenty', 'Golden Bay / Mohua', 'Milford Sound / Piopiotahi', 'Tasman Bay / Te Tai-o-Aorere',
+      'Waikato River', 'Clutha River / Mata-Au', 'Whanganui River', 'Waitaki River', 'Waimakariri River', 'Rakaia River', 'Buller River', 'Manawatū River',
+      'Lake Taupō', 'Lake Wakatipu', 'Lake Te Anau', 'Lake Wānaka', 'Lake Rotorua', 'Lake Ellesmere / Te Waihora',
+      'Aoraki / Mount Cook', 'Mount Ruapehu', 'Taranaki Maunga', 'Mount Tongariro', 'Mount Aspiring / Tititea', 'Mount Ngāuruhoe'],
+    zones: {
+      1: [
+        { name: 'North Island / Te Ika-a-Māui', type: 'island', landAt: [175.6, -38.5] },
+        { name: 'South Island / Te Waipounamu', type: 'island', landAt: [170.4, -43.6] },
+        { name: 'Stewart Island / Rakiura', type: 'island', landAt: [167.9, -47.0] },
+        { name: 'Chatham Islands / Rēkohu', type: 'island', admin1: ['NZL', 'Chatham Islands Territory'] },
+      ],
+      // Regions (Natural Earth names), not the ones named like their city (Auckland, Wellington,
+      // Nelson, Gisborne) nor Bay of Plenty (asked as the bay).
+      2: [
+        ...[
+          ['Northland', 'Northland'], ['Waikato', 'Waikato'], ["Hawke's Bay", "Hawke's Bay"], ['Taranaki', 'Taranaki'],
+          ['Manawatū-Whanganui', 'Manawatu-Wanganui'], ['Marlborough', 'Marlborough District'], ['Tasman', 'Tasman District'],
+          ['West Coast', 'West Coast'], ['Canterbury', 'Canterbury'], ['Otago', 'Otago'], ['Southland', 'Southland'],
+        ].map(([name, ne]) => ({ name, type: 'region', admin1: ['NZL', ne] })),
+        { name: 'Aotea / Great Barrier Island', type: 'island', landAt: [175.43, -36.2] },
+        { name: 'Coromandel Peninsula', outline: [[175.35, -36.42], [176.2, -36.42], [176.2, -37.25], [175.6, -37.2], [175.45, -37.1], [175.42, -36.9]] },
+        { name: 'Banks Peninsula', outline: [[172.72, -43.58], [173.2, -43.58], [173.2, -43.98], [172.62, -43.98], [172.66, -43.75]] },
+        // West of Lakes Te Anau and Manapōuri.
+        { name: 'Fiordland', outline: [[166.3, -44.6], [167.9, -44.6], [167.75, -45.0], [167.65, -45.5], [167.6, -46.0], [167.2, -46.3], [166.3, -46.3]] },
+        // The main divide from Arthur's Pass to Haast Pass.
+        { name: 'Southern Alps / Kā Tiritiri o te Moana', outline: [[171.9, -42.7], [171.95, -43.0], [171.0, -43.6], [170.3, -44.1], [169.4, -44.4], [169.0, -44.25], [169.9, -43.6], [170.9, -43.1], [171.4, -42.75]] },
+      ],
+      3: [{ name: 'Waiheke Island', type: 'island', landAt: [175.09, -36.79] }],
+    },
+    waterAreas: {
+      1: [
+        // West of the islands, from Cape Reinga to Fiordland (the land is cut out).
+        { name: 'Tasman Sea', type: 'water', outline: [[166.0, -34.5], [172.5, -34.3], [174.5, -38.5], [174.0, -39.8], [172.8, -40.5], [171.5, -42.0], [170.5, -43.1], [168.5, -44.2], [166.6, -45.5], [166.0, -46.5]] },
+        { name: 'Te Moana-o-Raukawa / Cook Strait', type: 'water', relation: 13512115 },
+        { name: 'Te Ara-a-Kiwa / Foveaux Strait', type: 'water', relation: 13579264 },
+        { name: 'Hauraki Gulf / Tīkapa Moana', type: 'water', relation: 8536014 },
+        { name: 'Bay of Plenty', type: 'water', relation: 9581427 },
+      ],
+      2: [
+        { name: 'Golden Bay / Mohua', type: 'water', relation: 8518610 },
+        { name: 'Tasman Bay / Te Tai-o-Aorere', type: 'water', relation: 8499159 },
+        { name: 'Milford Sound / Piopiotahi', type: 'water', relation: 10706231 },
+        { name: 'Hawke Bay', type: 'water', relation: 6723730 },
+      ],
+      3: [
+        { name: 'Pegasus Bay', type: 'water', relation: 9570594 },
+        { name: 'Kaipara Harbour', type: 'water', relation: 8659194 },
+        { name: 'Manukau Harbour', type: 'water', relation: 8534169 },
+      ],
+    },
+  },
   netherlands: {
     areas: ['NL'],
     bbox: [2.9, 50.6, 7.6, 53.75],
@@ -301,7 +379,13 @@ const PHYSICAL = {
 
 const norm = (s) => s.normalize('NFC').toLowerCase();
 
+/** Overpass answer (cached raw), with the map's insets shifted in (keys start with the map id). */
 async function overpass(key, query) {
+  const insets = Object.entries(INSETS).find(([id]) => key.startsWith(`${id}-`))?.[1];
+  return shiftOsm(await overpassRaw(key, query), insets);
+}
+
+async function overpassRaw(key, query) {
   const file = path.join(CACHE, `overpass-${key}.json`);
   try {
     return JSON.parse(await fs.readFile(file, 'utf8'));
@@ -667,7 +751,7 @@ async function homeLand(id) {
   const admin1 = JSON.parse(await fs.readFile(path.join(CACHE, 'ne_10m_admin_1_states_provinces.geojson'), 'utf8').catch(() => {
     throw new Error('Run "npm run build:map" first (it downloads the Natural Earth admin-1 regions).');
   }));
-  return { land: { type: 'FeatureCollection', features: geo.home.map(featureOf) }, municipalities: { features: [] }, admin1 };
+  return { land: { type: 'FeatureCollection', features: geo.home.map(featureOf) }, municipalities: { features: [] }, admin1: shiftGeoJSON(admin1, INSETS[id]) };
 }
 
 /** Areas (gebieden): see `zones` in the config. Output like lakes: outer rings + holes. */
@@ -849,6 +933,7 @@ async function build(id, cfg) {
   const kb = ((await fs.stat(file)).size / 1024).toFixed(0);
   console.log(`  ${out.rivers.length} rivers, ${out.lakes.length} lakes, ${out.mountains.length} mountains -> ${path.relative(ROOT, file)} (${kb} KB)`);
   if (id === 'finland') await addFinnishSerbianNames(out);
+  if (id === 'new-zealand') await addMaoriSerbianNames(out);
 }
 
 /** Finland: Serbian names of the features, transcribed where names.sr.json (build-places) has none. */
@@ -860,6 +945,17 @@ async function addFinnishSerbianNames(out) {
   await fs.writeFile(file, JSON.stringify(sorted, null, 2) + '\n');
 }
 
+/** New Zealand: Serbian names of Māori-named features where names.sr.json (build-places) has none. */
+async function addMaoriSerbianNames(out) {
+  const file = path.join(ROOT, 'src', 'maps', 'new-zealand', 'names.sr.json');
+  const names = JSON.parse(await fs.readFile(file, 'utf8'));
+  const all = [...out.rivers, ...out.lakes, ...out.mountains, ...(out.areas ?? [])];
+  for (const x of all) if (!names[x.name] && isMaori(x.name)) names[x.name] = toCyrillic(maoriToSerbian(x.name));
+  const missing = all.filter((x) => !names[x.name]).map((x) => x.name);
+  if (missing.length) console.warn(`  ! no Serbian name: ${missing.join(', ')}`);
+  const sorted = Object.fromEntries(Object.entries(names).sort(([a], [b]) => a.localeCompare(b, 'en')));
+  await fs.writeFile(file, JSON.stringify(sorted, null, 2) + '\n');
+}
 
 /**
  * Province maps reuse the country's data: rivers cut to the province (with the same margin as

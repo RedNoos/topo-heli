@@ -10,6 +10,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import mapshaper from 'mapshaper';
 import { PROVINCES, SERBIA_REGIONS, GERMANY_REGIONS } from './provinces.mjs';
+import { INSETS, shiftGeoJSON, insetFrames } from './insets.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const CACHE = path.join(ROOT, '.cache');
@@ -68,6 +69,16 @@ const MAPS = {
     // Districts are the regions (maakunnat); Åland's municipalities form one.
     districtOf: (p) => (p.adm0_a3 === 'ALD' ? 'Åland' : p.name),
     simplify: '45%',
+  },
+  'new-zealand': {
+    home: ['NZL'],
+    // Mainland and Stewart Island; the Chatham Islands come in as an inset (scripts/insets.mjs).
+    // Leaves out the Kermadecs, the subantarctic islands and Tokelau.
+    bbox: [165, -47.9, 179.9, -33.6],
+    projection: { type: 'laea', lon0: 173, lat0: -41.2, rect: [-600, -760, 580, 830] },
+    districtOf: (p) => p.name,
+    simplify: '45%',
+    insets: INSETS['new-zealand'],
   },
   netherlands: {
     // Land and province borders from CBS (see cbsLand); province borders drawn as districts.
@@ -321,7 +332,7 @@ async function buildMap(id, cfg) {
     neighbourFc = { type: 'FeatureCollection', features: prov.neighbours };
   } else {
     // Fresh copy: the cached source is shared between maps.
-    const countries = structuredClone(await source(cfg.countries ?? SOURCES.countries));
+    const countries = shiftGeoJSON(structuredClone(await source(cfg.countries ?? SOURCES.countries)), cfg.insets);
     homeTest = Array.isArray(cfg.home) ? (p) => cfg.home.includes(p.ADM0_A3) : cfg.home;
     const isHome = (f) => homeTest(f.properties);
     for (const f of countries.features) {
@@ -333,7 +344,13 @@ async function buildMap(id, cfg) {
 
   const homeCountries = await shape(homeFc, `-dissolve code ${area()} -filter-slivers`);
   const home = await shape(homeFc, `-dissolve code ${area()} -filter-slivers -dissolve`);
-  const neighbours = await shape(neighbourFc, `${area()} -filter-slivers`);
+  // An island country may have no neighbour within its bbox (mapshaper fails on an empty layer).
+  const [cw, cs, ce, cn] = bbox.split(',').map(Number);
+  const nearby = filterFeatures(neighbourFc, (f) => {
+    const [w, s, e, n] = boundsOf([f]);
+    return w < ce && e > cw && s < cn && n > cs;
+  });
+  const neighbours = nearby.features.length ? await shape(nearby, `${area()} -filter-slivers`) : { features: [] };
 
   let districts = [];
   // Borders of the sub-maps (provinces, regions), drawn a bit clearer than districts.
@@ -345,7 +362,7 @@ async function buildMap(id, cfg) {
     // Region: the borders of its districts (German regions: Berlin, Hamburg, Bremen).
     districts = parts(await shape(prov.districts, `-dissolve district ${area()} -innerlines`));
   } else if (cfg.districtOf) {
-    const admin1 = await source(SOURCES.admin1);
+    const admin1 = shiftGeoJSON(structuredClone(await source(SOURCES.admin1)), cfg.insets);
     const homeAdmin = filterFeatures(admin1, (f) => homeTest({ ADM0_A3: f.properties.adm0_a3 }));
     for (const f of homeAdmin.features) f.properties = { district: cfg.districtOf(f.properties) };
     if (!cfg.regions) {
@@ -369,7 +386,7 @@ async function buildMap(id, cfg) {
   const riverFeatures = [];
   const riverSources = [SOURCES.rivers, ...(cfg.europeanRivers === false ? [] : [SOURCES.riversEurope])];
   for (const src of riverSources) {
-    const fc = await source(src);
+    const fc = shiftGeoJSON(structuredClone(await source(src)), cfg.insets);
     const kept = filterFeatures(fc, (f) => (f.properties.scalerank ?? 10) <= (cfg.riverMaxRank ?? 99));
     for (const f of (await shape(kept, area(false))).features ?? []) {
       // scalerank: lower = more important river -> drawn wider.
@@ -381,7 +398,7 @@ async function buildMap(id, cfg) {
   const lakeFeatures = [];
   const lakeSources = [SOURCES.lakes, ...(cfg.europeanRivers === false ? [] : [SOURCES.lakesEurope])];
   for (const src of lakeSources) {
-    const fc = await source(src);
+    const fc = shiftGeoJSON(structuredClone(await source(src)), cfg.insets);
     const kept = filterFeatures(fc, (f) => (f.properties.scalerank ?? 10) <= (cfg.lakeMaxRank ?? 99));
     lakeFeatures.push(...((await shape(kept, area())).features ?? []).filter((f) => f.geometry).map((f) => ({ ...f, properties: { lid: lakeFeatures.length + Math.random() } })));
   }
@@ -427,6 +444,7 @@ async function buildMap(id, cfg) {
     // CBS maps: the land shape already leaves out the big lakes (IJsselmeer…); Natural Earth's
     // coarser version on top would only blur the shoreline. Lakes inside the land stay.
     lakesOutside: cfg.cbs ? [] : parts(lakeSplit.outside),
+    ...(cfg.insets ? { insets: insetFrames(cfg.insets) } : {}),
   };
   if (cfg.colorCountries) {
     const features = homeCountries.features;

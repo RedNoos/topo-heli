@@ -24,6 +24,8 @@ export interface GeoData {
   countries?: { c: number; p: LonLat[][][] }[];
   /** Borders between the countries above. */
   borders?: LonLat[][];
+  /** Far-away islands moved closer at build time (scripts/insets.mjs): frames to draw, lon/lat box. */
+  insets?: { name: string; box: [number, number, number, number] }[];
 }
 
 export interface City {

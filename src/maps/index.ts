@@ -95,6 +95,29 @@ export const MAPS: MapDefinition[] = [
     practiceList: 'selection',
   },
   {
+    id: 'new-zealand',
+    flag: 'nz',
+    nameKey: 'mapNewZealand',
+    // English names, official dual names where they exist (Aoraki / Mount Cook); translated
+    // where a language has its own (North Island: Noordereiland).
+    placeNames: 'native',
+    loadDutchNames: async () => (await import('./new-zealand/names.nl.json')).default,
+    loadGermanNames: async () => (await import('./new-zealand/names.de.json')).default,
+    loadSerbianNames: async () => (await import('./new-zealand/names.sr.json')).default,
+    viewKm: 500,
+    // 1600 km from Cape Reinga to Stewart Island: a faster helicopter, as for Finland.
+    speed: 1.35,
+    load: async () => ({
+      geo: (await import('./new-zealand/geo.json')).default as never,
+      cities: (await import('./new-zealand/cities.json')).default,
+    }),
+    loadPhysical: async () => (await import('./new-zealand/physical.json')).default as never,
+    physicalKind: 'all',
+    // No official list: our own selection of 100 names (60 places, 40 waters, mountains and areas).
+    practice: true,
+    practiceList: 'selection',
+  },
+  {
     id: 'europe',
     flag: 'eu',
     nameKey: 'mapEurope',

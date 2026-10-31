@@ -3,7 +3,8 @@
 Browser topography game: fly a helicopter to named places on a map. Vite 6 + TypeScript + Canvas 2D,
 no framework. Maps: Serbia (Kosovo as part of Serbia; whole country + 6 region maps), the Netherlands
 (whole country + 12 province maps), Germany (whole country + 13 region maps: the Länder, city states
-inside the Land around them), Finland (whole country only; Lambert projection) and Europe. UI in English, Dutch, German, Serbian Latin and Serbian Cyrillic.
+inside the Land around them), Finland (whole country only; Lambert projection), New Zealand (whole country only; the
+Chatham Islands as an inset) and Europe. UI in English, Dutch, German, Serbian Latin and Serbian Cyrillic.
 
 Live at https://topoheli.com/ (custom domain, registered at Porkbun; public repo RedNoos/topo-heli;
 the old https://rednoos.github.io/topo-heli/ redirects there). Every push to `main`
@@ -65,12 +66,16 @@ rebuilds only the Serbian / German region files).
   - `finland.json`: the 60 listed Finnish places (with 40 physical `core` names: 100), renames
     (Åland keeps Swedish names) and translations; other Serbian names are transcribed
     (`finnishToSerbian` in `scripts/serbian.mjs`).
+  - `new-zealand.json`: the 60 listed NZ places (with 40 physical `core` names: 100), places
+    left out and translations; Serbian names of Māori places are transcribed (`maoriToSerbian`).
   - `germany.json`: the 60 listed German places ("Find them all", with 40 physical `core` names
     in build-physical: 100), OSM name fixes, and English/Dutch/Serbian (Latin) names.
 - `scripts/provinces.mjs`: province settings (CBS name, capital, `minPop`, `time`, `skipPhysical`),
   the Serbian regions (`SERBIA_REGIONS`: districts, capital, name key) and the German ones
   (`GERMANY_REGIONS`: Länder, capital, name key). Serbian region places are split from
   `serbia/cities.json`; region physical data is cut from the country's.
+- `scripts/insets.mjs`: far-away islands (the Chathams) moved closer at build time; all three
+  builds shift the raw source data, `geo.json` gets the frames (`insets`) the renderer draws.
 - `scripts/build-physical.mjs`: per-map config of rivers, lakes, mountains, `zones` (areas),
   `landmarks`, `lines`, `waterAreas` and `core` (basislijst names). mapshaper gotchas: a field
   called `name` clashes with its `name=` option; attribute-less output is a GeometryCollection.

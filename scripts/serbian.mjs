@@ -44,3 +44,20 @@ export function finnishToSerbian(name) {
     .replace(/(?<=[aeiou])i(?![aeiou])/gi, 'j');
   return single(s);
 }
+
+/** A Māori name: every word made of open syllables (ng, wh or one consonant, then a vowel). */
+export const isMaori = (name) => name.split(/[ -]/).every((w) => /^((ng|wh|[hkmnprtw])?[aeiouāēīōū])+$/i.test(w));
+
+/**
+ * Māori name -> Serbian Latin: macrons dropped, wh -> f, w -> v, i after a vowel -> j
+ * (Whangārei: Fangarej, Waitara: Vajtara), ia -> ija after a consonant.
+ */
+export function maoriToSerbian(name) {
+  return name
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/wh/gi, (m) => (m[0] === 'W' ? 'F' : 'f'))
+    .replace(/w/gi, (m) => (m === 'W' ? 'V' : 'v'))
+    .replace(/(?<=[aeiou])i(?![aeiou])/gi, 'j')
+    .replace(/(?<=[^aeiou\s-])ia/gi, 'ija');
+}

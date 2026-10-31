@@ -11,7 +11,7 @@ import { STORAGE_PREFIX } from './env';
 export type Lang = 'en' | 'nl' | 'de' | 'sr-Latn' | 'sr-Cyrl';
 
 /** `request` is the grey question-mark flag of the "Request a map" button. */
-export type Flag = 'gb' | 'nl' | 'de' | 'fi' | 'rs' | 'eu' | 'request';
+export type Flag = 'gb' | 'nl' | 'de' | 'fi' | 'nz' | 'rs' | 'eu' | 'request';
 
 export const LANGS: { id: Lang; short: string; label: string; flag: Flag }[] = [
   { id: 'en', short: 'EN', label: 'English', flag: 'gb' },
@@ -126,6 +126,7 @@ const en = {
   mapNetherlands: 'Netherlands',
   mapGermany: 'Germany',
   mapFinland: 'Finland',
+  mapNewZealand: 'New Zealand',
   mapEurope: 'Europe',
   region: 'Area',
   modeListUnavailable: 'Not available for this map',
@@ -271,6 +272,7 @@ const nl: Record<StringKey, string> = {
   mapNetherlands: 'Nederland',
   mapGermany: 'Duitsland',
   mapFinland: 'Finland',
+  mapNewZealand: 'Nieuw-Zeeland',
   mapEurope: 'Europa',
   region: 'Gebied',
   modeListUnavailable: 'Niet voor deze kaart',
@@ -414,6 +416,7 @@ const de: Record<StringKey, string> = {
   mapNetherlands: 'Niederlande',
   mapGermany: 'Deutschland',
   mapFinland: 'Finnland',
+  mapNewZealand: 'Neuseeland',
   mapEurope: 'Europa',
   region: 'Gebiet',
   modeListUnavailable: 'Für diese Karte nicht verfügbar',
@@ -557,6 +560,7 @@ const srLatn: Record<StringKey, string> = {
   mapNetherlands: 'Holandija',
   mapGermany: 'Nemačka',
   mapFinland: 'Finska',
+  mapNewZealand: 'Novi Zeland',
   mapEurope: 'Evropa',
   region: 'Oblast',
   modeListUnavailable: 'Nije dostupno za ovu kartu',
@@ -814,7 +818,27 @@ export function flagSvg(flag: Flag): string {
   if (flag === 'nl') {
     return '<svg class="flag" viewBox="0 0 9 6" aria-hidden="true"><rect width="9" height="6" fill="#21468b"/><rect width="9" height="4" fill="#fff"/><rect width="9" height="2" fill="#ae1c28"/></svg>';
   }
-  const id = `gb-clip-${flagId++}`;
+  if (flag === 'nz') {
+    // Blue ensign: the Union Jack in the canton and the Southern Cross (four red stars, white edge).
+    const stars = [[45, 24, 1.7], [45, 6.3, 1.5], [40.3, 13.3, 1.4], [50.4, 11.8, 1.3]]
+      .map(([x, y, r]) => `<polygon points="${star(x, y, r)}" fill="#c8102e" stroke="#fff" stroke-width=".6"/>`)
+      .join('');
+    return `<svg class="flag" viewBox="0 0 60 30" preserveAspectRatio="none" aria-hidden="true"><rect width="60" height="30" fill="#012169"/><svg width="30" height="15" viewBox="0 0 60 30" preserveAspectRatio="none">${unionJack()}</svg>${stars}</svg>`;
+  }
   // Stretched to the same 3:2 box as the Serbian flag so the two line up.
-  return `<svg class="flag" viewBox="0 0 60 30" preserveAspectRatio="none" aria-hidden="true"><clipPath id="${id}"><path d="M30,15h30v15zv15h-30zh-30v-15zv-15h30z"/></clipPath><rect width="60" height="30" fill="#012169"/><path d="M0,0L60,30M60,0L0,30" stroke="#fff" stroke-width="6"/><path d="M0,0L60,30M60,0L0,30" clip-path="url(#${id})" stroke="#c8102e" stroke-width="4"/><path d="M30,0v30M0,15h60" stroke="#fff" stroke-width="10"/><path d="M30,0v30M0,15h60" stroke="#c8102e" stroke-width="6"/></svg>`;
+  return `<svg class="flag" viewBox="0 0 60 30" preserveAspectRatio="none" aria-hidden="true">${unionJack()}</svg>`;
+}
+
+/** Five-pointed star around (cx, cy) with outer radius r, as polygon points. */
+const star = (cx: number, cy: number, r: number) =>
+  Array.from({ length: 10 }, (_, i) => {
+    const a = (i * Math.PI) / 5 - Math.PI / 2;
+    const d = i % 2 ? r * 0.4 : r;
+    return `${(cx + d * Math.cos(a)).toFixed(2)},${(cy + d * Math.sin(a)).toFixed(2)}`;
+  }).join(' ');
+
+/** The Union Jack in a 60×30 box (the British flag, and the canton of New Zealand's). */
+function unionJack() {
+  const id = `gb-clip-${flagId++}`;
+  return `<clipPath id="${id}"><path d="M30,15h30v15zv15h-30zh-30v-15zv-15h30z"/></clipPath><rect width="60" height="30" fill="#012169"/><path d="M0,0L60,30M60,0L0,30" stroke="#fff" stroke-width="6"/><path d="M0,0L60,30M60,0L0,30" clip-path="url(#${id})" stroke="#c8102e" stroke-width="4"/><path d="M30,0v30M0,15h60" stroke="#fff" stroke-width="10"/><path d="M30,0v30M0,15h60" stroke="#c8102e" stroke-width="6"/>`;
 }

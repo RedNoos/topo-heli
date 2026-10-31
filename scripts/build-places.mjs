@@ -13,12 +13,15 @@
 // src/maps/germany/names.{en,nl,sr}.json and the manifest src/maps/de-regions.json.
 // Finland: towns and cities from OpenStreetMap into src/maps/finland/, with the translations
 // in src/maps/finland/names.{en,nl,de,sr}.json.
+// New Zealand: towns from OpenStreetMap into src/maps/new-zealand/ (the Chatham Islands moved
+// into their inset, see scripts/insets.mjs), translations in src/maps/new-zealand/names.*.json.
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { unzipSync, strFromU8 } from 'fflate';
 import { PROVINCES, SERBIA_REGIONS, GERMANY_REGIONS } from './provinces.mjs';
-import { toCyrillic, finnishToSerbian } from './serbian.mjs';
+import { toCyrillic, finnishToSerbian, isMaori, maoriToSerbian } from './serbian.mjs';
+import { INSETS, shiftOsm } from './insets.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const CACHE = path.join(ROOT, '.cache');
@@ -384,3 +387,62 @@ for (const lang of Object.keys(fiNames)) {
   await fs.writeFile(path.join(ROOT, 'src', 'maps', 'finland', `names.${lang}.json`), JSON.stringify(sorted, null, 2) + '\n');
 }
 console.log(`  names: ${Object.keys(fiNames.en).length} en, ${Object.keys(fiNames.nl).length} nl, ${Object.keys(fiNames.de).length} de, ${Object.keys(fiNames.sr).length} sr`);
+
+// ---------- New Zealand ----------
+
+/** Whole New Zealand: towns from this size. */
+const NZ_MIN_POP = 3000;
+/** A town this close to a place at least SUBURB_FACTOR times its size is a suburb of it. */
+const SUBURB_KM = 8;
+const SUBURB_FACTOR = 4;
+/** Mainland and Stewart Island; the Chatham Islands come from their inset. */
+const NZ_BBOX = [165, -47.9, 179.9, -33.6];
+
+const nz = JSON.parse(await fs.readFile(path.join(ROOT, 'data', 'new-zealand.json'), 'utf8'));
+const nzInsets = INSETS['new-zealand'];
+const nzQuery = `[out:json][timeout:300];
+area["ISO3166-1"="NZ"]["admin_level"="2"]->.a;
+node["place"~"^(city|town|village)$"](area.a);
+out;`;
+const nzPop = popLookup(await geonames(1, 'NZ'));
+const inNz = (e) => [NZ_BBOX, ...nzInsets.map((i) => i.box)].some(([w, s, e2, n]) => e.lon >= w && e.lon <= e2 && e.lat >= s && e.lat <= n);
+const nzRaw = JSON.parse(await overpass('overpass-new-zealand-places.json', nzQuery, 'New Zealand towns'));
+// Population before the shift (GeoNames has the real position).
+for (const e of nzRaw.elements) e.pop = nzPop(e.tags?.name, e.lat, e.lon, e.tags?.population);
+let nzAll = shiftOsm({ elements: nzRaw.elements.filter((e) => e.tags?.name && inNz(e)) }, nzInsets)
+  .elements.filter((e) => !nz.exclude.some(([name, lon, lat]) => e.tags.name === name && km(e, { lon, lat }) < 5))
+  .filter((e) => e.tags.place !== 'village' || nz.listed.includes(e.tags.name))
+  .map((e) => ({ name: e.tags.name, lat: e.lat, lon: e.lon, pop: e.pop, sr: e.tags['name:sr'] }))
+  .filter((c) => c.pop >= NZ_MIN_POP || nz.listed.includes(c.name))
+  .sort((a, b) => b.pop - a.pop);
+// Suburbs tagged as towns (Pāpāmoa, Taradale, …), unless listed.
+nzAll = nzAll.filter((c) => nz.listed.includes(c.name) || !nzAll.some((o) => o.pop >= SUBURB_FACTOR * c.pop && km(o, c) < SUBURB_KM));
+const missingNz = nz.listed.filter((n) => !nzAll.some((c) => c.name === n));
+if (missingNz.length) throw new Error(`New Zealand: listed places not found: ${missingNz.join(', ')}`);
+
+console.log('Building New Zealand place list');
+const nzSeen = new Set();
+const nzCities = [];
+for (const c of nzAll) {
+  if (nzSeen.has(c.name)) continue; // same name twice: keep the bigger one
+  nzSeen.add(c.name);
+  nzCities.push({ name: c.name, lat: round4(c.lat), lon: round4(c.lon), pop: c.pop, ...(nz.listed.includes(c.name) ? { listed: true } : {}) });
+}
+await fs.writeFile(path.join(ROOT, 'src', 'maps', 'new-zealand', 'cities.json'), '[\n' + nzCities.map((c) => JSON.stringify(c)).join(',\n') + '\n]\n');
+console.log(`  New Zealand ${nzCities.length} places (${nzCities.filter((c) => c.listed).length} listed)`);
+
+// Translations: curated (data/new-zealand.json); Serbian from OSM name:sr, else transcribed from
+// Māori (the physical features' names are added by scripts/build-physical.mjs).
+const nzNames = { nl: {}, de: {}, sr: {} };
+for (const c of nzCities) if (isMaori(c.name)) nzNames.sr[c.name] = toCyrillic(maoriToSerbian(c.name));
+for (const c of nzAll) if (c.sr) nzNames.sr[c.name] = c.sr;
+for (const [name, tr] of Object.entries(nz.names)) {
+  for (const lang of ['nl', 'de']) if (tr[lang]) nzNames[lang][name] = tr[lang];
+  if (tr.sr) nzNames.sr[name] = toCyrillic(tr.sr);
+}
+for (const lang of Object.keys(nzNames)) {
+  const sorted = Object.fromEntries(Object.entries(nzNames[lang]).sort(([a], [b]) => a.localeCompare(b, 'en')));
+  await fs.writeFile(path.join(ROOT, 'src', 'maps', 'new-zealand', `names.${lang}.json`), JSON.stringify(sorted, null, 2) + '\n');
+}
+const nzUntranslated = nzCities.filter((c) => !nzNames.sr[c.name]).map((c) => c.name);
+console.log(`  names: ${Object.keys(nzNames.nl).length} nl, ${Object.keys(nzNames.de).length} de, ${Object.keys(nzNames.sr).length} sr${nzUntranslated.length ? `; no Serbian name: ${nzUntranslated.join(', ')}` : ''}`);
