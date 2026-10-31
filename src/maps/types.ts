@@ -54,8 +54,8 @@ export interface PhysicalData {
   mountains: { name: string; level: number; core?: boolean; lat: number; lon: number; ele: number | null }[];
   /** Regions found by flying into them (provinces, German states, Finnish regions, islands, Veluwe, ...). */
   areas?: { name: string; level: number; type?: 'province' | 'state' | 'region' | 'island'; core?: boolean; rings: LonLat[][]; holes?: LonLat[][] }[];
-  /** Point features other than mountains (Schiphol). */
-  landmarks?: { name: string; level: number; type: 'airport'; core?: boolean; lat: number; lon: number }[];
+  /** Point features other than mountains (Schiphol, Waitangi Treaty Grounds). */
+  landmarks?: { name: string; level: number; type: 'airport' | 'historic'; core?: boolean; lat: number; lon: number }[];
   /**
    * Drawing layers, pre-clipped to the country: rivers by level (1..3), background
    * waterways never asked (e.g. Nieuwe Waterweg) and water areas (lakes, river banks, harbours).

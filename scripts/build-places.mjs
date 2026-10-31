@@ -409,11 +409,12 @@ const inNz = (e) => [NZ_BBOX, ...nzInsets.map((i) => i.box)].some(([w, s, e2, n]
 const nzRaw = JSON.parse(await overpass('overpass-new-zealand-places.json', nzQuery, 'New Zealand towns'));
 // Population before the shift (GeoNames has the real position).
 for (const e of nzRaw.elements) e.pop = nzPop(e.tags?.name, e.lat, e.lon, e.tags?.population);
-// Excluded places by their real position (before the inset shift).
-const excluded = (e) => nz.exclude.some(([name, lon, lat]) => e.tags.name === name && km(e, { lon, lat }) < 5);
-let nzAll = shiftOsm({ elements: nzRaw.elements.filter((e) => e.tags?.name && inNz(e) && !excluded(e)) }, nzInsets)
-  .elements.filter((e) => e.tags.place !== 'village' || nz.listed.includes(e.tags.name))
-  .map((e) => ({ name: e.tags.name, lat: e.lat, lon: e.lon, pop: e.pop, sr: e.tags['name:sr'] }))
+// Excluded and renamed places by their real position (before the inset shift).
+const at = (e) => ([name, lon, lat]) => e.tags.name === name && km(e, { lon, lat }) < 5;
+for (const e of nzRaw.elements) if (e.tags?.name) e.shown = nz.rename.find(at(e))?.[3] ?? e.tags.name;
+let nzAll = shiftOsm({ elements: nzRaw.elements.filter((e) => e.tags?.name && inNz(e) && !nz.exclude.some(at(e))) }, nzInsets)
+  .elements.filter((e) => e.tags.place !== 'village' || nz.listed.includes(e.shown))
+  .map((e) => ({ name: e.shown, lat: e.lat, lon: e.lon, pop: e.pop, sr: e.tags['name:sr'] }))
   .filter((c) => c.pop >= NZ_MIN_POP || nz.listed.includes(c.name))
   .sort((a, b) => b.pop - a.pop);
 // Suburbs tagged as towns (Pāpāmoa, Taradale, …), unless listed.

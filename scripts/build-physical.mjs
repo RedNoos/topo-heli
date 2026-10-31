@@ -224,7 +224,9 @@ const PHYSICAL = {
       2: [['Mount Tongariro', { lat: -39.1335, lon: 175.642, ele: 1967 }], ['Mount Ngāuruhoe', 'Mount Ngāuruhoe'], ['Mount Aspiring / Tititea', 'Mount Aspiring / Tititea']],
       3: [['Mount Earnslaw / Pikirakatahi', 'Mount Earnslaw / Pikirakatahi'], ['Tapuae-o-Uenuku', 'Tapuae-o-Uenuku']],
     },
-    // Find them all: with the 60 listed places in data/new-zealand.json, 100 names.
+    // The Treaty House, where the Treaty of Waitangi was signed (1840).
+    landmarks: { 1: [{ name: 'Waitangi Treaty Grounds', type: 'historic', lat: -35.2658, lon: 174.0817 }] },
+    // Find them all: with the landmark and the 59 listed places in data/new-zealand.json, 100 names.
     core: ['North Island / Te Ika-a-Māui', 'South Island / Te Waipounamu', 'Stewart Island / Rakiura', 'Chatham Islands / Rēkohu', 'Aotea / Great Barrier Island',
       'Coromandel Peninsula', 'Banks Peninsula', 'Fiordland', 'Southern Alps / Kā Tiritiri o te Moana', 'Northland', 'Canterbury', 'Otago',
       'Tasman Sea', 'Te Moana-o-Raukawa / Cook Strait', 'Te Ara-a-Kiwa / Foveaux Strait', 'Hauraki Gulf / Tīkapa Moana', 'Bay of Plenty', 'Golden Bay / Mohua', 'Milford Sound / Piopiotahi', 'Tasman Bay / Te Tai-o-Aorere',

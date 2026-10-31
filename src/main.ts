@@ -319,7 +319,7 @@ function newGame(start: boolean) {
 }
 
 /** Texts per kind of target; subkinds (canal, sea, province, ...) have their own words. */
-const SUB = { canal: 'Canal', dike: 'Dike', water: 'Water', province: 'Province', state: 'State', region: 'Region', island: 'Island', airport: 'Airport' } as const;
+const SUB = { canal: 'Canal', dike: 'Dike', water: 'Water', province: 'Province', state: 'State', region: 'Region', island: 'Island', airport: 'Airport', historic: 'Historic' } as const;
 const KIND = { city: 'City', river: 'River', lake: 'Lake', mountain: 'Mountain', area: 'Area', landmark: 'Airport' } as const;
 const word = (t: Target) => (t.sub ? SUB[t.sub] : KIND[t.kind]);
 const flyToKey = (t: Target): StringKey => (t.kind === 'city' ? 'flyTo' : `flyTo${word(t)}`) as StringKey;

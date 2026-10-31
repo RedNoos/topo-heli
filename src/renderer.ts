@@ -451,7 +451,7 @@ export class Renderer {
       } else if (kind === 'mountain') {
         this.mountainIcon(p.x, p.y, 6, COLORS.mountain);
       } else if (kind === 'landmark') {
-        this.planeIcon(p.x, p.y, 13, COLORS.found);
+        this.landmarkIcon(f.target, p.x, p.y, 13, COLORS.found);
       }
       // Water names are centred on the water, in italics (map convention); areas centred, upright.
       const dike = f.target.sub === 'dike';
@@ -481,6 +481,44 @@ export class Renderer {
     ctx.lineWidth = 1.5;
     ctx.strokeStyle = stroke;
     ctx.stroke();
+  }
+
+  /** Landmark symbol: a plane (airport) or a flag on a pole (historic site). */
+  private landmarkIcon(t: Target, x: number, y: number, size: number, fill: string, stroke = '#fff') {
+    if (t.sub === 'historic') this.flagIcon(x, y, size, fill, stroke);
+    else this.planeIcon(x, y, size, fill, stroke);
+  }
+
+  /** Historic site symbol: a flag on a pole, the pole's foot on the spot. */
+  private flagIcon(x: number, y: number, size: number, fill: string, stroke = '#fff') {
+    const ctx = this.ctx;
+    const h = size * 0.9;
+    const px = x - size * 0.25;
+    const flag = new Path2D();
+    flag.moveTo(px, y - h);
+    flag.lineTo(px + size * 0.6, y - h * 0.78);
+    flag.lineTo(px, y - h * 0.56);
+    flag.closePath();
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = 4.5;
+    ctx.beginPath();
+    ctx.moveTo(px, y + 1);
+    ctx.lineTo(px, y - h);
+    ctx.stroke();
+    ctx.lineWidth = 3;
+    ctx.stroke(flag);
+    ctx.strokeStyle = fill;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(px, y);
+    ctx.lineTo(px, y - h);
+    ctx.stroke();
+    ctx.fillStyle = fill;
+    ctx.fill(flag);
+    ctx.lineCap = 'butt';
+    ctx.lineJoin = 'miter';
   }
 
   /** Airport symbol. */
@@ -516,7 +554,7 @@ export class Renderer {
       return;
     }
     if (c.kind === 'landmark') {
-      this.planeIcon(p.x, p.y, on ? 22 : 18, on ? COLORS.target : '#fff', on ? '#fff' : COLORS.target);
+      this.landmarkIcon(c, p.x, p.y, on ? 22 : 18, on ? COLORS.target : '#fff', on ? '#fff' : COLORS.target);
       return;
     }
     // Flashing dot.

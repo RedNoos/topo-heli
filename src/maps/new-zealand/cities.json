@@ -79,7 +79,7 @@
 {"name":"Taumarunui","lat":-38.883,"lon":175.2625,"pop":4830,"listed":true},
 {"name":"Kaikohe","lat":-35.4074,"lon":173.8004,"pop":4820},
 {"name":"Picton","lat":-41.2909,"lon":174.0069,"pop":4790,"listed":true},
-{"name":"Te Kūiti","lat":-38.3342,"lon":175.1657,"pop":4720,"listed":true},
+{"name":"Te Kūiti","lat":-38.3342,"lon":175.1657,"pop":4720},
 {"name":"Waipukurau","lat":-39.9956,"lon":176.5567,"pop":4670},
 {"name":"Temuka","lat":-44.244,"lon":171.2797,"pop":4660},
 {"name":"Te Aroha","lat":-37.5431,"lon":175.7124,"pop":4650},
@@ -107,8 +107,8 @@
 {"name":"Kaikōura","lat":-42.4006,"lon":173.6811,"pop":2420,"listed":true},
 {"name":"Bluff","lat":-46.5988,"lon":168.3434,"pop":1840,"listed":true},
 {"name":"Paihia","lat":-35.2812,"lon":174.0921,"pop":1680,"listed":true},
-{"name":"Waitangi","lat":-35.2682,"lon":174.0803,"pop":795,"listed":true},
 {"name":"Akaroa","lat":-43.8043,"lon":172.9678,"pop":780,"listed":true},
 {"name":"Franz Josef / Waiau","lat":-43.3874,"lon":170.1819,"pop":483,"listed":true},
-{"name":"Oban","lat":-46.898,"lon":168.1284,"pop":300,"listed":true}
+{"name":"Oban","lat":-46.898,"lon":168.1284,"pop":300,"listed":true},
+{"name":"Waitangi (Chatham Islands)","lat":-43.9512,"lon":175.939,"pop":140,"listed":true}
 ]

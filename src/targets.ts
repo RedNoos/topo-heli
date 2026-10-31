@@ -36,8 +36,8 @@ export interface Target {
   holes?: Pt[][];
   /** Areas: how far (km) inside the edge the helicopter must be. */
   depth?: number;
-  /** Canal or dike (river kind), sea/estuary (lake kind), province, state or island (area kind), airport (landmark kind). */
-  sub?: 'canal' | 'dike' | 'water' | 'province' | 'state' | 'region' | 'island' | 'airport';
+  /** Canal or dike (river kind), sea/estuary (lake kind), province, state or island (area kind), airport or historic site (landmark kind). */
+  sub?: 'canal' | 'dike' | 'water' | 'province' | 'state' | 'region' | 'island' | 'airport' | 'historic';
 }
 
 function segmentDistance(p: Pt, a: Pt, b: Pt) {
