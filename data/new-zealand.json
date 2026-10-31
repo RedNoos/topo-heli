@@ -1,18 +1,15 @@
 {
-  "_about": "New Zealand. listed: the places in Find them all (with the 40 waters, mountains and areas in scripts/build-physical.mjs: 100 names): the cities, the regional centres and well-known towns (tourism, ferry ports, Stewart Island, the Chatham Islands). Names as in OpenStreetMap (official dual names where they exist, e.g. Franz Josef / Waiau). exclude: OSM places left out, [name, lon, lat]. rename: OSM name -> shown name (Waitangi on the Chathams, not the Treaty Grounds in Northland). names: translations (sr in Latin script) where they differ from the English name; other Serbian names come from OSM name:sr or are transcribed from Māori (scripts/serbian.mjs).",
+  "_about": "New Zealand. listed: the places in Find them all (with the 40 waters, mountains and areas in scripts/build-physical.mjs: 100 names): the cities, the regional centres and well-known towns (tourism, ferry ports, Stewart Island, Waitangi of the Treaty). Names as in OpenStreetMap (official dual names where they exist, e.g. Franz Josef / Waiau). exclude: OSM places left out, [name, lon, lat] at their real position (Waitangi on the Chathams: the one in Northland is asked). names: translations (sr in Latin script) where they differ from the English name; other Serbian names come from OSM name:sr or are transcribed from Māori (scripts/serbian.mjs).",
   "exclude": [
-    ["Waitangi", 174.08, -35.27]
+    ["Waitangi", -176.56, -43.95]
   ],
-  "rename": {
-    "Waitangi": "Waitangi (Chatham Islands)"
-  },
   "listed": [
     "Auckland", "Wellington", "Christchurch", "Hamilton", "Tauranga", "Dunedin", "Palmerston North", "Napier", "Hastings", "Nelson",
     "Rotorua", "New Plymouth", "Whangārei", "Invercargill", "Whanganui", "Gisborne", "Lower Hutt", "Upper Hutt", "Porirua", "Queenstown",
     "Timaru", "Blenheim", "Taupō", "Masterton", "Levin", "Ashburton", "Ōamaru", "Greymouth", "Hokitika", "Westport",
     "Kaikōura", "Picton", "Wānaka", "Te Anau", "Gore", "Alexandra", "Kaitāia", "Kerikeri", "Paihia", "Dargaville",
     "Thames", "Whitianga", "Tokoroa", "Whakatāne", "Wairoa", "Hāwera", "Feilding", "Paraparaumu", "Motueka", "Rangiora",
-    "Akaroa", "Bluff", "Oban", "Waitangi (Chatham Islands)", "Cambridge", "Taumarunui", "Te Kūiti", "Franz Josef / Waiau", "Balclutha", "Cromwell"
+    "Akaroa", "Bluff", "Oban", "Waitangi", "Cambridge", "Taumarunui", "Te Kūiti", "Franz Josef / Waiau", "Balclutha", "Cromwell"
   ],
   "names": {
     "Hamilton": { "sr": "Hamilton" },
@@ -43,7 +40,6 @@
     "Feilding": { "sr": "Filding" },
     "Bluff": { "sr": "Blaf" },
     "Oban": { "sr": "Oban" },
-    "Waitangi (Chatham Islands)": { "nl": "Waitangi (Chathameilanden)", "de": "Waitangi (Chatham-Inseln)", "sr": "Vajtangi (Čatamska ostrva)" },
     "Cambridge": { "sr": "Kejmbridž" },
     "Franz Josef / Waiau": { "sr": "Franc Jozef / Vajau" },
     "Balclutha": { "sr": "Balklut" },
