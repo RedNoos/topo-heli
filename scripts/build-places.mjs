@@ -411,8 +411,8 @@ const nzRaw = JSON.parse(await overpass('overpass-new-zealand-places.json', nzQu
 for (const e of nzRaw.elements) e.pop = nzPop(e.tags?.name, e.lat, e.lon, e.tags?.population);
 let nzAll = shiftOsm({ elements: nzRaw.elements.filter((e) => e.tags?.name && inNz(e)) }, nzInsets)
   .elements.filter((e) => !nz.exclude.some(([name, lon, lat]) => e.tags.name === name && km(e, { lon, lat }) < 5))
-  .filter((e) => e.tags.place !== 'village' || nz.listed.includes(e.tags.name))
-  .map((e) => ({ name: e.tags.name, lat: e.lat, lon: e.lon, pop: e.pop, sr: e.tags['name:sr'] }))
+  .filter((e) => e.tags.place !== 'village' || nz.listed.includes(nz.rename[e.tags.name] ?? e.tags.name))
+  .map((e) => ({ name: nz.rename[e.tags.name] ?? e.tags.name, lat: e.lat, lon: e.lon, pop: e.pop, sr: e.tags['name:sr'] }))
   .filter((c) => c.pop >= NZ_MIN_POP || nz.listed.includes(c.name))
   .sort((a, b) => b.pop - a.pop);
 // Suburbs tagged as towns (Pāpāmoa, Taradale, …), unless listed.
