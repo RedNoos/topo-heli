@@ -104,21 +104,27 @@ function resample(lines: Pt[][], step: number): Pt[] {
   return out;
 }
 
-/** Deepest point of an area (on a grid) and its distance to the edge. */
+/** Deepest point of a lake or area and its distance to the edge: a coarse grid, then finer around the best spot. */
 function deepestPoint(t: Target): { x: number; y: number; depth: number } {
   const pts = t.rings!.flat();
   const xs = pts.map((p) => p.x);
   const ys = pts.map((p) => p.y);
   const [minX, maxX, minY, maxY] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
-  const step = Math.max(maxX - minX, maxY - minY) / 40;
   let best = { x: (minX + maxX) / 2, y: (minY + maxY) / 2, depth: 0 };
+  const tryAt = (x: number, y: number) => {
+    const p = { x, y };
+    if (!t.rings!.some((r) => insideRing(p, r)) || t.holes?.some((h) => insideRing(p, h))) return;
+    const depth = edgeDistance(t, p);
+    if (depth > best.depth) best = { x, y, depth };
+  };
+  let step = Math.max(maxX - minX, maxY - minY) / 24;
   for (let x = minX + step / 2; x < maxX; x += step) {
-    for (let y = minY + step / 2; y < maxY; y += step) {
-      const p = { x, y };
-      if (distanceTo(t, p) > 0) continue;
-      const depth = edgeDistance(t, p);
-      if (depth > best.depth) best = { x, y, depth };
-    }
+    for (let y = minY + step / 2; y < maxY; y += step) tryAt(x, y);
+  }
+  for (let round = 0; round < 4; round++) {
+    const { x: cx, y: cy } = best;
+    step /= 3;
+    for (let i = -3; i <= 3; i++) for (let j = -3; j <= 3; j++) if (i || j) tryAt(cx + i * step, cy + j * step);
   }
   return best;
 }
@@ -135,12 +141,10 @@ export function physicalTargets(data: PhysicalData, proj: Projection): Target[] 
     targets.push({ kind: 'mountain', name: m.name, pop: 0, level: m.level, core: m.core, ...proj.project(m.lon, m.lat) });
   }
   for (const l of data.lakes) {
-    const rings = l.rings.map(toPts);
-    const pts = rings.flat();
-    const x = pts.reduce((s, p) => s + p.x, 0) / pts.length;
-    const y = pts.reduce((s, p) => s + p.y, 0) / pts.length;
-    const holes = l.holes?.map(toPts);
-    targets.push({ kind: 'lake', name: l.name, pop: 0, level: l.level, core: l.core, x, y, rings, holes, sub: l.type });
+    // Name and marker on the deepest point: on the water, away from the shore and islands.
+    const t: Target = { kind: 'lake', name: l.name, pop: 0, level: l.level, core: l.core, x: 0, y: 0, rings: l.rings.map(toPts), holes: l.holes?.map(toPts), sub: l.type };
+    const deep = deepestPoint(t);
+    targets.push({ ...t, x: deep.x, y: deep.y });
   }
   for (const a of data.areas ?? []) {
     const t: Target = { kind: 'area', name: a.name, pop: 0, level: a.level, core: a.core, x: 0, y: 0, rings: a.rings.map(toPts), holes: a.holes?.map(toPts), sub: a.type };
