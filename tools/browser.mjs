@@ -46,7 +46,8 @@ export async function launch() {
 
 /**
  * Opens the game with a clean state. `map`: 'serbia', 'netherlands', 'europe' or a province/region id
- * ('nl-utrecht', 'rs-vojvodina'); `mode`: 'free' (default), 'physical' (waters/mountains on) or 'list' (Alles vinden).
+ * ('nl-utrecht', 'rs-vojvodina'); `mode`: 'free' (default), 'physical' (waters/mountains on), 'list' (Alles vinden),
+ * 'discover' or 'discover-physical'.
  * Collects page errors in `page.errors`.
  */
 export async function openGame(browser, { map = 'netherlands', mode = 'free', lang = 'nl', viewport = 'desktop' } = {}) {
@@ -64,7 +65,8 @@ export async function openGame(browser, { map = 'netherlands', mode = 'free', la
       localStorage.clear();
       localStorage.setItem('topo-heli:lang', lang);
       localStorage.setItem('topo-heli:howto', 'closed');
-      if (mode === 'physical') localStorage.setItem('topo-heli:physical', '1');
+      if (mode.endsWith('physical')) localStorage.setItem('topo-heli:physical', '1');
+      if (mode.startsWith('discover')) localStorage.setItem('topo-heli:discover', '1');
       if (mode === 'list') localStorage.setItem('topo-heli:practice', '1');
     },
     { lang, mode },

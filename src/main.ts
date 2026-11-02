@@ -31,6 +31,10 @@ const ui = {
   modeBox: $('mode-box'),
   modeFree: $('mode-free'),
   modeList: $<HTMLButtonElement>('mode-list'),
+  modeDiscover: $('mode-discover'),
+  targetCard: $('target-card'),
+  stats: $('stats'),
+  skip: $('btn-skip'),
   score: $('score'),
   level: $('level'),
   toast: $('toast'),
@@ -55,16 +59,21 @@ let toastTimer = 0;
 let physicalOn = false;
 /** Basislijst mode (Dutch maps): one choice for all maps, like the physical option. */
 let practiceOn = false;
+/** Discover mode: no targets, no clock; names show up while flying around. */
+let discoverOn = false;
+/** Discover mode: the place shown in the target card. */
+let shownHover: Target | undefined;
 
 // ---------- Best scores ----------
 
 const bestKey = (id: string) => `${STORAGE_PREFIX}best:${id}`;
 /** Score key for the current map + mode. */
-const scoreId = () => (practiceOn ? `${mapDef.id}+list` : physicalOn ? `${mapDef.id}+physical` : mapDef.id);
+const scoreId = () => (discoverOn ? `${mapDef.id}+discover` : practiceOn ? `${mapDef.id}+list` : physicalOn ? `${mapDef.id}+physical` : mapDef.id);
 
 /** The options (physical features, Basislijst mode) are one choice for all maps. */
 const OPTION_KEY = `${STORAGE_PREFIX}physical`;
 const PRACTICE_KEY = `${STORAGE_PREFIX}practice`;
+const DISCOVER_KEY = `${STORAGE_PREFIX}discover`;
 function loadOption(key = OPTION_KEY) {
   try {
     return localStorage.getItem(key) === '1';
@@ -189,11 +198,14 @@ function renderMapSelect() {
   $('mode-label').hidden = false;
   ui.modeList.disabled = !mapDef.practice;
   ui.modeList.title = mapDef.practice ? '' : t('modeListUnavailable');
-  ui.modeFree.classList.toggle('active', !practiceOn);
+  ui.modeFree.classList.toggle('active', !practiceOn && !discoverOn);
   ui.modeList.classList.toggle('active', practiceOn);
+  ui.modeDiscover.classList.toggle('active', discoverOn);
   const list = '<i>basislijst topografie</i>';
   const n = practiceCount();
-  $('mode-desc').innerHTML = !practiceOn
+  $('mode-desc').innerHTML = discoverOn
+    ? t('modeDiscoverDesc')
+    : !practiceOn
     ? t('modeFreeDesc')
     : !n
       ? ''
@@ -202,7 +214,9 @@ function renderMapSelect() {
         : mapDef.practiceList === 'selection'
           ? t('modeListDescSelection', { n })
           : t('modeListDesc', { n, list, extra: mapDef.parent ? t('modeListExtra') : '' });
-  $('howto-levels').hidden = practiceOn;
+  $('howto-levels').hidden = practiceOn || discoverOn;
+  $('howto-flash').hidden = discoverOn;
+  $('howto-discover').hidden = !discoverOn;
   $('btn-skip').textContent = t(practiceOn ? 'skipPractice' : 'skip');
   // Physical features: off for maps without them; always on (fixed) in "Find them all".
   ui.physicalToggle.hidden = false;
@@ -215,6 +229,11 @@ function renderMapSelect() {
   $('howto-physical').innerHTML =
     kind === 'all' ? t('howtoPhysical') + ' ' + t('howtoPhysicalAreas') : kind ? t('howtoPhysicalWaters') + (kind === 'watersAreas' ? ' ' + t('howtoPhysicalAreas') : '') : t('howtoPhysical');
   $('howto-physical').hidden = !physicalOn && !(practiceOn && mapDef.loadPhysical);
+  if (discoverOn) {
+    $('howto-practice').hidden = true;
+    ui.best.innerHTML = '';
+    return;
+  }
   if (practiceOn) {
     $('howto-practice').innerHTML = !n
       ? ''
@@ -247,7 +266,8 @@ async function selectMap(def: MapDefinition) {
   mapDef = def;
   mapData = null;
   physicalOn = !!def.loadPhysical && loadOption();
-  practiceOn = !!def.practice && loadOption(PRACTICE_KEY);
+  discoverOn = loadOption(DISCOVER_KEY);
+  practiceOn = !discoverOn && !!def.practice && loadOption(PRACTICE_KEY);
   renderMapSelect();
   const [data, physical, serbianNames, dutchNames, germanNames, englishNames] = await Promise.all([
     def.load(),
@@ -275,11 +295,19 @@ function newGame(start: boolean) {
     speed: mapDef.speed,
     practice: practiceOn,
     practiceAll: mapDef.practiceList === 'all',
+    discover: discoverOn,
   });
   renderer = new Renderer(canvas, minimap, game, mapData.geo, mapDef.viewKm, physical);
   wasVisible = false;
   lastWholeSecond = Math.ceil(game.timeLeft);
   ui.toast.hidden = true;
+  // Discover mode: only the card (when over a place); no clock, score or skipping.
+  ui.timer.hidden = ui.stats.hidden = ui.skip.hidden = discoverOn;
+  ui.targetLabel.hidden = discoverOn;
+  document.querySelector('.hud-top')!.classList.toggle('discover', discoverOn);
+  ui.targetHint.textContent = '';
+  ui.targetCard.style.visibility = discoverOn ? 'hidden' : '';
+  shownHover = undefined;
 
   game.on((e) => {
     switch (e.type) {
@@ -338,7 +366,7 @@ function setTargetLabel(target: Target) {
     tag.textContent = t(kindKey(target));
     ui.targetName.append(' ', tag);
   }
-  ui.progress.hidden = target.kind !== 'river';
+  ui.progress.hidden = target.kind !== 'river' || discoverOn;
 }
 
 function showToast(title: string, detail: string) {
@@ -466,7 +494,8 @@ function translateStatic() {
     el.innerHTML = t(el.dataset.i18n as StringKey, STATIC_PARAMS);
   }
   updateMuteLabel();
-  if (game?.target) setTargetLabel(game.target);
+  const shown = game?.target ?? shownHover;
+  if (shown) setTargetLabel(shown);
   if (game) $('final-label').textContent = game.practice ? t('timeLabel') : plural('placesFound', game.found.length);
   renderOverGroups();
   renderLangPicker();
@@ -524,14 +553,17 @@ $<HTMLSelectElement>('region').onchange = (e) => {
   const def = MAPS.find((m) => m.id === (e.target as HTMLSelectElement).value);
   if (def) void selectMap(def);
 };
-const setMode = (practice: boolean) => {
-  if (practice === practiceOn) return;
-  practiceOn = practice;
+const setMode = (mode: 'free' | 'list' | 'discover') => {
+  if (practiceOn === (mode === 'list') && discoverOn === (mode === 'discover')) return;
+  practiceOn = mode === 'list';
+  discoverOn = mode === 'discover';
   saveOption(practiceOn, PRACTICE_KEY);
+  saveOption(discoverOn, DISCOVER_KEY);
   void optionChanged();
 };
-ui.modeFree.onclick = () => setMode(false);
-ui.modeList.onclick = () => setMode(true);
+ui.modeFree.onclick = () => setMode('free');
+ui.modeList.onclick = () => setMode('list');
+ui.modeDiscover.onclick = () => setMode('discover');
 ui.physicalOption.onchange = () => {
   physicalOn = ui.physicalOption.checked;
   saveOption(physicalOn);
@@ -563,7 +595,7 @@ ui.mute.onclick = toggleMute;
 /** Feedback form, told which map and mode the player was on. */
 const feedback = (type: 'feedback' | 'map-request' = 'feedback') => {
   track(type);
-  const mode = practiceOn ? 'basislijst' : !physicalOn ? 'vrij' : mapDef.physicalKind === 'all' ? 'alles' : mapDef.physicalKind ? 'wateren' : 'bergen-rivieren';
+  const mode = discoverOn ? 'ontdekken' : practiceOn ? 'basislijst' : !physicalOn ? 'vrij' : mapDef.physicalKind === 'all' ? 'alles' : mapDef.physicalKind ? 'wateren' : 'bergen-rivieren';
   void openFeedback({ type, map: mapDef.id, mode, lang: getLang() });
 };
 $('btn-feedback').onclick = (e) => {
@@ -619,6 +651,15 @@ window.addEventListener('resize', () => {
 
 function updateHud() {
   if (!game) return;
+  if (game.discover) {
+    // The card shows the place under the helicopter; hidden (keeping its room) otherwise.
+    if (game.hovered !== shownHover) {
+      shownHover = game.hovered;
+      if (shownHover) setTargetLabel(shownHover);
+      ui.targetCard.style.visibility = shownHover ? '' : 'hidden';
+    }
+    return;
+  }
   // Basislijst mode: the clock counts up and the score shows found / total.
   const secs = game.practice ? Math.floor(game.elapsed) : Math.ceil(game.timeLeft);
   ui.timer.textContent = clock(secs);

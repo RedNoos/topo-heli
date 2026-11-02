@@ -16,13 +16,13 @@
     <div id="hud" hidden>
       <div class="hud-top">
         <div class="pill" id="timer">3:00</div>
-        <div class="target-card">
+        <div class="target-card" id="target-card">
           <div class="target-label" id="target-label">Fly to</div>
           <div class="target-name" id="target-name">—</div>
           <div class="target-hint" id="target-hint"></div>
           <div class="progress" id="river-progress" hidden><div></div></div>
         </div>
-        <div class="pill stats">
+        <div class="pill stats" id="stats">
           <span><b id="score">0</b> <span data-i18n="found">found</span></span>
           <span class="lvl"><span data-i18n="level">Level</span> <b id="level">1</b></span>
         </div>
@@ -53,6 +53,7 @@
             <div class="segmented">
               <button type="button" id="mode-free" data-i18n="modeFree">Against the clock</button>
               <button type="button" id="mode-list" data-i18n="modeList">Find them all</button>
+              <button type="button" id="mode-discover" data-i18n="modeDiscover">Discover</button>
             </div>
             <p class="mode-desc" id="mode-desc"></p>
           </div>
@@ -69,10 +70,11 @@
           <summary data-i18n="howtoTitle">How to play</summary>
           <ul class="howto">
             <li data-i18n="howtoFly"></li>
-            <li data-i18n="howtoFlash"></li>
+            <li id="howto-flash" data-i18n="howtoFlash"></li>
             <li id="howto-levels"></li>
             <li id="howto-physical" hidden></li>
             <li id="howto-practice" hidden></li>
+            <li id="howto-discover" data-i18n="howtoDiscover" hidden></li>
           </ul>
         </details>
         <div class="small-actions">

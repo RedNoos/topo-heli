@@ -59,6 +59,11 @@ body {
   gap: 12px;
 }
 
+/* Discover mode: no timer or score, the card (when shown) sits in the middle. */
+.hud-top.discover {
+  justify-content: center;
+}
+
 .pill {
   background: var(--panel);
   border-radius: 14px;

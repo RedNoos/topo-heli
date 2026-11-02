@@ -4,7 +4,7 @@ import type { Found, Game } from './game';
 import { placeName } from './i18n';
 import type { GeoData, PhysicalData } from './maps/types';
 import type { Projection } from './projection';
-import type { Target } from './targets';
+import { nearestSample, type Target } from './targets';
 
 const COLORS = {
   sea: '#9cc3dc',
@@ -343,6 +343,7 @@ export class Renderer {
 
     // --- Screen-space overlays ---
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    if (game.discover) this.drawDiscover();
     this.drawFoundCities();
     if (!game.over && game.target && game.targetVisible) this.drawTarget(game.target);
     this.drawEffects(dt);
@@ -375,6 +376,7 @@ export class Renderer {
   /** Found rivers/lakes/areas and the current river/lake/area target, drawn in km coordinates. */
   private drawWorldTargets(px: (n: number) => number) {
     const { ctx, game } = this;
+    if (game.discover) return this.drawHovered(px);
     // Areas first: waters are drawn over them.
     for (const f of game.found) {
       if (f.target.kind !== 'area') continue;
@@ -453,20 +455,83 @@ export class Renderer {
       } else if (kind === 'landmark') {
         this.landmarkIcon(f.target, p.x, p.y, 13, COLORS.found);
       }
-      // Water names are centred on the water, in italics (map convention); areas centred, upright.
-      const dike = f.target.sub === 'dike';
-      const water = (kind === 'river' || kind === 'lake') && !dike;
-      const centred = kind === 'river' || kind === 'lake' || kind === 'area';
-      ctx.font = water ? 'italic 600 12px system-ui, sans-serif' : kind === 'area' ? '700 13px system-ui, sans-serif' : '600 12px system-ui, sans-serif';
-      ctx.textAlign = centred ? 'center' : 'left';
-      const x = centred ? p.x : p.x + 8;
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-      const label = placeName(f.target.name);
-      ctx.strokeText(label, x, p.y);
-      ctx.fillStyle = water ? COLORS.foundWater : dike ? COLORS.dike : kind === 'area' ? COLORS.area : kind === 'mountain' ? '#5a3a1c' : '#24421f';
-      ctx.fillText(label, x, p.y);
+      this.drawLabel(f.target, p);
     }
+  }
+
+  /** A place name on the map, styled by kind (screen coordinates). */
+  private drawLabel(t: Target, p: { x: number; y: number }) {
+    const ctx = this.ctx;
+    const kind = t.kind;
+    // Water names are centred on the water, in italics (map convention); areas centred, upright.
+    const dike = t.sub === 'dike';
+    const water = (kind === 'river' || kind === 'lake') && !dike;
+    const centred = kind === 'river' || kind === 'lake' || kind === 'area';
+    ctx.textBaseline = 'middle';
+    ctx.font = water ? 'italic 600 12px system-ui, sans-serif' : kind === 'area' ? '700 13px system-ui, sans-serif' : '600 12px system-ui, sans-serif';
+    ctx.textAlign = centred ? 'center' : 'left';
+    const x = centred ? p.x : p.x + 8;
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    const label = placeName(t.name);
+    ctx.strokeText(label, x, p.y);
+    ctx.fillStyle = water ? COLORS.foundWater : dike ? COLORS.dike : kind === 'area' ? COLORS.area : kind === 'mountain' ? '#5a3a1c' : '#24421f';
+    ctx.fillText(label, x, p.y);
+  }
+
+  /** Discover mode: the river, lake or area the helicopter is over (km coordinates). */
+  private drawHovered(px: (n: number) => number) {
+    const { ctx } = this;
+    const t = this.game.hovered;
+    if (t?.kind === 'area') {
+      ctx.fillStyle = 'rgba(123, 79, 160, 0.07)';
+      ctx.fill(this.pathOf(t), 'evenodd');
+      ctx.strokeStyle = COLORS.area;
+      ctx.lineWidth = px(2);
+      ctx.stroke(this.pathOf(t));
+    } else if (t?.kind === 'river') {
+      ctx.strokeStyle = t.sub === 'dike' ? COLORS.dike : COLORS.foundWater;
+      ctx.lineWidth = px(3.5);
+      ctx.stroke(this.pathOf(t));
+    } else if (t?.kind === 'lake') {
+      ctx.fillStyle = COLORS.foundWater;
+      ctx.fill(this.pathOf(t), 'evenodd');
+    }
+  }
+
+  /** Discover mode: a dot for every place, names near the helicopter (fading with distance). */
+  private drawDiscover() {
+    const { ctx, game } = this;
+    const hovered = game.hovered;
+    for (const t of game.targets) {
+      if (t.kind !== 'city' && t.kind !== 'mountain' && t.kind !== 'landmark') continue;
+      const p = this.toScreen(t.x, t.y);
+      if (p.x < -20 || p.y < -20 || p.x > this.w + 20 || p.y > this.h + 20) continue;
+      const on = t === hovered;
+      if (t.kind === 'mountain') {
+        this.mountainIcon(p.x, p.y, on ? 8 : 5, on ? COLORS.target : COLORS.mountain);
+      } else if (t.kind === 'landmark') {
+        this.landmarkIcon(t, p.x, p.y, on ? 16 : 11, on ? COLORS.target : COLORS.homeBorder);
+      } else {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, on ? 6 : 3, 0, Math.PI * 2);
+        ctx.fillStyle = on ? COLORS.target : COLORS.homeBorder;
+        ctx.fill();
+        ctx.lineWidth = on ? 2 : 1.2;
+        ctx.strokeStyle = '#fff';
+        ctx.stroke();
+      }
+    }
+    // Areas only get the card: their names would sit far from the helicopter.
+    const r = CONFIG.discover.nameRadius * game.distScale;
+    const fade = r * CONFIG.discover.fade;
+    for (const { target: t, d } of game.nearby) {
+      if (t.kind === 'area') continue;
+      const at = t.kind === 'river' ? nearestSample(t, game.heli) : t;
+      ctx.globalAlpha = Math.min(1, (r - d) / fade);
+      this.drawLabel(t, this.toScreen(at.x, at.y));
+    }
+    ctx.globalAlpha = 1;
   }
 
   private mountainIcon(x: number, y: number, r: number, fill: string, stroke = '#fff') {

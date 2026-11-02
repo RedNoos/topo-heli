@@ -3,7 +3,8 @@
 //   npm run shots                                   # netherlands, free mode, Dutch
 //   npm run shots -- --map nl-utrecht --mode list --lang sr-Cyrl
 //
-// Writes .shots/<map>-<mode>-<viewport>-{menu,game,end}.png and prints the paths.
+// Writes .shots/<map>-<mode>-<viewport>-{menu,game,end}.png and prints the paths; discover modes
+// have no end screen: the last shot hovers over the biggest place instead.
 
 import { args, findCurrent, launch, openGame, outFile, startGame, VIEWPORTS, wait } from './browser.mjs';
 
@@ -18,6 +19,20 @@ for (const viewport of Object.keys(VIEWPORTS)) {
   await startGame(page);
   await wait(1200);
   await page.screenshot({ path: name('game') });
+  if (opt.mode.startsWith('discover')) {
+    await page.evaluate(() => {
+      const g = window.__game();
+      const t = g.targets.find((x) => x.kind === 'city');
+      g.heli.x = t.x + 1;
+      g.heli.y = t.y;
+    });
+    await wait(600);
+    await page.screenshot({ path: name('hover') });
+    files.push(name('menu'), name('game'), name('hover'));
+    errors.push(...page.errors);
+    await page.close();
+    continue;
+  }
   // Play a while: all names in 'list' mode, otherwise some finds, a skip, then time up.
   const list = opt.mode === 'list';
   for (let i = 0; i < (list ? 500 : +opt.finds); i++) {

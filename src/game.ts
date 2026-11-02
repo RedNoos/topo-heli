@@ -28,6 +28,8 @@ export interface GameOptions {
   practice?: boolean;
   /** Basislijst mode asks every target, not only the listed ones (maps without a list). */
   practiceAll?: boolean;
+  /** Discover mode: no targets and no clock; names show up near the helicopter. */
+  discover?: boolean;
 }
 
 export interface Found {
@@ -66,6 +68,13 @@ export class Game {
   target?: Target;
   over = false;
   readonly practice: boolean;
+  readonly discover: boolean;
+  /** Discover mode: places within CONFIG.discover.nameRadius, with their distance (km). */
+  nearby: { target: Target; d: number }[] = [];
+  /** Discover mode: the place the helicopter is over (shown in the target card). */
+  hovered?: Target;
+  /** Discover mode: bounding boxes of rivers, lakes and areas, to skip far ones quickly. */
+  private boxes = new Map<Target, Bounds>();
   /** Basislijst mode: skipped targets, asked again once the others are done. */
   private later = new Set<Target>();
   private lastFoundAt = 0;
@@ -87,6 +96,7 @@ export class Game {
     this.revealFactor = options.reveal ?? 1;
     this.speedFactor = options.speed ?? 1;
     this.practice = !!options.practice;
+    this.discover = !!options.discover;
     this.timeLeft = options.time?.start ?? CONFIG.startTime;
     this.levelBonus = options.time?.levelBonus ?? CONFIG.levelTimeBonus;
     const pool = options.pool;
@@ -95,6 +105,15 @@ export class Game {
     const cities = cityTargets(data.cities, this.projection).sort((a, b) => Number(!!b.listed) - Number(!!a.listed) || b.pop - a.pop);
     const physical = (options.physical || this.practice) && data.physical ? physicalTargets(data.physical, this.projection) : [];
     this.targets = [...cities, ...physical].filter((t) => !this.practice || options.practiceAll || t.listed);
+    if (this.discover) {
+      for (const t of this.targets) {
+        const pts = t.samples ?? t.rings?.flat();
+        if (!pts) continue;
+        const xs = pts.map((p) => p.x);
+        const ys = pts.map((p) => p.y);
+        this.boxes.set(t, { minX: Math.min(...xs), minY: Math.min(...ys), maxX: Math.max(...xs), maxY: Math.max(...ys) });
+      }
+    }
 
     const rect = data.geo.projection?.rect;
     if (rect) {
@@ -169,7 +188,7 @@ export class Game {
   }
 
   start() {
-    this.nextTarget();
+    if (!this.discover) this.nextTarget();
   }
 
   /** Basislijst mode: number of names left to find (the current one included). */
@@ -245,9 +264,9 @@ export class Game {
   }
 
   update(dt: number, input: { x: number; y: number }) {
-    if (this.over || !this.target) return;
+    if (this.over || (!this.target && !this.discover)) return;
     this.elapsed += dt;
-    if (!this.practice) this.timeLeft -= dt;
+    if (!this.practice && !this.discover) this.timeLeft -= dt;
     if (this.timeLeft <= 0) {
       this.timeLeft = 0;
       this.over = true;
@@ -283,8 +302,9 @@ export class Game {
       h.heading += diff * (1 - Math.exp(-turnRate * dt));
     }
 
+    if (this.discover) return this.look();
     if (this.isFound()) {
-      const target = this.target;
+      const target = this.target!;
       const at = target.kind === 'river' ? nearestSample(target, h) : target.kind === 'lake' ? { x: h.x, y: h.y } : target;
       this.found.push({ target, x: at.x, y: at.y, secs: this.elapsed - this.lastFoundAt });
       this.lastFoundAt = this.elapsed;
@@ -293,6 +313,30 @@ export class Game {
       this.emit({ type: 'found', found: this.found[this.found.length - 1], levelUp });
       this.nextTarget();
     }
+  }
+
+  /** Discover mode: which places are near the helicopter, and which one it is over. */
+  private look() {
+    const h = this.heli;
+    const r = CONFIG.discover.nameRadius * this.distScale;
+    this.nearby = [];
+    for (const t of this.targets) {
+      const b = this.boxes.get(t);
+      if (b && (h.x < b.minX - r || h.x > b.maxX + r || h.y < b.minY - r || h.y > b.maxY + r)) continue;
+      const d = distanceTo(t, h);
+      if (d <= r) this.nearby.push({ target: t, d });
+    }
+    // Same distances as finding a target; dots go before waters, waters before areas.
+    const catchKm = CONFIG.catchRadius * this.distScale;
+    const over = ({ target: t, d }: { target: Target; d: number }) =>
+      t.kind === 'river'
+        ? d <= CONFIG.river.coverRadius * this.distScale
+        : t.kind === 'lake' || t.kind === 'area'
+          ? d === 0
+          : d <= catchKm * (t.kind === 'mountain' ? CONFIG.mountainCatchFactor : 1);
+    const rank = (t: Target) => (t.kind === 'area' ? 2 : t.kind === 'river' || t.kind === 'lake' ? 1 : 0);
+    const hits = this.nearby.filter(over).sort((a, b) => rank(a.target) - rank(b.target) || a.d - b.d);
+    this.hovered = hits[0]?.target;
   }
 
   private isFound(): boolean {
