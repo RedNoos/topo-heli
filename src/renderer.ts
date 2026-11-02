@@ -499,7 +499,7 @@ export class Renderer {
     }
   }
 
-  /** Discover mode: a dot for every place, names near the helicopter (fading with distance). */
+  /** Discover mode: a dot for every place (mountains green, landmarks purple), names near the helicopter (fading with distance). */
   private drawDiscover() {
     const { ctx, game } = this;
     const hovered = game.hovered;
@@ -509,9 +509,9 @@ export class Renderer {
       if (p.x < -20 || p.y < -20 || p.x > this.w + 20 || p.y > this.h + 20) continue;
       const on = t === hovered;
       if (t.kind === 'mountain') {
-        this.mountainIcon(p.x, p.y, on ? 8 : 5, on ? COLORS.target : COLORS.mountain);
+        this.mountainIcon(p.x, p.y, on ? 8 : 5, on ? COLORS.target : COLORS.found);
       } else if (t.kind === 'landmark') {
-        this.landmarkIcon(t, p.x, p.y, on ? 16 : 11, on ? COLORS.target : COLORS.homeBorder);
+        this.landmarkIcon(t, p.x, p.y, on ? 17 : 14, on ? COLORS.target : COLORS.area);
       } else {
         ctx.beginPath();
         ctx.arc(p.x, p.y, on ? 6 : 3, 0, Math.PI * 2);
