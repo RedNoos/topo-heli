@@ -79,6 +79,8 @@ export class Game {
   private boxes = new Map<Target, Bounds>();
   /** Discover mode: surface (km²) of lakes and areas; where they overlap the smallest one wins. */
   private sizes = new Map<Target, number>();
+  /** Discover mode: narrow lakes (shore to middle within the catch radius), found from near them too. */
+  private narrow = new Set<Target>();
   /** Basislijst mode: skipped targets, asked again once the others are done. */
   private later = new Set<Target>();
   private lastFoundAt = 0;
@@ -119,6 +121,8 @@ export class Game {
         const ys = pts.map((p) => p.y);
         this.boxes.set(t, { minX: Math.min(...xs), minY: Math.min(...ys), maxX: Math.max(...xs), maxY: Math.max(...ys) });
         if (t.rings) this.sizes.set(t, surface(t.rings) - surface(t.holes ?? []));
+        // A lake's anchor is its deepest point, so this is half its width.
+        if (t.kind === 'lake' && edgeDistance(t, t) < CONFIG.catchRadius * this.distScale) this.narrow.add(t);
       }
     }
 
@@ -333,19 +337,21 @@ export class Game {
       const d = distanceTo(t, h);
       if (d <= r) this.nearby.push({ target: t, d });
     }
-    // Same distances as finding a target. Over a lake's water the lake goes first (also when a
-    // town on its shore is close), then dots, rivers and areas; overlapping lakes or areas (an
-    // island in its province) the smallest first.
+    // Same distances as finding a target, but wide waters (seas, IJsselmeer) only when over them:
+    // a town on the coast would lose to the sea. Over a lake's water the lake goes first (also
+    // when a town on its shore is close); near a narrow lake, the lake and the dots by distance;
+    // then rivers and areas. Overlapping lakes or areas (an island in its province): the smallest first.
     const catchKm = CONFIG.catchRadius * this.distScale;
     const over = ({ target: t, d }: { target: Target; d: number }) =>
       t.kind === 'river'
         ? d <= CONFIG.river.coverRadius * this.distScale
-        : t.kind === 'lake' || t.kind === 'area'
+        : t.kind === 'area' || (t.kind === 'lake' && !this.narrow.has(t))
           ? d === 0
           : d <= catchKm * (t.kind === 'mountain' ? CONFIG.mountainCatchFactor : 1);
-    const rank = (t: Target) => (t.kind === 'lake' ? 0 : t.kind === 'river' ? 2 : t.kind === 'area' ? 3 : 1);
+    const rank = ({ target: t, d }: { target: Target; d: number }) =>
+      t.kind === 'lake' ? (d === 0 ? 0 : 1) : t.kind === 'river' ? 2 : t.kind === 'area' ? 3 : 1;
     const size = (t: Target) => this.sizes.get(t) ?? 0;
-    const hits = this.nearby.filter(over).sort((a, b) => rank(a.target) - rank(b.target) || a.d - b.d || size(a.target) - size(b.target));
+    const hits = this.nearby.filter(over).sort((a, b) => rank(a) - rank(b) || a.d - b.d || size(a.target) - size(b.target));
     this.hovered = hits[0]?.target;
     // Other dots have their own name on the map; waters and areas are listed under the card.
     this.alsoOver = hits.slice(1).map((h) => h.target).filter((t) => t.kind !== 'city' && t.kind !== 'mountain' && t.kind !== 'landmark');
