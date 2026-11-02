@@ -133,6 +133,8 @@ export class Renderer {
   private minimapStatic: HTMLCanvasElement | null = null;
   private effects: Effect[] = [];
   private targetPaths = new Map<Target, Path2D>();
+  /** Discover mode: dot radius per city, bigger for the bigger places. */
+  private dotSizes: Map<Target, number> | null = null;
   /** Offscreen canvas for the helicopter shadow (see drawHeliShadow). */
   private shadowCanvas: HTMLCanvasElement | null = null;
   private w = 0;
@@ -514,7 +516,8 @@ export class Renderer {
         this.landmarkIcon(t, p.x, p.y, on ? 17 : 14, on ? COLORS.target : COLORS.area);
       } else {
         ctx.beginPath();
-        ctx.arc(p.x, p.y, on ? 6 : 3, 0, Math.PI * 2);
+        const r = this.dotSize(t);
+        ctx.arc(p.x, p.y, on ? r + 3 : r, 0, Math.PI * 2);
         ctx.fillStyle = on ? COLORS.target : COLORS.homeBorder;
         ctx.fill();
         ctx.lineWidth = on ? 2 : 1.2;
@@ -532,6 +535,16 @@ export class Renderer {
       this.drawLabel(t, this.toScreen(at.x, at.y));
     }
     ctx.globalAlpha = 1;
+  }
+
+  /** Discover mode: dot radius of a city, from its population rank among the cities shown. */
+  private dotSize(t: Target): number {
+    if (!this.dotSizes) {
+      const { dots, dotR } = CONFIG.discover;
+      const cities = this.game.targets.filter((x) => x.kind === 'city').sort((a, b) => b.pop - a.pop);
+      this.dotSizes = new Map(cities.map((x, i) => [x, dots.find((d) => i < d.upTo)?.r ?? dotR]));
+    }
+    return this.dotSizes.get(t) ?? CONFIG.discover.dotR;
   }
 
   private mountainIcon(x: number, y: number, r: number, fill: string, stroke = '#fff') {

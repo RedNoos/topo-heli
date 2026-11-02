@@ -55,9 +55,19 @@ export const CONFIG = {
 
   /**
    * Discover mode: the `places` best-known cities get a dot; names show within `nameRadius`
-   * of the helicopter and fade out towards it.
+   * of the helicopter and fade out towards it. Dot radius (px) by population rank: the first
+   * `dots[i].upTo` places get `dots[i].r`, the rest `dotR`.
    */
-  discover: { places: 100, nameRadius: 12, fade: 0.4 },
+  discover: {
+    places: 100,
+    nameRadius: 12,
+    fade: 0.4,
+    dots: [
+      { upTo: 5, r: 5 },
+      { upTo: 20, r: 4 },
+    ],
+    dotR: 3,
+  },
 
   /** New targets are not picked this close to the helicopter (when possible). */
   minTargetDistance: 40,
