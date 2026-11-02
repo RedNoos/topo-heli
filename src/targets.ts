@@ -4,7 +4,7 @@ import { dist, type Projection } from './projection';
 
 export type TargetKind = 'city' | 'mountain' | 'lake' | 'river' | 'area' | 'landmark';
 
-interface Pt {
+export interface Pt {
   x: number;
   y: number;
 }
@@ -54,7 +54,8 @@ function polylineDistance(p: Pt, lines: Pt[][]) {
   return best;
 }
 
-function insideRing(p: Pt, ring: Pt[]) {
+/** Point-in-polygon test for one ring (even-odd). */
+export function insideRing(p: Pt, ring: Pt[]) {
   let inside = false;
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
     const a = ring[i];

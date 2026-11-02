@@ -4,7 +4,7 @@ import type { Found, Game } from './game';
 import { placeName } from './i18n';
 import type { GeoData, PhysicalData } from './maps/types';
 import type { Projection } from './projection';
-import { nearestSample, type Target } from './targets';
+import { insideRing, nearestSample, type Pt, type Target } from './targets';
 
 const COLORS = {
   sea: '#9cc3dc',
@@ -54,6 +54,56 @@ interface Layers {
   lakesOutside: Path2D;
   /** Detailed rivers/water inside the playable area (physical mode), pre-clipped at build time. */
   physical?: { rivers: { width: number; path: Path2D }[]; water: Path2D; lines: Path2D };
+}
+
+/**
+ * Base-map lakes not already drawn by the detailed physical water: the coarse Natural Earth
+ * shape and the OSM one don't line up, so both would show as a double outline. A lake counts as
+ * covered when a water ring has about the same bounding box, or when at least half of a grid of
+ * points inside it lies in the physical water.
+ */
+function uncoveredLakes(lakes: GeoData['lakes'], water: PhysicalData['draw']['water'], proj: Projection): GeoData['lakes'] {
+  const toPts = (r: [number, number][]) => r.map(([lon, lat]) => proj.project(lon, lat));
+  const box = (r: Pt[]) => {
+    const b = [Infinity, -Infinity, Infinity, -Infinity];
+    for (const p of r) {
+      b[0] = Math.min(b[0], p.x);
+      b[1] = Math.max(b[1], p.x);
+      b[2] = Math.min(b[2], p.y);
+      b[3] = Math.max(b[3], p.y);
+    }
+    return b;
+  };
+  const waterRings = water.flatMap((poly) => poly.map(toPts)).map((r) => ({ r, b: box(r) }));
+  return lakes.filter((poly) => {
+    const [outer, ...holes] = poly.map(toPts);
+    const inLake = (p: Pt) => insideRing(p, outer) && !holes.some((h) => insideRing(p, h));
+    const [x0, x1, y0, y1] = box(outer);
+    // Only the water rings whose box overlaps the lake's (the background water can be large).
+    const nearBoxes = waterRings.filter(({ b }) => b[0] <= x1 && b[1] >= x0 && b[2] <= y1 && b[3] >= y0);
+    // Same lake with about the same extent: long, narrow lakes (Wakatipu) are shifted too much
+    // for the grid test below.
+    const area = (b: number[]) => (b[1] - b[0]) * (b[3] - b[2]);
+    const sameBox = nearBoxes.some(({ b }) => {
+      const overlap = (Math.min(x1, b[1]) - Math.max(x0, b[0])) * (Math.min(y1, b[3]) - Math.max(y0, b[2]));
+      return overlap >= 0.5 * (area(b) + area([x0, x1, y0, y1]) - overlap);
+    });
+    if (sameBox) return false;
+    const near = nearBoxes.map(({ r }) => r);
+    const inWater = (p: Pt) => near.some((r) => insideRing(p, r));
+    const N = 12;
+    let inside = 0;
+    let wet = 0;
+    for (let i = 0; i < N; i++) {
+      for (let j = 0; j < N; j++) {
+        const p = { x: x0 + ((i + 0.5) / N) * (x1 - x0), y: y0 + ((j + 0.5) / N) * (y1 - y0) };
+        if (!inLake(p)) continue;
+        inside++;
+        if (inWater(p)) wet++;
+      }
+    }
+    return inside === 0 || wet / inside < 0.5;
+  });
 }
 
 function buildLayers(geo: GeoData, proj: Projection, physical?: PhysicalData): Layers {
@@ -116,7 +166,7 @@ function buildLayers(geo: GeoData, proj: Projection, physical?: PhysicalData): L
       }),
     ),
     home: polygons(geo.home),
-    lakes: polygons(geo.lakes),
+    lakes: polygons(physical ? uncoveredLakes(geo.lakes, physical.draw.water, proj) : geo.lakes),
     districts: lines(geo.districts),
     regions: lines(geo.regions ?? []),
     rivers: byWidth(geo.rivers),
