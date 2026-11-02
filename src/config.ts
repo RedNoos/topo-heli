@@ -53,8 +53,11 @@ export const CONFIG = {
   /** Basislijst mode: skipping adds this many seconds to the time (the name comes back later). */
   practiceSkipPenalty: 20,
 
-  /** Discover mode: names show within `nameRadius` of the helicopter and fade out towards it. */
-  discover: { nameRadius: 12, fade: 0.4 },
+  /**
+   * Discover mode: the `places` best-known cities get a dot; names show within `nameRadius`
+   * of the helicopter and fade out towards it.
+   */
+  discover: { places: 100, nameRadius: 12, fade: 0.4 },
 
   /** New targets are not picked this close to the helicopter (when possible). */
   minTargetDistance: 40,

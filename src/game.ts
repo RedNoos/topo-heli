@@ -104,7 +104,9 @@ export class Game {
     this.projection = new Projection(data.geo);
     const cities = cityTargets(data.cities, this.projection).sort((a, b) => Number(!!b.listed) - Number(!!a.listed) || b.pop - a.pop);
     const physical = (options.physical || this.practice) && data.physical ? physicalTargets(data.physical, this.projection) : [];
-    this.targets = [...cities, ...physical].filter((t) => !this.practice || options.practiceAll || t.listed);
+    // Discover mode: the best-known places only, in the order "Against the clock" adds them.
+    const shown = this.discover ? cities.slice(0, CONFIG.discover.places) : cities;
+    this.targets = [...shown, ...physical].filter((t) => !this.practice || options.practiceAll || t.listed);
     if (this.discover) {
       for (const t of this.targets) {
         const pts = t.samples ?? t.rings?.flat();
