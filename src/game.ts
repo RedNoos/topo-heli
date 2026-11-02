@@ -75,6 +75,8 @@ export class Game {
   hovered?: Target;
   /** Discover mode: bounding boxes of rivers, lakes and areas, to skip far ones quickly. */
   private boxes = new Map<Target, Bounds>();
+  /** Discover mode: surface (km²) of lakes and areas; where they overlap the smallest one wins. */
+  private sizes = new Map<Target, number>();
   /** Basislijst mode: skipped targets, asked again once the others are done. */
   private later = new Set<Target>();
   private lastFoundAt = 0;
@@ -114,6 +116,7 @@ export class Game {
         const xs = pts.map((p) => p.x);
         const ys = pts.map((p) => p.y);
         this.boxes.set(t, { minX: Math.min(...xs), minY: Math.min(...ys), maxX: Math.max(...xs), maxY: Math.max(...ys) });
+        if (t.rings) this.sizes.set(t, surface(t.rings) - surface(t.holes ?? []));
       }
     }
 
@@ -328,7 +331,9 @@ export class Game {
       const d = distanceTo(t, h);
       if (d <= r) this.nearby.push({ target: t, d });
     }
-    // Same distances as finding a target; dots go before waters, waters before areas.
+    // Same distances as finding a target. Over a lake's water the lake goes first (also when a
+    // town on its shore is close), then dots, rivers and areas; overlapping lakes or areas (an
+    // island in its province) the smallest first.
     const catchKm = CONFIG.catchRadius * this.distScale;
     const over = ({ target: t, d }: { target: Target; d: number }) =>
       t.kind === 'river'
@@ -336,8 +341,9 @@ export class Game {
         : t.kind === 'lake' || t.kind === 'area'
           ? d === 0
           : d <= catchKm * (t.kind === 'mountain' ? CONFIG.mountainCatchFactor : 1);
-    const rank = (t: Target) => (t.kind === 'area' ? 2 : t.kind === 'river' || t.kind === 'lake' ? 1 : 0);
-    const hits = this.nearby.filter(over).sort((a, b) => rank(a.target) - rank(b.target) || a.d - b.d);
+    const rank = (t: Target) => (t.kind === 'lake' ? 0 : t.kind === 'river' ? 2 : t.kind === 'area' ? 3 : 1);
+    const size = (t: Target) => this.sizes.get(t) ?? 0;
+    const hits = this.nearby.filter(over).sort((a, b) => rank(a.target) - rank(b.target) || a.d - b.d || size(a.target) - size(b.target));
     this.hovered = hits[0]?.target;
   }
 
@@ -363,4 +369,15 @@ export class Game {
         return this.targetDistance <= catchKm;
     }
   }
+}
+
+/** Surface of polygon rings (km², shoelace formula). */
+function surface(rings: { x: number; y: number }[][]): number {
+  let sum = 0;
+  for (const ring of rings) {
+    let a = 0;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) a += (ring[j].x + ring[i].x) * (ring[j].y - ring[i].y);
+    sum += Math.abs(a) / 2;
+  }
+  return sum;
 }
