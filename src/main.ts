@@ -63,6 +63,8 @@ let practiceOn = false;
 let discoverOn = false;
 /** Discover mode: the place shown in the target card. */
 let shownHover: Target | undefined;
+/** Discover mode: the names under the card, to redraw only when they change. */
+let shownAlso = '';
 
 // ---------- Best scores ----------
 
@@ -307,7 +309,9 @@ function newGame(start: boolean) {
   document.querySelector('.hud-top')!.classList.toggle('discover', discoverOn);
   ui.targetHint.textContent = '';
   ui.targetCard.style.visibility = discoverOn ? 'hidden' : '';
+  ui.targetHint.classList.toggle('also', discoverOn);
   shownHover = undefined;
+  shownAlso = '';
 
   game.on((e) => {
     switch (e.type) {
@@ -367,6 +371,13 @@ function setTargetLabel(target: Target) {
     ui.targetName.append(' ', tag);
   }
   ui.progress.hidden = target.kind !== 'river' || discoverOn;
+}
+
+/** Discover mode: the place under the helicopter, and below it the other waters and areas there. */
+function showHover() {
+  setTargetLabel(shownHover!);
+  const names = game?.alsoOver.slice(0, CONFIG.discover.alsoMax).map((x) => placeName(x.name)) ?? [];
+  ui.targetHint.textContent = names.length ? t('alsoOver', { names: names.join(' · ') }) : '';
 }
 
 function showToast(title: string, detail: string) {
@@ -494,8 +505,8 @@ function translateStatic() {
     el.innerHTML = t(el.dataset.i18n as StringKey, STATIC_PARAMS);
   }
   updateMuteLabel();
-  const shown = game?.target ?? shownHover;
-  if (shown) setTargetLabel(shown);
+  if (game?.target) setTargetLabel(game.target);
+  else if (shownHover) showHover();
   if (game) $('final-label').textContent = game.practice ? t('timeLabel') : plural('placesFound', game.found.length);
   renderOverGroups();
   renderLangPicker();
@@ -653,9 +664,11 @@ function updateHud() {
   if (!game) return;
   if (game.discover) {
     // The card shows the place under the helicopter; hidden (keeping its room) otherwise.
-    if (game.hovered !== shownHover) {
+    const also = game.alsoOver.map((x) => x.name).join('|');
+    if (game.hovered !== shownHover || also !== shownAlso) {
       shownHover = game.hovered;
-      if (shownHover) setTargetLabel(shownHover);
+      shownAlso = also;
+      if (shownHover) showHover();
       ui.targetCard.style.visibility = shownHover ? '' : 'hidden';
     }
     return;

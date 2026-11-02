@@ -200,6 +200,11 @@ body {
   min-height: 1em;
 }
 
+/* Discover mode: the other waters and areas under the helicopter. */
+.target-hint.also {
+  color: rgba(255, 255, 255, 0.7);
+}
+
 .hud-bottom {
   position: absolute;
   left: 12px;

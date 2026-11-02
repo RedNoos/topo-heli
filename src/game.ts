@@ -73,6 +73,8 @@ export class Game {
   nearby: { target: Target; d: number }[] = [];
   /** Discover mode: the place the helicopter is over (shown in the target card). */
   hovered?: Target;
+  /** Discover mode: the waters and areas the helicopter is also over (the card's second line). */
+  alsoOver: Target[] = [];
   /** Discover mode: bounding boxes of rivers, lakes and areas, to skip far ones quickly. */
   private boxes = new Map<Target, Bounds>();
   /** Discover mode: surface (km²) of lakes and areas; where they overlap the smallest one wins. */
@@ -345,6 +347,8 @@ export class Game {
     const size = (t: Target) => this.sizes.get(t) ?? 0;
     const hits = this.nearby.filter(over).sort((a, b) => rank(a.target) - rank(b.target) || a.d - b.d || size(a.target) - size(b.target));
     this.hovered = hits[0]?.target;
+    // Other dots have their own name on the map; waters and areas are listed under the card.
+    this.alsoOver = hits.slice(1).map((h) => h.target).filter((t) => t.kind !== 'city' && t.kind !== 'mountain' && t.kind !== 'landmark');
   }
 
   private isFound(): boolean {

@@ -67,6 +67,8 @@ export const CONFIG = {
       { upTo: 20, r: 4 },
     ],
     dotR: 3,
+    /** At most this many other waters and areas under the card. */
+    alsoMax: 3,
   },
 
   /** New targets are not picked this close to the helicopter (when possible). */
