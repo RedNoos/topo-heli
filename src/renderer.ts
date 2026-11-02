@@ -501,16 +501,26 @@ export class Renderer {
     }
   }
 
-  /** Discover mode: a dot for every place (mountains green, landmarks purple), names near the helicopter (fading with distance). */
+  /**
+   * Discover mode: a marker for everything to discover (cities dots, mountains green, landmarks
+   * purple, lakes a blue drop and areas a purple diamond at their name's spot), names near the
+   * helicopter (fading with distance).
+   */
   private drawDiscover() {
     const { ctx, game } = this;
     const hovered = game.hovered;
-    for (const t of game.targets) {
-      if (t.kind !== 'city' && t.kind !== 'mountain' && t.kind !== 'landmark') continue;
+    // Lakes and areas first, so the dots of the places in them stay on top.
+    const order = (t: Target) => (t.kind === 'area' ? 0 : t.kind === 'lake' ? 1 : 2);
+    for (const t of [...game.targets].sort((a, b) => order(a) - order(b))) {
+      if (t.kind === 'river') continue;
       const p = this.toScreen(t.x, t.y);
       if (p.x < -20 || p.y < -20 || p.x > this.w + 20 || p.y > this.h + 20) continue;
       const on = t === hovered;
-      if (t.kind === 'mountain') {
+      if (t.kind === 'area') {
+        this.diamondIcon(p.x, p.y, on ? 7 : 4.5, on ? COLORS.target : COLORS.area);
+      } else if (t.kind === 'lake') {
+        this.dropIcon(p.x, p.y, on ? 7 : 4.5, on ? COLORS.target : COLORS.foundWater);
+      } else if (t.kind === 'mountain') {
         this.mountainIcon(p.x, p.y, on ? 8 : 5, on ? COLORS.target : COLORS.found);
       } else if (t.kind === 'landmark') {
         this.landmarkIcon(t, p.x, p.y, on ? 17 : 14, on ? COLORS.target : COLORS.area);
@@ -562,6 +572,37 @@ export class Renderer {
   }
 
   /** Landmark symbol: a plane (airport) or a flag on a pole (historic site). */
+  /** Area marker (Discover mode): a diamond, `r` from the centre to a corner. */
+  private diamondIcon(x: number, y: number, r: number, fill: string) {
+    const ctx = this.ctx;
+    ctx.beginPath();
+    ctx.moveTo(x, y - r);
+    ctx.lineTo(x + r, y);
+    ctx.lineTo(x, y + r);
+    ctx.lineTo(x - r, y);
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = '#fff';
+    ctx.stroke();
+  }
+
+  /** Lake marker (Discover mode): a water drop, `r` the radius of its round part. */
+  private dropIcon(x: number, y: number, r: number, fill: string) {
+    const ctx = this.ctx;
+    const cy = y + r * 0.35;
+    ctx.beginPath();
+    ctx.moveTo(x, cy - r * 2);
+    ctx.arc(x, cy, r, -Math.PI / 2 + 0.85, Math.PI * 1.5 - 0.85);
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = '#fff';
+    ctx.stroke();
+  }
+
   private landmarkIcon(t: Target, x: number, y: number, size: number, fill: string, stroke = '#fff') {
     if (t.sub === 'historic') this.flagIcon(x, y, size, fill, stroke);
     else this.planeIcon(x, y, size, fill, stroke);
