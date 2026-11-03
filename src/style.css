@@ -276,6 +276,11 @@ body {
   gap: 12px;
 }
 
+/* A bit wider: on desktop the longest map name (Nieuw-Zeeland) then fits at full size. */
+#menu .panel {
+  width: min(480px, 100%);
+}
+
 /* ---------- Language picker ---------- */
 
 .lang {
@@ -419,13 +424,17 @@ h1 {
   color: var(--ink);
 }
 
-/* "Request a map": not a map, so a dashed outline instead of the solid one. */
-/* Long names get a smaller font (fitMapNames in main.ts); the ellipsis is the last resort. */
+/* The span fills the room next to the flag; fitMapNames (main.ts) sets the font size so the
+   longest name fits it. The ellipsis is the last resort. */
 .map-select button span {
+  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-align: left;
 }
+
+/* "Request a map": not a map, so a dashed outline instead of the solid one. */
 
 .map-select button.map-request {
   grid-column: 1 / -1;
@@ -778,7 +787,9 @@ h1 {
 
 .settings {
   display: grid;
-  grid-template-columns: auto 1fr;
+  /* As wide as the widest label of all languages (Начин игре), so the map buttons and their
+     font size (fitMapNames) are the same in every language. */
+  grid-template-columns: minmax(84px, auto) 1fr;
   align-items: center;
   gap: 10px 12px;
   text-align: left;

@@ -901,6 +901,11 @@ export function t(key: StringKey, params: Record<string, string | number> = {}):
   return s.replace(/\{(\w+)\}/g, (m, p: string) => (p in params ? String(params[p]) : m));
 }
 
+/** A string (without params) in every UI language, e.g. to size a button for the longest. */
+export function tAll(key: StringKey): string[] {
+  return [en[key], nl[key], de[key], pl[key], srLatn[key], toCyrillic(srLatn[key])];
+}
+
 /**
  * Plural form for a count. Serbian: 1, 21, 31… -> One; 2–4, 22–24… -> Few; others
  * (incl. 11–14) -> Many. Polish: the same, but only 1 itself is One (21 -> Many).

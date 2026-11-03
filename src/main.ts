@@ -9,7 +9,7 @@ import type { MapData, MapDefinition } from './maps/types';
 import { openFeedback } from './feedback';
 import { Renderer } from './renderer';
 import { initStats, scoreBucket, track } from './stats';
-import { flagSvg, getLang, LANGS, onLangChange, placeName, plural, setLang, setPlaceNames, t, type StringKey } from './i18n';
+import { flagSvg, getLang, LANGS, onLangChange, placeName, plural, setLang, setPlaceNames, t, tAll, type StringKey } from './i18n';
 import type { Target } from './targets';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -159,13 +159,22 @@ const mapName = (m: MapDefinition) => (m.nameKey ? t(m.nameKey) : (m.name ?? m.i
 /** The top-level map a (sub-)map belongs to, e.g. the Netherlands for a province. */
 const topMap = (m: MapDefinition) => MAPS.find((x) => x.id === m.parent) ?? m;
 
-/** Shrinks map names that are too wide for their button (Nieuw-Zeeland on a phone). */
+/**
+ * One font size for all map buttons, the same in every language: the longest map name of all
+ * languages (Nieuw-Zeeland) must fit a half-width button. Only narrow screens get a smaller one.
+ */
 function fitMapNames() {
-  for (const s of $('map-select').querySelectorAll<HTMLElement>('button > span')) {
-    s.style.fontSize = '';
-    if (s.scrollWidth > s.clientWidth) {
-      s.style.fontSize = `${Math.max(0.75, Math.floor((100 * s.clientWidth) / s.scrollWidth) / 100)}em`;
-    }
+  const box = $('map-select');
+  box.style.fontSize = '';
+  const span = box.querySelector<HTMLElement>('button > span');
+  if (!span?.clientWidth) return; // hidden: the ResizeObserver calls again once it is shown
+  const cs = getComputedStyle(span);
+  const ctx = document.createElement('canvas').getContext('2d')!;
+  ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  const names = MAPS.filter((m) => !m.parent).flatMap((m) => (m.nameKey ? tAll(m.nameKey) : [mapName(m)]));
+  const widest = Math.max(...names.map((n) => ctx.measureText(n).width)) + 1;
+  if (widest > span.clientWidth) {
+    box.style.fontSize = `${Math.max(0.75, Math.floor((100 * span.clientWidth) / widest) / 100)}em`;
   }
 }
 // Also when the menu first gets its size (it may be hidden while rendering) and on resizes.
