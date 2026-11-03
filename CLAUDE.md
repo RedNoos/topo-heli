@@ -4,7 +4,8 @@ Browser topography game: fly a helicopter to named places on a map. Vite 6 + Typ
 no framework. Maps: Serbia (Kosovo as part of Serbia; whole country + 6 region maps), the Netherlands
 (whole country + 12 province maps), Germany (whole country + 13 region maps: the Länder, city states
 inside the Land around them), Finland (whole country only; Lambert projection), New Zealand (whole country only; the
-Chatham Islands as an inset), Poland (whole country only) and Europe. UI in English, Dutch, German, Serbian Latin and Serbian Cyrillic.
+Chatham Islands as an inset), Poland (whole country only) and Europe. UI in English, Dutch, German, Polish, Serbian Latin and
+Serbian Cyrillic.
 
 Live at https://topoheli.com/ (custom domain, registered at Porkbun; public repo RedNoos/topo-heli;
 the old https://rednoos.github.io/topo-heli/ redirects there). Every push to `main`
@@ -22,13 +23,13 @@ prefix `topo-heli-test:`, no statistics, noindex and a TEST label. Locally: `npm
 - Commits use the GitHub noreply address of RedNoos (already the repo's `user.email`); never a work email.
 - The user tests on desktop and phone: dev server `npm run dev:lan` → http://localhost:5180/ and
   http://<LAN-IP>:5180/. Keep it running in the background.
-- Every UI text in all five languages (see i18n below). Answer the user in the language they write in.
+- Every UI text in all six languages (see i18n below). Answer the user in the language they write in.
 - Check UI changes on desktop and phone with `npm run shots` before reporting them done.
 
 ## Skills
 
 `.claude/skills/`: `deploy` (push + Pages run), `check-ui` (screenshots + playtest), `add-text`
-(texts in five languages), `rebuild-data` (data builds in the right order, with checks).
+(texts in six languages), `rebuild-data` (data builds in the right order, with checks).
 
 ## Layout
 
@@ -37,14 +38,16 @@ prefix `topo-heli-test:`, no statistics, noindex and a TEST label. Locally: `npm
 - `src/targets.ts`: target kinds (city, mountain, lake, river, area, landmark) and distances.
 - `src/renderer.ts`: canvas drawing (map layers as Path2D in km coordinates, targets, minimap).
 - `src/config.ts`: all gameplay tuning (times, radii, river follow length, area depth, ...).
-- `src/i18n.ts`: UI texts. `en` defines the keys; `nl`, `de` and `srLatn` must have all of them.
+- `src/i18n.ts`: UI texts. `en` defines the keys; `nl`, `de`, `pl` and `srLatn` must have all of them.
   Serbian is written once in Latin and transliterated to Cyrillic (tags, `{params}` and `&entities;`
   are skipped, so pass untranslatable names such as *basislijst topografie* as a `{param}`).
-- `src/feedback.ts`: Tally feedback forms, one per language (script loaded on first click).
+- `src/feedback.ts`: Tally feedback forms, one per language (script loaded on first click; Polish
+  has none yet and uses the English one).
 - `src/stats.ts`: GoatCounter events (production only).
 - `src/maps/index.ts`: map definitions (`MapDefinition` in `src/maps/types.ts`); province maps come
   from `src/maps/nl-provinces.json`, Serbian region maps from `src/maps/rs-regions.json`, German
-  ones from `src/maps/de-regions.json`.
+  ones from `src/maps/de-regions.json`. Maps with names in another language load per-language name
+  tables (`names.<lang>.json`; Europe's are hand-made, the others come from `data/*.json`).
 - Generated data (do not edit by hand): `src/maps/<id>/{geo,cities,physical}.json` (except
   `serbia/cities.json`, curated), `germany/names.*.json`, `nl-provinces.json`, `rs-regions.json`,
   `de-regions.json`.
@@ -87,7 +90,7 @@ rebuilds only the Serbian / German region files).
 - `npm run build` (tsc + vite) must pass.
 - `npm run playtest -- --map <id> --mode free|physical|list`: plays a map through by teleporting to
   each target; reports targets that cannot be found and page errors.
-- `npm run shots -- --map <id> --mode ... --lang nl|en|de|sr-Latn|sr-Cyrl`: menu, game and end
+- `npm run shots -- --map <id> --mode ... --lang nl|en|de|pl|sr-Latn|sr-Cyrl`: menu, game and end
   screen on desktop and phone into `.shots/` (gitignored). Read the PNGs to check.
 - In the dev build `window.__game()` and `window.__renderer()` expose the live game for scripts.
 

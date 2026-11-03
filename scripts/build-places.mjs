@@ -10,9 +10,9 @@
 // src/maps/rs-<region>/cities.json and the manifest src/maps/rs-regions.json.
 // Germany: towns and cities from OpenStreetMap (population from GeoNames where OSM has none)
 // into src/maps/germany/ and src/maps/de-<region>/, the name translations into
-// src/maps/germany/names.{en,nl,sr}.json and the manifest src/maps/de-regions.json.
+// src/maps/germany/names.{en,nl,pl,sr}.json and the manifest src/maps/de-regions.json.
 // Finland: towns and cities from OpenStreetMap into src/maps/finland/, with the translations
-// in src/maps/finland/names.{en,nl,de,sr}.json.
+// in src/maps/finland/names.{en,nl,de,pl,sr}.json.
 // New Zealand: towns from OpenStreetMap into src/maps/new-zealand/ (the Chatham Islands moved
 // into their inset, see scripts/insets.mjs), translations in src/maps/new-zealand/names.*.json.
 // Poland: towns and cities from OpenStreetMap into src/maps/poland/, with the translations in
@@ -326,11 +326,12 @@ for (const r of deRegions) {
 await fs.writeFile(path.join(ROOT, 'src', 'maps', 'de-regions.json'), JSON.stringify(deManifest, null, 2) + '\n');
 
 // Translations: curated (data/germany.json), Serbian place names also from OSM.
-const names = { en: {}, nl: {}, sr: {} };
+const names = { en: {}, nl: {}, pl: {}, sr: {} };
 for (const c of deAll) if (c.sr) names.sr[c.name] = c.sr;
 for (const [name, tr] of Object.entries(germany.names)) {
   if (tr.en) names.en[name] = tr.en;
   if (tr.nl) names.nl[name] = tr.nl;
+  if (tr.pl) names.pl[name] = tr.pl;
   if (tr.sr) names.sr[name] = toCyrillic(tr.sr);
 }
 // Same-named places shown with their region ("Friedberg (BY)") keep that in every language.
@@ -338,7 +339,7 @@ for (const lang of Object.keys(names)) {
   const sorted = Object.fromEntries(Object.entries(names[lang]).sort(([a], [b]) => a.localeCompare(b, 'de')));
   await fs.writeFile(path.join(ROOT, 'src', 'maps', 'germany', `names.${lang}.json`), JSON.stringify(sorted, null, 2) + '\n');
 }
-console.log(`  names: ${Object.keys(names.en).length} en, ${Object.keys(names.nl).length} nl, ${Object.keys(names.sr).length} sr`);
+console.log(`  names: ${Object.keys(names.en).length} en, ${Object.keys(names.nl).length} nl, ${Object.keys(names.pl).length} pl, ${Object.keys(names.sr).length} sr`);
 
 // ---------- Finland ----------
 
@@ -377,18 +378,18 @@ console.log(`  Finland ${fiCities.length} places (${fiCities.filter((c) => c.lis
 
 // Translations: curated (data/finland.json); Serbian from OSM name:sr, else transcribed (the
 // physical features' names are added by scripts/build-physical.mjs).
-const fiNames = { en: {}, nl: {}, de: {}, sr: {} };
+const fiNames = { en: {}, nl: {}, de: {}, pl: {}, sr: {} };
 for (const c of fiCities) fiNames.sr[c.name] = toCyrillic(finnishToSerbian(c.name));
 for (const c of fiAll) if (c.sr) fiNames.sr[c.name] = c.sr;
 for (const [name, tr] of Object.entries(finland.names)) {
-  for (const lang of ['en', 'nl', 'de']) if (tr[lang]) fiNames[lang][name] = tr[lang];
+  for (const lang of ['en', 'nl', 'de', 'pl']) if (tr[lang]) fiNames[lang][name] = tr[lang];
   if (tr.sr) fiNames.sr[name] = toCyrillic(tr.sr);
 }
 for (const lang of Object.keys(fiNames)) {
   const sorted = Object.fromEntries(Object.entries(fiNames[lang]).sort(([a], [b]) => a.localeCompare(b, 'fi')));
   await fs.writeFile(path.join(ROOT, 'src', 'maps', 'finland', `names.${lang}.json`), JSON.stringify(sorted, null, 2) + '\n');
 }
-console.log(`  names: ${Object.keys(fiNames.en).length} en, ${Object.keys(fiNames.nl).length} nl, ${Object.keys(fiNames.de).length} de, ${Object.keys(fiNames.sr).length} sr`);
+console.log(`  names: ${Object.keys(fiNames.en).length} en, ${Object.keys(fiNames.nl).length} nl, ${Object.keys(fiNames.de).length} de, ${Object.keys(fiNames.pl).length} pl, ${Object.keys(fiNames.sr).length} sr`);
 
 // ---------- New Zealand ----------
 
@@ -437,11 +438,11 @@ console.log(`  New Zealand ${nzCities.length} places (${nzCities.filter((c) => c
 
 // Translations: curated (data/new-zealand.json); Serbian from OSM name:sr, else transcribed from
 // Māori (the physical features' names are added by scripts/build-physical.mjs).
-const nzNames = { nl: {}, de: {}, sr: {} };
+const nzNames = { nl: {}, de: {}, pl: {}, sr: {} };
 for (const c of nzCities) if (isMaori(c.name)) nzNames.sr[c.name] = toCyrillic(maoriToSerbian(c.name));
 for (const c of nzAll) if (c.sr) nzNames.sr[c.name] = c.sr;
 for (const [name, tr] of Object.entries(nz.names)) {
-  for (const lang of ['nl', 'de']) if (tr[lang]) nzNames[lang][name] = tr[lang];
+  for (const lang of ['nl', 'de', 'pl']) if (tr[lang]) nzNames[lang][name] = tr[lang];
   if (tr.sr) nzNames.sr[name] = toCyrillic(tr.sr);
 }
 for (const lang of Object.keys(nzNames)) {
@@ -449,7 +450,7 @@ for (const lang of Object.keys(nzNames)) {
   await fs.writeFile(path.join(ROOT, 'src', 'maps', 'new-zealand', `names.${lang}.json`), JSON.stringify(sorted, null, 2) + '\n');
 }
 const nzUntranslated = nzCities.filter((c) => !nzNames.sr[c.name]).map((c) => c.name);
-console.log(`  names: ${Object.keys(nzNames.nl).length} nl, ${Object.keys(nzNames.de).length} de, ${Object.keys(nzNames.sr).length} sr${nzUntranslated.length ? `; no Serbian name: ${nzUntranslated.join(', ')}` : ''}`);
+console.log(`  names: ${Object.keys(nzNames.nl).length} nl, ${Object.keys(nzNames.de).length} de, ${Object.keys(nzNames.pl).length} pl, ${Object.keys(nzNames.sr).length} sr${nzUntranslated.length ? `; no Serbian name: ${nzUntranslated.join(', ')}` : ''}`);
 
 // ---------- Poland ----------
 

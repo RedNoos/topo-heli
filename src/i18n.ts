@@ -1,5 +1,5 @@
 /**
- * UI language: English, Dutch, German, Serbian Latin and Serbian Cyrillic.
+ * UI language: English, Dutch, German, Polish, Serbian Latin and Serbian Cyrillic.
  *
  * Serbian is written once, in Latin script; Cyrillic is derived by
  * transliteration (Serbian Latin <-> Cyrillic is one-to-one). Text inside
@@ -8,7 +8,7 @@
 
 import { STORAGE_PREFIX } from './env';
 
-export type Lang = 'en' | 'nl' | 'de' | 'sr-Latn' | 'sr-Cyrl';
+export type Lang = 'en' | 'nl' | 'de' | 'pl' | 'sr-Latn' | 'sr-Cyrl';
 
 /** `request` is the grey question-mark flag of the "Request a map" button. */
 export type Flag = 'gb' | 'nl' | 'de' | 'fi' | 'nz' | 'pl' | 'rs' | 'eu' | 'request';
@@ -17,6 +17,7 @@ export const LANGS: { id: Lang; short: string; label: string; flag: Flag }[] = [
   { id: 'en', short: 'EN', label: 'English', flag: 'gb' },
   { id: 'nl', short: 'NL', label: 'Nederlands', flag: 'nl' },
   { id: 'de', short: 'DE', label: 'Deutsch', flag: 'de' },
+  { id: 'pl', short: 'PL', label: 'Polski', flag: 'pl' },
   { id: 'sr-Latn', short: 'SR', label: 'Srpski (latinica)', flag: 'rs' },
   { id: 'sr-Cyrl', short: 'СР', label: 'Српски (ћирилица)', flag: 'rs' },
 ];
@@ -479,6 +480,158 @@ const de: Record<StringKey, string> = {
   feedbackPrivacy: 'Feedback wird über {tally} (EU) gesendet.',
 };
 
+const pl: Record<StringKey, string> = {
+  subtitle: 'Leć helikopterem we właściwe miejsce.',
+  mapLabel: 'Mapa',
+  modeLabel: 'Tryb gry',
+  howtoTitle: 'Jak grać',
+  physicalOption: 'Góry, rzeki i jeziora',
+  physicalOptionWaters: 'Wody',
+  physicalOptionWatersAreas: 'Wody i obszary',
+  physicalOptionAll: 'Góry, wody i obszary',
+  start: 'Start',
+  howtoFly: '<b>Lataj</b> strzałkami / {keys} albo przesuwaj palcem po ekranie.',
+  howtoFlash: 'Gdy podlecisz blisko, miasto zacznie <b>migać</b>. Przeleć dokładnie nad nim.',
+  howtoLevels: 'Co <b>10 miast</b>: +{bonus}, ale mniejsze miejscowości i mniej pomocy.',
+  howtoPhysical: '<b>Rzeki:</b> leć <i>wzdłuż</i> rzeki, aż pasek się zapełni. Jeziora i góry: przeleć nad nimi.',
+  howtoPhysicalWaters: '<b>Rzeki i kanały:</b> leć <i>wzdłuż</i> nich, aż pasek się zapełni. Jeziora i morza: przeleć nad nimi.',
+  howtoPhysicalAreas: '<b>Obszary</b> (prowincje, wyspy, ...): wleć kawałek <i>w głąb</i>; dotknięcie granicy nie wystarczy.',
+  best: 'Rekord ({map}): znaleziono {n}',
+  bestPhysical: 'Rekord ({map}, z górami, rzekami i jeziorami): znaleziono {n}',
+  bestPhysicalWaters: 'Rekord ({map}, z wodami): znaleziono {n}',
+  bestPhysicalWatersAreas: 'Rekord ({map}, z wodami i obszarami): znaleziono {n}',
+  bestPhysicalAll: 'Rekord ({map}, z górami, wodami i obszarami): znaleziono {n}',
+  flyTo: 'Leć do',
+  flyToRiver: 'Leć nad rzekę',
+  flyToLake: 'Leć nad jezioro',
+  flyToMountain: 'Leć na górę',
+  flyToCanal: 'Leć nad kanał',
+  flyToWater: 'Leć nad akwen',
+  flyToArea: 'Wleć na obszar',
+  flyToProvince: 'Wleć do prowincji',
+  flyToState: 'Wleć do kraju związkowego',
+  flyToRegion: 'Wleć do krainy',
+  flyToIsland: 'Leć na wyspę',
+  flyToAirport: 'Leć na lotnisko',
+  flyToHistoric: 'Leć do miejsca historycznego',
+  flyToDike: 'Leć do tamy',
+  kindRiver: 'rzeka',
+  alsoOver: 'także: {names}',
+  kindLake: 'jezioro',
+  kindMountain: 'góra',
+  kindCanal: 'kanał',
+  kindWater: 'akwen',
+  kindArea: 'obszar',
+  kindProvince: 'prowincja',
+  kindState: 'kraj związkowy',
+  kindRegion: 'kraina',
+  kindIsland: 'wyspa',
+  kindAirport: 'lotnisko',
+  kindHistoric: 'miejsce historyczne',
+  kindDike: 'tama',
+  found: 'znalezione',
+  level: 'Poziom',
+  pause: 'Pauza',
+  skip: 'Pomiń −10s',
+  skipPractice: 'Pomiń +20s',
+  modeFree: 'Na czas',
+  modeFreeDesc: 'Znajdź jak najwięcej, poziom po poziomie',
+  modeDiscover: 'Odkrywaj',
+  modeDiscoverDesc: 'Lataj swobodnie: bez czasu, nazwy pojawiają się, gdy przelatujesz obok',
+  howtoDiscover: '<b>Odkrywaj:</b> bez czasu i bez szukania. Każde miejsce to kropka; przeleć nad nią, żeby zobaczyć nazwę.',
+  modeList: 'Znajdź wszystko',
+  modeListDesc: '{n} nazw z holenderskiej listy {list}{extra}, jak najszybciej',
+  modeListExtra: ' + znane miejsca',
+  modeListDescSelection: '{n} najbardziej znanych miejsc, gór i wód tej mapy, jak najszybciej',
+  howtoPracticeSelection: '<b>Znajdź wszystko:</b> {n} najbardziej znanych miejsc, gór i wód tej mapy. Znajdź je wszystkie jak najszybciej; pominięcie kosztuje 20 sekund, a nazwa wróci później.',
+  modeListDescAll: 'Wszystkie miejsca, góry, rzeki i jeziora regionu ({n}), jak najszybciej',
+  howtoPracticeAll: '<b>Znajdź wszystko:</b> wszystkie miejsca, góry, rzeki i jeziora regionu ({n}). Znajdź je wszystkie jak najszybciej; pominięcie kosztuje 20 sekund, a nazwa wróci później.',
+  howtoPractice: '<b>Znajdź wszystko:</b> {n} nazw, które trzeba znać (holenderska lista {list}{extra}). Znajdź je wszystkie jak najszybciej; pominięcie kosztuje 20 sekund, a nazwa wróci później.',
+  bestPractice: 'Najlepszy czas ({map}, znajdź wszystko): {t}',
+  done: 'Wszystko znalezione!',
+  timeLabel: 'czas',
+  newBestTime: 'Nowy najlepszy czas!',
+  bestTime: 'Najlepszy czas: {t}',
+  groupPractise: 'Poćwicz jeszcze',
+  groupFound: 'Znalezione',
+  groupMissed: 'Nieznalezione',
+  perfect: 'Nic nie pominięto i nigdzie nie trwało to długo. Brawo!',
+  practiceExtra: ', uzupełniona o znane miejsca z prowincji',
+  soundOn: 'Dźwięk wł.',
+  soundOff: 'Dźwięk wył.',
+  hintCity: 'Blisko! Szukaj migającej kropki',
+  hintRiver: 'Blisko! Leć wzdłuż świecącej rzeki',
+  hintLake: 'Blisko! Przeleć nad migającym jeziorem',
+  hintMountain: 'Blisko! Szukaj migającego szczytu',
+  hintCanal: 'Blisko! Leć wzdłuż świecącego kanału',
+  hintWater: 'Blisko! Przeleć nad migającym akwenem',
+  hintArea: 'Blisko! Wleć na migający obszar',
+  hintAreaDeeper: 'Głębiej!',
+  hintAirport: 'Blisko! Szukaj migającego samolotu',
+  hintHistoric: 'Blisko! Szukaj migającej flagi',
+  hintDike: 'Blisko! Leć wzdłuż świecącej tamy',
+  followRiver: 'Leć wzdłuż rzeki: {p}%',
+  followCanal: 'Leć wzdłuż kanału: {p}%',
+  followDike: 'Leć wzdłuż tamy: {p}%',
+  levelUp: 'Poziom {n}! +{bonus}',
+  levelUpDetail: 'Mniejsze miejscowości, a kropka pojawia się później',
+  levelUpDetailPhysical: 'Mniej znane miejsca, a pojawiają się później',
+  paused: 'Pauza',
+  resume: 'Graj dalej',
+  quit: 'Do menu',
+  timeUp: 'Koniec czasu!',
+  placesFoundOne: 'znalezione miejsce',
+  placesFoundFew: 'znalezione miejsca',
+  placesFoundMany: 'znalezionych miejsc',
+  newBest: 'Nowy rekord!',
+  bestShort: 'Rekord: {n}',
+  playAgain: 'Zagraj jeszcze raz',
+  menu: 'Wybierz inną grę',
+  language: 'Język',
+  mapSerbia: 'Serbia',
+  mapNetherlands: 'Holandia',
+  mapGermany: 'Niemcy',
+  mapFinland: 'Finlandia',
+  mapNewZealand: 'Nowa Zelandia',
+  mapPoland: 'Polska',
+  mapEurope: 'Europa',
+  region: 'Obszar',
+  modeListUnavailable: 'Niedostępne dla tej mapy',
+  regionAllNetherlands: 'Cała Holandia',
+  regionAllSerbia: 'Cała Serbia',
+  regionVojvodina: 'Wojwodina',
+  regionSumadija: 'Belgrad i Szumadia',
+  regionWestSerbia: 'Zachodnia Serbia',
+  regionEastSerbia: 'Wschodnia Serbia',
+  regionSouthSerbia: 'Południowa Serbia',
+  regionKosovo: 'Kosowo i Metochia',
+  regionAllGermany: 'Całe Niemcy',
+  regionSchleswigHolstein: 'Szlezwik-Holsztyn i Hamburg',
+  regionNiedersachsen: 'Dolna Saksonia i Brema',
+  regionMecklenburg: 'Meklemburgia-Pomorze Przednie',
+  regionBrandenburg: 'Brandenburgia i Berlin',
+  regionSachsenAnhalt: 'Saksonia-Anhalt',
+  regionSachsen: 'Saksonia',
+  regionThueringen: 'Turyngia',
+  regionNordrheinWestfalen: 'Nadrenia Północna-Westfalia',
+  regionHessen: 'Hesja',
+  regionRheinlandPfalz: 'Nadrenia-Palatynat',
+  regionSaarland: 'Saara',
+  regionBadenWuerttemberg: 'Badenia-Wirtembergia',
+  regionBayern: 'Bawaria',
+  credits: 'Dane mapy: © współtwórcy {osm}, {ne}, {gn}, {cbs}',
+  inspiredBy: 'Zainspirowane grą {game} ({maker}, {platform}, 1984)',
+  privacy: 'Anonimowe statystyki odwiedzin przez {goatcounter}, bez plików cookie; opinie przez {tally} (UE).',
+  feedback: '💬 Twoja opinia',
+  share: '🔗 Udostępnij',
+  requestMap: 'Zaproponuj mapę',
+  linkCopied: '✓ Link skopiowany',
+  shareText: 'Leć helikopterem do miejsc na mapie i ucz się geografii!',
+  shareScore: 'Mój wynik ({map}): {n}. Dasz radę więcej?',
+  shareTime: 'Mój czas ({map}): {t}. Dasz radę szybciej?',
+  feedbackPrivacy: 'Opinia jest wysyłana przez {tally} (UE).',
+};
+
 const srLatn: Record<StringKey, string> = {
   subtitle: 'Leti helikopterom do pravog mesta.',
   mapLabel: 'Karta',
@@ -707,6 +860,7 @@ export function fromBrowser(prefs: readonly string[]): Lang {
     const p = (raw || '').toLowerCase();
     if (p.startsWith('nl')) return 'nl';
     if (p.startsWith('de')) return 'de';
+    if (p.startsWith('pl')) return 'pl';
     if (p.startsWith('sr')) return p.includes('latn') ? 'sr-Latn' : 'sr-Cyrl';
     if (p.startsWith('en')) return 'en';
   }
@@ -732,14 +886,15 @@ export function onLangChange(fn: () => void) {
 
 /** Translated string; {name} placeholders are filled from params (never transliterated). */
 export function t(key: StringKey, params: Record<string, string | number> = {}): string {
-  let s = lang === 'en' ? en[key] : lang === 'nl' ? nl[key] : lang === 'de' ? de[key] : srLatn[key];
+  let s = lang === 'en' ? en[key] : lang === 'nl' ? nl[key] : lang === 'de' ? de[key] : lang === 'pl' ? pl[key] : srLatn[key];
   if (lang === 'sr-Cyrl') s = toCyrillic(s);
   return s.replace(/\{(\w+)\}/g, (m, p: string) => (p in params ? String(params[p]) : m));
 }
 
 /**
  * Plural form for a count. Serbian: 1, 21, 31… -> One; 2–4, 22–24… -> Few; others
- * (incl. 11–14) -> Many. English, Dutch and German only distinguish 1.
+ * (incl. 11–14) -> Many. Polish: the same, but only 1 itself is One (21 -> Many).
+ * English, Dutch and German only distinguish 1.
  */
 export function plural(base: 'placesFound', n: number): string {
   const mod10 = n % 10;
@@ -747,7 +902,7 @@ export function plural(base: 'placesFound', n: number): string {
   const form =
     lang === 'en' || lang === 'nl' || lang === 'de'
       ? n === 1 ? 'One' : 'Many'
-      : mod10 === 1 && mod100 !== 11
+      : n === 1 || (lang !== 'pl' && mod10 === 1 && mod100 !== 11)
         ? 'One'
         : mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)
           ? 'Few'
@@ -761,12 +916,13 @@ export function plural(base: 'placesFound', n: number): string {
  * How the current map's place names behave per language:
  * - 'sr-Latn': names are Serbian Latin (shown as-is, transliterated for Cyrillic);
  * - otherwise names are shown as-is, unless the table of the language (`serbian` in Cyrillic,
- *   `dutch`, `german`, `english`) has another name.
+ *   `dutch`, `german`, `polish`, `english`) has another name.
  */
 let nameScript: 'sr-Latn' | 'native' = 'native';
 let serbianNames: Record<string, string> = {};
 let dutchNames: Record<string, string> = {};
 let germanNames: Record<string, string> = {};
+let polishNames: Record<string, string> = {};
 let englishNames: Record<string, string> = {};
 
 export function setPlaceNames(
@@ -774,12 +930,14 @@ export function setPlaceNames(
   serbian: Record<string, string> = {},
   dutch: Record<string, string> = {},
   german: Record<string, string> = {},
+  polish: Record<string, string> = {},
   english: Record<string, string> = {},
 ) {
   nameScript = script;
   serbianNames = serbian;
   dutchNames = dutch;
   germanNames = german;
+  polishNames = polish;
   englishNames = english;
 }
 
@@ -788,6 +946,7 @@ export function placeName(name: string): string {
   if (nameScript === 'sr-Latn') return lang === 'sr-Cyrl' ? toCyrillic(name) : name;
   if (lang === 'nl') return dutchNames[name] ?? name;
   if (lang === 'de') return germanNames[name] ?? name;
+  if (lang === 'pl') return polishNames[name] ?? name;
   const sr = serbianNames[name];
   if (!sr) return name;
   return lang === 'sr-Cyrl' ? sr : toLatin(sr);

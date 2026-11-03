@@ -271,15 +271,16 @@ async function selectMap(def: MapDefinition) {
   discoverOn = loadOption(DISCOVER_KEY);
   practiceOn = !discoverOn && !!def.practice && loadOption(PRACTICE_KEY);
   renderMapSelect();
-  const [data, physical, serbianNames, dutchNames, germanNames, englishNames] = await Promise.all([
+  const [data, physical, serbianNames, dutchNames, germanNames, polishNames, englishNames] = await Promise.all([
     def.load(),
     wantsPhysical() ? def.loadPhysical?.() : undefined,
     def.loadSerbianNames?.(),
     def.loadDutchNames?.(),
     def.loadGermanNames?.(),
+    def.loadPolishNames?.(),
     def.loadEnglishNames?.(),
   ]);
-  setPlaceNames(def.placeNames, serbianNames, dutchNames, germanNames, englishNames);
+  setPlaceNames(def.placeNames, serbianNames, dutchNames, germanNames, polishNames, englishNames);
   mapData = { ...data, physical };
   renderMapSelect();
   // A non-started game gives the menu a live map in the background.

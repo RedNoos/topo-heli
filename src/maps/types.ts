@@ -98,7 +98,8 @@ export interface MapDefinition {
   time?: { start: number; levelBonus: number };
   /**
    * Place names: 'sr-Latn' = written in Serbian Latin (transliterated for Cyrillic);
-   * 'native' = shown as-is, or via loadSerbianNames / loadDutchNames / loadGermanNames / loadEnglishNames.
+   * 'native' = shown as-is, or via loadSerbianNames / loadDutchNames / loadGermanNames / loadPolishNames /
+   * loadEnglishNames.
    */
   placeNames: 'sr-Latn' | 'native';
   /** Serbian (Cyrillic) names by place name, for maps whose names are not Serbian. */
@@ -107,6 +108,8 @@ export interface MapDefinition {
   loadDutchNames?: () => Promise<Record<string, string>>;
   /** German names by place name, where they differ (e.g. Vienna -> Wien). */
   loadGermanNames?: () => Promise<Record<string, string>>;
+  /** Polish names by place name, where they differ (e.g. Vienna -> Wiedeń). */
+  loadPolishNames?: () => Promise<Record<string, string>>;
   /** English names by place name, for maps whose names are not English (e.g. München -> Munich). */
   loadEnglishNames?: () => Promise<Record<string, string>>;
   /** Kilometres visible across the smaller side of the screen. Bigger regions want a bigger view. */

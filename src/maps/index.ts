@@ -13,6 +13,7 @@ const germanNames = {
   placeNames: 'native',
   loadEnglishNames: async () => (await import('./germany/names.en.json')).default,
   loadDutchNames: async () => (await import('./germany/names.nl.json')).default,
+  loadPolishNames: async () => (await import('./germany/names.pl.json')).default,
   loadSerbianNames: async () => (await import('./germany/names.sr.json')).default,
 } satisfies Partial<MapDefinition>;
 const json = async <T>(load: () => Promise<unknown>) => ((await load()) as { default: T }).default;
@@ -80,6 +81,7 @@ export const MAPS: MapDefinition[] = [
     loadEnglishNames: async () => (await import('./finland/names.en.json')).default,
     loadDutchNames: async () => (await import('./finland/names.nl.json')).default,
     loadGermanNames: async () => (await import('./finland/names.de.json')).default,
+    loadPolishNames: async () => (await import('./finland/names.pl.json')).default,
     loadSerbianNames: async () => (await import('./finland/names.sr.json')).default,
     viewKm: 460,
     // 1270 km north to south: a faster helicopter instead of zooming out, so the towns stay readable.
@@ -103,6 +105,7 @@ export const MAPS: MapDefinition[] = [
     placeNames: 'native',
     loadDutchNames: async () => (await import('./new-zealand/names.nl.json')).default,
     loadGermanNames: async () => (await import('./new-zealand/names.de.json')).default,
+    loadPolishNames: async () => (await import('./new-zealand/names.pl.json')).default,
     loadSerbianNames: async () => (await import('./new-zealand/names.sr.json')).default,
     viewKm: 500,
     // 1600 km from Cape Reinga to Stewart Island: a faster helicopter, as for Finland.
@@ -146,6 +149,7 @@ export const MAPS: MapDefinition[] = [
     loadSerbianNames: async () => (await import('./europe/names.sr.json')).default,
     loadDutchNames: async () => (await import('./europe/names.nl.json')).default,
     loadGermanNames: async () => (await import('./europe/names.de.json')).default,
+    loadPolishNames: async () => (await import('./europe/names.pl.json')).default,
     viewKm: 1300,
     load: async () => ({
       geo: (await import('./europe/geo.json')).default as never,
