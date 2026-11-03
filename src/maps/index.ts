@@ -118,6 +118,27 @@ export const MAPS: MapDefinition[] = [
     practiceList: 'selection',
   },
   {
+    id: 'poland',
+    flag: 'pl',
+    nameKey: 'mapPoland',
+    // Polish names, translated where a language has its own (Warszawa: Warsaw, Warschau, Varšava).
+    placeNames: 'native',
+    loadEnglishNames: async () => (await import('./poland/names.en.json')).default,
+    loadDutchNames: async () => (await import('./poland/names.nl.json')).default,
+    loadGermanNames: async () => (await import('./poland/names.de.json')).default,
+    loadSerbianNames: async () => (await import('./poland/names.sr.json')).default,
+    viewKm: 440,
+    load: async () => ({
+      geo: (await import('./poland/geo.json')).default as never,
+      cities: (await import('./poland/cities.json')).default,
+    }),
+    loadPhysical: async () => (await import('./poland/physical.json')).default as never,
+    physicalKind: 'all',
+    // No official list: our own selection of 100 names (60 places, 40 waters, mountains and areas).
+    practice: true,
+    practiceList: 'selection',
+  },
+  {
     id: 'europe',
     flag: 'eu',
     nameKey: 'mapEurope',

@@ -80,6 +80,15 @@ const MAPS = {
     simplify: '45%',
     insets: INSETS['new-zealand'],
   },
+  poland: {
+    home: ['POL'],
+    bbox: [12, 48, 26.5, 56.2],
+    // Equal-area like Finland; the rectangle holds the Baltic coast up to Bornholm's latitude.
+    projection: { type: 'laea', lon0: 19.2, lat0: 52, rect: [-430, -400, 430, 400] },
+    // Districts are the voivodeships.
+    districtOf: (p) => p.name,
+    simplify: '45%',
+  },
   netherlands: {
     // Land and province borders from CBS (see cbsLand); province borders drawn as districts.
     cbs: true,

@@ -11,7 +11,7 @@ import { STORAGE_PREFIX } from './env';
 export type Lang = 'en' | 'nl' | 'de' | 'sr-Latn' | 'sr-Cyrl';
 
 /** `request` is the grey question-mark flag of the "Request a map" button. */
-export type Flag = 'gb' | 'nl' | 'de' | 'fi' | 'nz' | 'rs' | 'eu' | 'request';
+export type Flag = 'gb' | 'nl' | 'de' | 'fi' | 'nz' | 'pl' | 'rs' | 'eu' | 'request';
 
 export const LANGS: { id: Lang; short: string; label: string; flag: Flag }[] = [
   { id: 'en', short: 'EN', label: 'English', flag: 'gb' },
@@ -134,6 +134,7 @@ const en = {
   mapGermany: 'Germany',
   mapFinland: 'Finland',
   mapNewZealand: 'New Zealand',
+  mapPoland: 'Poland',
   mapEurope: 'Europe',
   region: 'Area',
   modeListUnavailable: 'Not available for this map',
@@ -287,6 +288,7 @@ const nl: Record<StringKey, string> = {
   mapGermany: 'Duitsland',
   mapFinland: 'Finland',
   mapNewZealand: 'Nieuw-Zeeland',
+  mapPoland: 'Polen',
   mapEurope: 'Europa',
   region: 'Gebied',
   modeListUnavailable: 'Niet voor deze kaart',
@@ -438,6 +440,7 @@ const de: Record<StringKey, string> = {
   mapGermany: 'Deutschland',
   mapFinland: 'Finnland',
   mapNewZealand: 'Neuseeland',
+  mapPoland: 'Polen',
   mapEurope: 'Europa',
   region: 'Gebiet',
   modeListUnavailable: 'Für diese Karte nicht verfügbar',
@@ -589,6 +592,7 @@ const srLatn: Record<StringKey, string> = {
   mapGermany: 'Nemačka',
   mapFinland: 'Finska',
   mapNewZealand: 'Novi Zeland',
+  mapPoland: 'Poljska',
   mapEurope: 'Evropa',
   region: 'Oblast',
   modeListUnavailable: 'Nije dostupno za ovu kartu',
@@ -838,6 +842,9 @@ export function flagSvg(flag: Flag): string {
   }
   if (flag === 'de') {
     return '<svg class="flag" viewBox="0 0 9 6" aria-hidden="true"><rect width="9" height="6" fill="#ffce00"/><rect width="9" height="4" fill="#dd0000"/><rect width="9" height="2" fill="#000"/></svg>';
+  }
+  if (flag === 'pl') {
+    return '<svg class="flag" viewBox="0 0 8 5" preserveAspectRatio="none" aria-hidden="true"><rect width="8" height="5" fill="#dc143c"/><rect width="8" height="2.5" fill="#fff"/></svg>';
   }
   if (flag === 'fi') {
     // Blue Nordic cross on white, 18:11 stretched to the same 3:2 box as the others.

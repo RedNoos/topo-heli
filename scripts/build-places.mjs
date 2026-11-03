@@ -15,12 +15,14 @@
 // in src/maps/finland/names.{en,nl,de,sr}.json.
 // New Zealand: towns from OpenStreetMap into src/maps/new-zealand/ (the Chatham Islands moved
 // into their inset, see scripts/insets.mjs), translations in src/maps/new-zealand/names.*.json.
+// Poland: towns and cities from OpenStreetMap into src/maps/poland/, with the translations in
+// src/maps/poland/names.{en,nl,de,sr}.json.
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { unzipSync, strFromU8 } from 'fflate';
 import { PROVINCES, SERBIA_REGIONS, GERMANY_REGIONS } from './provinces.mjs';
-import { toCyrillic, finnishToSerbian, isMaori, maoriToSerbian } from './serbian.mjs';
+import { toCyrillic, finnishToSerbian, isMaori, maoriToSerbian, polishToSerbian } from './serbian.mjs';
 import { INSETS, shiftOsm } from './insets.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -448,3 +450,48 @@ for (const lang of Object.keys(nzNames)) {
 }
 const nzUntranslated = nzCities.filter((c) => !nzNames.sr[c.name]).map((c) => c.name);
 console.log(`  names: ${Object.keys(nzNames.nl).length} nl, ${Object.keys(nzNames.de).length} de, ${Object.keys(nzNames.sr).length} sr${nzUntranslated.length ? `; no Serbian name: ${nzUntranslated.join(', ')}` : ''}`);
+
+// ---------- Poland ----------
+
+/** Whole Poland: towns from this size. */
+const PL_MIN_POP = 15000;
+
+const poland = JSON.parse(await fs.readFile(path.join(ROOT, 'data', 'poland.json'), 'utf8'));
+const plQuery = `[out:json][timeout:300];
+area["ISO3166-1"="PL"]["admin_level"="2"]->.a;
+node["place"~"^(city|town)$"](area.a);
+out;`;
+const plPop = popLookup(await geonames(1, 'PL'));
+const plAll = JSON.parse(await overpass('overpass-poland-places.json', plQuery, 'Polish towns'))
+  .elements.filter((e) => e.tags?.name)
+  .map((e) => ({ name: e.tags.name, lat: e.lat, lon: e.lon, pop: plPop(e.tags.name, e.lat, e.lon, e.tags.population), sr: e.tags['name:sr'] }))
+  .filter((c) => c.pop >= PL_MIN_POP || poland.listed.includes(c.name))
+  .sort((a, b) => b.pop - a.pop);
+const missingPl = poland.listed.filter((n) => !plAll.some((c) => c.name === n));
+if (missingPl.length) throw new Error(`Poland: listed places not found: ${missingPl.join(', ')}`);
+
+console.log('Building Polish place list');
+const plSeen = new Set();
+const plCities = [];
+for (const c of plAll) {
+  if (plSeen.has(c.name)) continue; // same name twice: keep the bigger one
+  plSeen.add(c.name);
+  plCities.push({ name: c.name, lat: round4(c.lat), lon: round4(c.lon), pop: c.pop, ...(poland.listed.includes(c.name) ? { listed: true } : {}) });
+}
+await fs.writeFile(path.join(ROOT, 'src', 'maps', 'poland', 'cities.json'), '[\n' + plCities.map((c) => JSON.stringify(c)).join(',\n') + '\n]\n');
+console.log(`  Poland ${plCities.length} places (${plCities.filter((c) => c.listed).length} listed)`);
+
+// Translations: curated (data/poland.json); Serbian from OSM name:sr, else transcribed (the
+// physical features' names are added by scripts/build-physical.mjs).
+const plNames = { en: {}, nl: {}, de: {}, sr: {} };
+for (const c of plCities) plNames.sr[c.name] = toCyrillic(polishToSerbian(c.name));
+for (const c of plAll) if (c.sr) plNames.sr[c.name] = c.sr;
+for (const [name, tr] of Object.entries(poland.names)) {
+  for (const lang of ['en', 'nl', 'de']) if (tr[lang]) plNames[lang][name] = tr[lang];
+  if (tr.sr) plNames.sr[name] = toCyrillic(tr.sr);
+}
+for (const lang of Object.keys(plNames)) {
+  const sorted = Object.fromEntries(Object.entries(plNames[lang]).sort(([a], [b]) => a.localeCompare(b, 'pl')));
+  await fs.writeFile(path.join(ROOT, 'src', 'maps', 'poland', `names.${lang}.json`), JSON.stringify(sorted, null, 2) + '\n');
+}
+console.log(`  names: ${Object.keys(plNames.en).length} en, ${Object.keys(plNames.nl).length} nl, ${Object.keys(plNames.de).length} de, ${Object.keys(plNames.sr).length} sr`);

@@ -10,7 +10,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import mapshaper from 'mapshaper';
 import { PROVINCES, SERBIA_REGIONS, GERMANY_REGIONS } from './provinces.mjs';
-import { toCyrillic, finnishToSerbian, isMaori, maoriToSerbian } from './serbian.mjs';
+import { toCyrillic, finnishToSerbian, isMaori, maoriToSerbian, polishToSerbian } from './serbian.mjs';
 import { INSETS, shiftGeoJSON, shiftOsm } from './insets.mjs';
 
 /** Province maps: rivers with less than this inside the province are not asked. */
@@ -278,6 +278,96 @@ const PHYSICAL = {
         { name: 'Kaipara Harbour', type: 'water', relation: 8659194 },
         { name: 'Manukau Harbour', type: 'water', relation: 8534169 },
       ],
+    },
+  },
+  poland: {
+    areas: ['PL'],
+    nameKeys: ['name'],
+    bbox: [12, 48, 26.5, 56.2],
+    rivers: {
+      // Border rivers may carry both names in OSM.
+      1: [
+        'Wisła', { name: 'Odra', osm: ['Odra', 'Odra / Oder', 'Oder / Odra', 'Oder'] }, 'Warta',
+        { name: 'Bug', osm: ['Bug', 'Bug / Буг', 'Буг / Bug', 'Західний Буг', 'Заходні Буг'], margin: 4 }, 'Narew',
+      ],
+      // Not the Wieprz in Pomerania.
+      2: ['San', 'Noteć', 'Pilica', ['Wieprz', [21.5, 50.4, 23.5, 51.8]], 'Dunajec', 'Bóbr',
+        { name: 'Nysa Łużycka', osm: ['Nysa Łużycka', 'Nysa Łużycka / Lausitzer Neiße', 'Lausitzer Neiße / Nysa Łużycka', 'Lausitzer Neiße'], margin: 4 }],
+      3: ['Biebrza', 'Brda', 'Drwęca', 'Bzura', 'Prosna', 'Łyna', 'Nysa Kłodzka'],
+    },
+    lakes: {
+      1: ['Śniardwy', 'Mamry', 'Jeziorak'],
+      2: ['Łebsko', 'Gopło', 'Jezioro Solińskie'],
+      3: ['Hańcza', 'Wigry', 'Niegocin', 'Zalew Włocławski'],
+    },
+    // Ranges at their highest Polish summit; the border peaks (Rysy, Śnieżka, Babia Góra) by
+    // coordinates, so the Polish side counts.
+    mountains: {
+      1: [['Tatry', { lat: 49.1795, lon: 20.0881, ele: 2499 }], ['Karkonosze', { lat: 50.736, lon: 15.7399, ele: 1603 }], ['Beskidy', { lat: 49.5731, lon: 19.5295, ele: 1725 }]],
+      2: [['Bieszczady', { lat: 49.0749, lon: 22.7265, ele: 1346 }], ['Góry Świętokrzyskie', { lat: 50.8992, lon: 20.9, ele: 612 }], ['Pieniny', { lat: 49.4142, lon: 20.413, ele: 982 }]],
+      3: [['Góry Stołowe', { lat: 50.4859, lon: 16.3394, ele: 919 }], ['Gorce', { lat: 49.5431, lon: 20.1114, ele: 1310 }], ['Masyw Śnieżnika', { lat: 50.2072, lon: 16.8478, ele: 1425 }]],
+    },
+    // Find them all: with the 60 listed places in data/poland.json, 100 names. Includes the
+    // landscapes the Polish curriculum (podstawa programowa) names.
+    core: ['Morze Bałtyckie', 'Zatoka Gdańska', 'Zalew Szczeciński', 'Zalew Wiślany',
+      'Wisła', 'Odra', 'Warta', 'Bug', 'Narew', 'San', 'Noteć', 'Pilica', 'Wieprz', 'Nysa Łużycka', 'Dunajec', 'Bóbr',
+      'Śniardwy', 'Mamry', 'Jeziorak', 'Łebsko', 'Gopło', 'Jezioro Solińskie',
+      'Tatry', 'Karkonosze', 'Beskidy', 'Bieszczady', 'Góry Świętokrzyskie', 'Pieniny',
+      'Sudety', 'Karpaty', 'Wyżyna Krakowsko-Częstochowska', 'Wyżyna Śląska', 'Wyżyna Lubelska', 'Nizina Mazowiecka',
+      'Pojezierze Mazurskie', 'Pobrzeże Słowińskie', 'Półwysep Helski', 'Żuławy Wiślane', 'Puszcza Białowieska', 'Wolin'],
+    // Voivodeships, landscapes and islands. Outlines are rough (no official border), cut to the land.
+    zones: {
+      1: [
+        // The Polish Carpathians, south of Bielsko-Biała - Wieliczka - Tarnów - Rzeszów - Przemyśl.
+        { name: 'Karpaty', outline: [[18.6, 49.85], [19.0, 49.85], [19.5, 49.9], [20.0, 49.95], [20.5, 49.95], [21.0, 49.9], [21.5, 49.85], [22.0, 49.85], [22.6, 49.75], [23.0, 49.65], [23.0, 48.9], [18.6, 49.3]] },
+        // South-west of the Sudetic fault: Zgorzelec - Jelenia Góra - Wałbrzych - Kłodzko - Głuchołazy.
+        { name: 'Sudety', outline: [[14.95, 51.05], [15.4, 50.95], [15.8, 50.95], [16.2, 50.9], [16.6, 50.75], [16.9, 50.55], [17.2, 50.4], [17.5, 50.3], [17.5, 50.0], [16.0, 50.3], [15.0, 50.75]] },
+        // The Masurian Lakeland, Olsztyn to Ełk.
+        { name: 'Pojezierze Mazurskie', outline: [[20.0, 53.6], [20.1, 54.0], [20.8, 54.2], [21.6, 54.3], [22.5, 54.25], [22.8, 53.95], [22.4, 53.6], [21.6, 53.45], [20.7, 53.4]] },
+        // Władysławowo to Hel.
+        { name: 'Półwysep Helski', outline: [[18.45, 54.77], [18.83, 54.57], [18.87, 54.62], [18.48, 54.84]] },
+      ],
+      // Not the voivodeships named like their capitals (łódzkie, lubelskie, opolskie).
+      2: [
+        ...[
+          ['Mazowieckie', 'Masovian'], ['Małopolskie', 'Lesser Poland'], ['Wielkopolskie', 'Greater Poland'], ['Śląskie', 'Silesian'],
+          ['Dolnośląskie', 'Lower Silesian'], ['Pomorskie', 'Pomeranian'], ['Zachodniopomorskie', 'West Pomeranian'],
+          ['Warmińsko-Mazurskie', 'Warmian-Masurian'], ['Podlaskie', 'Podlachian'], ['Kujawsko-Pomorskie', 'Kuyavian-Pomeranian'],
+          ['Lubuskie', 'Lubusz'], ['Podkarpackie', 'Subcarpathian'], ['Świętokrzyskie', 'Świętokrzyskie'],
+        ].map(([name, ne]) => ({ name, type: 'province', admin1: ['POL', ne] })),
+        // The Jura from Kraków to Częstochowa and Wieluń.
+        { name: 'Wyżyna Krakowsko-Częstochowska', outline: [[19.95, 50.08], [20.05, 50.18], [19.65, 50.45], [19.4, 50.75], [19.2, 50.98], [18.95, 51.0], [18.95, 50.8], [19.2, 50.5], [19.45, 50.2], [19.7, 50.05]] },
+        // Upper Silesia: Gliwice - Katowice - Sosnowiec.
+        { name: 'Wyżyna Śląska', outline: [[18.3, 50.35], [18.5, 50.55], [18.9, 50.55], [19.25, 50.4], [19.4, 50.2], [19.35, 50.05], [18.95, 50.05], [18.55, 50.1], [18.3, 50.2]] },
+        // Between the Vistula and the Bug, around Lublin.
+        { name: 'Wyżyna Lubelska', outline: [[21.9, 51.3], [22.4, 51.35], [23.0, 51.3], [23.45, 51.15], [23.7, 50.9], [23.4, 50.72], [22.8, 50.72], [22.2, 50.78], [21.8, 51.0]] },
+        // Around Warsaw.
+        { name: 'Nizina Mazowiecka', outline: [[19.6, 52.55], [20.5, 52.85], [21.5, 52.8], [22.3, 52.55], [22.4, 52.05], [21.8, 51.65], [20.7, 51.6], [19.9, 51.85], [19.5, 52.25]] },
+        // The coast around Łeba and the Słowiński National Park (the sea side is cut off).
+        { name: 'Pobrzeże Słowińskie', outline: [[16.75, 54.5], [17.2, 54.6], [17.9, 54.7], [17.95, 54.95], [16.75, 54.8]] },
+        // The Vistula delta between Gdańsk, Elbląg and Malbork.
+        { name: 'Żuławy Wiślane', outline: [[18.65, 54.33], [19.0, 54.35], [19.45, 54.28], [19.5, 54.1], [19.1, 53.95], [18.85, 53.98], [18.7, 54.15]] },
+        // The Polish part, at the Belarusian border.
+        { name: 'Puszcza Białowieska', outline: [[23.55, 52.88], [23.95, 52.9], [23.95, 52.55], [23.55, 52.6]] },
+        // Natural Earth joins the island to the mainland: between the Świna and the Dziwna.
+        { name: 'Wolin', type: 'island', outline: [[14.38, 53.93], [14.62, 54.02], [14.78, 54.05], [14.72, 53.9], [14.66, 53.8], [14.55, 53.77], [14.42, 53.82], [14.37, 53.88]] },
+      ],
+      3: [
+        { name: 'Kaszuby', outline: [[17.6, 54.45], [18.35, 54.6], [18.5, 54.35], [18.25, 54.05], [17.85, 53.95], [17.5, 54.15]] },
+        // Nowy Targ and Zakopane, north of the Tatras.
+        { name: 'Podhale', outline: [[19.65, 49.55], [20.3, 49.55], [20.35, 49.25], [19.7, 49.25]] },
+        { name: 'Roztocze', outline: [[22.3, 50.65], [22.9, 50.66], [23.6, 50.58], [23.9, 50.4], [23.7, 50.25], [23.2, 50.35], [22.6, 50.5]] },
+      ],
+    },
+    waterAreas: {
+      1: [
+        // The coast from Usedom to Hel, and out to the map edge; the Gulf of Gdańsk is its own.
+        { name: 'Morze Bałtyckie', type: 'water', outline: [[14.15, 53.85], [14.5, 53.88], [15.0, 53.98], [15.6, 54.12], [16.4, 54.36], [16.9, 54.52], [17.6, 54.7], [18.3, 54.77], [18.42, 54.8], [18.81, 54.61], [19.95, 54.96], [20.0, 55.9], [13.0, 55.9], [13.0, 54.3], [13.9, 54.05]] },
+        { name: 'Zatoka Gdańska', type: 'water', relation: 8259509 },
+        { name: 'Zalew Szczeciński', type: 'water', relation: 6962883 },
+      ],
+      2: [{ name: 'Zalew Wiślany', type: 'water', relation: 8140878, inland: true }],
+      3: [{ name: 'Zatoka Pucka', type: 'water', relation: 8277360 }],
     },
   },
   netherlands: {
@@ -936,6 +1026,16 @@ async function build(id, cfg) {
   console.log(`  ${out.rivers.length} rivers, ${out.lakes.length} lakes, ${out.mountains.length} mountains -> ${path.relative(ROOT, file)} (${kb} KB)`);
   if (id === 'finland') await addFinnishSerbianNames(out);
   if (id === 'new-zealand') await addMaoriSerbianNames(out);
+  if (id === 'poland') await addPolishSerbianNames(out);
+}
+
+/** Poland: Serbian names of the features, transcribed where names.sr.json (build-places) has none. */
+async function addPolishSerbianNames(out) {
+  const file = path.join(ROOT, 'src', 'maps', 'poland', 'names.sr.json');
+  const names = JSON.parse(await fs.readFile(file, 'utf8'));
+  for (const x of [...out.rivers, ...out.lakes, ...out.mountains, ...(out.areas ?? [])]) names[x.name] ??= toCyrillic(polishToSerbian(x.name));
+  const sorted = Object.fromEntries(Object.entries(names).sort(([a], [b]) => a.localeCompare(b, 'pl')));
+  await fs.writeFile(file, JSON.stringify(sorted, null, 2) + '\n');
 }
 
 /** Finland: Serbian names of the features, transcribed where names.sr.json (build-places) has none. */

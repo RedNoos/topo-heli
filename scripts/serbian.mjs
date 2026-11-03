@@ -61,3 +61,28 @@ export function maoriToSerbian(name) {
     .replace(/(?<=[aeiou])i(?![aeiou])/gi, 'j')
     .replace(/(?<=[^aeiou\s-])ia/gi, 'ija');
 }
+
+const PL_VOWEL = '(?=[aąeęioóuy])';
+/** [pattern, Serbian] in order: digraphs first, soft consonants before a vowel, nasal vowels last. */
+const POLISH_RULES = [
+  ['szcz', 'šč'], ['sz', 'š'], ['cz', 'č'], ['dż', 'dž'], [`dzi${PL_VOWEL}`, 'đ'], ['dzi', 'đi'], ['dź', 'đ'],
+  ['(?<=[ptk]|ch)rz', 'š'], ['rz', 'ž'], ['ch', 'h'],
+  [`ci${PL_VOWEL}`, 'ć'], ['ci', 'ći'], [`si${PL_VOWEL}`, 'š'], ['si', 'ši'], ['ś', 'š'],
+  [`zi${PL_VOWEL}`, 'ž'], ['zi', 'ži'], ['[źż]', 'ž'], [`ni${PL_VOWEL}`, 'nj'], ['ń', 'nj'], [`li${PL_VOWEL}`, 'lj'],
+  [`(?<=[bpmwfkgh])i${PL_VOWEL}`, 'j'],
+  ['ą(?=[bp])', 'om'], ['ą', 'on'], ['ę(?=[bp])', 'em'], ['ę(?!\\p{L})', 'e'], ['ę', 'en'],
+  ['ł', 'l'], ['w', 'v'], ['y', 'i'], ['ó', 'o'], ['x', 'ks'],
+];
+
+/**
+ * Polish name -> Serbian Latin, as Serbian transcribes it: sz -> š, rz -> ž, ci/si/zi/ni before a
+ * vowel -> ć/š/ž/nj, ą/ę -> on/en, i after a labial or k/g -> j (Białystok: Bjalistok,
+ * Częstochowa: Čenstohova, Szczecin: Ščećin, Gniezno: Gnjezno).
+ */
+export function polishToSerbian(name) {
+  let s = name;
+  for (const [pattern, sr] of POLISH_RULES) {
+    s = s.replace(new RegExp(pattern, 'giu'), (m) => (m[0] === m[0].toLowerCase() ? sr : sr[0].toUpperCase() + sr.slice(1)));
+  }
+  return s;
+}
