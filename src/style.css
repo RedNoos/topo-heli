@@ -389,11 +389,11 @@ h1 {
 .map-select button {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   border: 2px solid #c9c5b4;
   background: #fff;
   border-radius: 999px;
-  padding: 6px 14px;
+  padding: 6px 10px;
   font: inherit;
   font-weight: 600;
   white-space: nowrap;
@@ -420,6 +420,13 @@ h1 {
 }
 
 /* "Request a map": not a map, so a dashed outline instead of the solid one. */
+/* Long names get a smaller font (fitMapNames in main.ts); the ellipsis is the last resort. */
+.map-select button span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .map-select button.map-request {
   grid-column: 1 / -1;
   border-style: dashed;
@@ -793,7 +800,7 @@ h1 {
 }
 
 .settings .map-select button {
-  padding: 5px 12px;
+  padding: 5px 10px;
 }
 
 #region-box select {

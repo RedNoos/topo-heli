@@ -159,6 +159,18 @@ const mapName = (m: MapDefinition) => (m.nameKey ? t(m.nameKey) : (m.name ?? m.i
 /** The top-level map a (sub-)map belongs to, e.g. the Netherlands for a province. */
 const topMap = (m: MapDefinition) => MAPS.find((x) => x.id === m.parent) ?? m;
 
+/** Shrinks map names that are too wide for their button (Nieuw-Zeeland on a phone). */
+function fitMapNames() {
+  for (const s of $('map-select').querySelectorAll<HTMLElement>('button > span')) {
+    s.style.fontSize = '';
+    if (s.scrollWidth > s.clientWidth) {
+      s.style.fontSize = `${Math.max(0.75, Math.floor((100 * s.clientWidth) / s.scrollWidth) / 100)}em`;
+    }
+  }
+}
+// Also when the menu first gets its size (it may be hidden while rendering) and on resizes.
+new ResizeObserver(fitMapNames).observe($('map-select'));
+
 function renderMapSelect() {
   const box = $('map-select');
   box.innerHTML = '';
@@ -175,6 +187,7 @@ function renderMapSelect() {
   request.innerHTML = `${flagSvg('request')}<span>${t('requestMap')}</span>`;
   request.onclick = () => feedback('map-request');
   box.append(request);
+  fitMapNames();
   // Sub-maps (provinces, regions) of the chosen map: a list with the whole map first.
   const top = topMap(mapDef);
   const subs = MAPS.filter((x) => x.parent === top.id);
