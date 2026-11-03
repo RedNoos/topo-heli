@@ -1,10 +1,11 @@
 import type { Lang } from './i18n';
 
-/** Tally feedback forms (tally.so, EU), one per language; responses are mailed to the maker. Polish: none yet (English). */
+/** Tally feedback forms (tally.so, EU), one per language; responses are mailed to the maker. */
 const FORMS: Partial<Record<Lang, string>> = {
   nl: '2jEa2V',
   en: 'kbdeVJ',
   de: '4aaK7Y',
+  pl: '9NBylG',
   'sr-Latn': '1WAdZO',
   'sr-Cyrl': 'xVXDx9',
 };

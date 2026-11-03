@@ -41,8 +41,7 @@ prefix `topo-heli-test:`, no statistics, noindex and a TEST label. Locally: `npm
 - `src/i18n.ts`: UI texts. `en` defines the keys; `nl`, `de`, `pl` and `srLatn` must have all of them.
   Serbian is written once in Latin and transliterated to Cyrillic (tags, `{params}` and `&entities;`
   are skipped, so pass untranslatable names such as *basislijst topografie* as a `{param}`).
-- `src/feedback.ts`: Tally feedback forms, one per language (script loaded on first click; Polish
-  has none yet and uses the English one).
+- `src/feedback.ts`: Tally feedback forms, one per language (script loaded on first click).
 - `src/stats.ts`: GoatCounter events (production only).
 - `src/maps/index.ts`: map definitions (`MapDefinition` in `src/maps/types.ts`); province maps come
   from `src/maps/nl-provinces.json`, Serbian region maps from `src/maps/rs-regions.json`, German
