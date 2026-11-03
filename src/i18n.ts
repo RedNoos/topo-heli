@@ -71,7 +71,9 @@ const en = {
   kindAirport: 'airport',
   kindHistoric: 'historic site',
   kindDike: 'dike',
-  found: 'found',
+  foundOne: 'found',
+  foundFew: 'found',
+  foundMany: 'found',
   level: 'Level',
   pause: 'Pause',
   skip: 'Skip −10s',
@@ -225,7 +227,9 @@ const nl: Record<StringKey, string> = {
   kindAirport: 'luchthaven',
   kindHistoric: 'historische plek',
   kindDike: 'dijk',
-  found: 'gevonden',
+  foundOne: 'gevonden',
+  foundFew: 'gevonden',
+  foundMany: 'gevonden',
   level: 'Niveau',
   pause: 'Pauze',
   skip: 'Overslaan −10s',
@@ -377,7 +381,9 @@ const de: Record<StringKey, string> = {
   kindAirport: 'Flughafen',
   kindHistoric: 'historische Stätte',
   kindDike: 'Deich',
-  found: 'gefunden',
+  foundOne: 'gefunden',
+  foundFew: 'gefunden',
+  foundMany: 'gefunden',
   level: 'Level',
   pause: 'Pause',
   skip: 'Überspringen −10s',
@@ -529,7 +535,9 @@ const pl: Record<StringKey, string> = {
   kindAirport: 'lotnisko',
   kindHistoric: 'miejsce historyczne',
   kindDike: 'tama',
-  found: 'znalezione',
+  foundOne: 'znalezione',
+  foundFew: 'znalezione',
+  foundMany: 'znalezionych',
   level: 'Poziom',
   pause: 'Pauza',
   skip: 'Pomiń −10s',
@@ -681,7 +689,9 @@ const srLatn: Record<StringKey, string> = {
   kindAirport: 'aerodrom',
   kindHistoric: 'istorijsko mesto',
   kindDike: 'nasip',
-  found: 'pronađeno',
+  foundOne: 'pronađeno',
+  foundFew: 'pronađeno',
+  foundMany: 'pronađeno',
   level: 'Nivo',
   pause: 'Pauza',
   skip: 'Preskoči −10s',
@@ -896,7 +906,7 @@ export function t(key: StringKey, params: Record<string, string | number> = {}):
  * (incl. 11–14) -> Many. Polish: the same, but only 1 itself is One (21 -> Many).
  * English, Dutch and German only distinguish 1.
  */
-export function plural(base: 'placesFound', n: number): string {
+export function plural(base: 'placesFound' | 'found', n: number): string {
   const mod10 = n % 10;
   const mod100 = n % 100;
   const form =

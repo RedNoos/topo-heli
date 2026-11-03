@@ -36,6 +36,7 @@ const ui = {
   stats: $('stats'),
   skip: $('btn-skip'),
   score: $('score'),
+  scoreLabel: $('score-label'),
   level: $('level'),
   toast: $('toast'),
   best: $('best'),
@@ -679,6 +680,7 @@ function updateHud() {
   ui.timer.textContent = clock(secs);
   ui.timer.classList.toggle('low', !game.practice && secs <= 15 && state === 'playing');
   ui.score.textContent = game.practice ? `${game.found.length}/${game.targets.length}` : String(game.found.length);
+  ui.scoreLabel.textContent = plural('found', game.found.length);
   ui.level.textContent = String(game.level);
   ui.level.parentElement!.hidden = game.practice;
 
