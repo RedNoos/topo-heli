@@ -824,8 +824,10 @@ h1 {
 }
 
 /* One switch with two halves: clearly "either - or", unlike the map buttons. */
+/* The same size in every language: full width, three equal parts, room for two lines. */
 .segmented {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   border: 2px solid var(--ink);
   border-radius: 999px;
   overflow: hidden;
@@ -835,9 +837,11 @@ h1 {
   border: 0;
   background: #fff;
   color: var(--ink);
-  padding: 5px 13px;
+  padding: 4px 8px;
+  min-height: calc(2.5em + 8px);
   font: inherit;
   font-weight: 600;
+  line-height: 1.25;
   cursor: pointer;
 }
 
