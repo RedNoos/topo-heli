@@ -455,6 +455,9 @@ console.log(`  names: ${Object.keys(nzNames.nl).length} nl, ${Object.keys(nzName
 
 /** Whole Poland: towns from this size. */
 const PL_MIN_POP = 15000;
+/** Thins out Upper Silesia and the suburbs: a town this close to a place PL_SUBURB_FACTOR times its size. */
+const PL_SUBURB_KM = 10;
+const PL_SUBURB_FACTOR = 3;
 
 const poland = JSON.parse(await fs.readFile(path.join(ROOT, 'data', 'poland.json'), 'utf8'));
 const plQuery = `[out:json][timeout:300];
@@ -462,11 +465,13 @@ area["ISO3166-1"="PL"]["admin_level"="2"]->.a;
 node["place"~"^(city|town)$"](area.a);
 out;`;
 const plPop = popLookup(await geonames(1, 'PL'));
-const plAll = JSON.parse(await overpass('overpass-poland-places.json', plQuery, 'Polish towns'))
+let plAll = JSON.parse(await overpass('overpass-poland-places.json', plQuery, 'Polish towns'))
   .elements.filter((e) => e.tags?.name)
   .map((e) => ({ name: e.tags.name, lat: e.lat, lon: e.lon, pop: plPop(e.tags.name, e.lat, e.lon, e.tags.population), sr: e.tags['name:sr'] }))
   .filter((c) => c.pop >= PL_MIN_POP || poland.listed.includes(c.name))
   .sort((a, b) => b.pop - a.pop);
+// Unless listed (Sosnowiec, Bytom, Zabrze, Sopot stay).
+plAll = plAll.filter((c) => poland.listed.includes(c.name) || !plAll.some((o) => o.pop >= PL_SUBURB_FACTOR * c.pop && km(o, c) < PL_SUBURB_KM));
 const missingPl = poland.listed.filter((n) => !plAll.some((c) => c.name === n));
 if (missingPl.length) throw new Error(`Poland: listed places not found: ${missingPl.join(', ')}`);
 
