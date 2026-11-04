@@ -560,7 +560,6 @@ function translateStatic() {
   updateMuteLabel();
   if (game?.target) setTargetLabel(game.target);
   else if (shownHover) showHover();
-  ui.scoreLabel.textContent = plural('found', game?.found.length ?? 0);
   if (game) $('final-label').textContent = game.practice ? t('timeLabel') : plural('placesFound', game.found.length);
   renderOverGroups();
   renderLangPicker();
