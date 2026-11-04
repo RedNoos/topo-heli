@@ -11,9 +11,14 @@ description: Push Topo Heli to GitHub and wait for the GitHub Pages deploy, live
    to `test` runs the workflow file from that branch, so a branch behind `main` deploys the live site
    with an old `deploy.yml` (or none at all). If it fails, tell the user and offer to rebase the
    branch on `main` first; do not push it as is.
-4. Wait for the Pages run and get its result:
+4. Wait for the Pages run of the pushed commit and get its result (right after the push the run
+   may not be listed yet, and the newest run can be an older push):
    ```sh
-   id=$(gh run list --limit 1 --json databaseId --jq '.[0].databaseId')
+   sha=$(git rev-parse main)   # test site: git rev-parse <branch>
+   for i in $(seq 30); do
+     id=$(gh run list --commit "$sha" --workflow deploy.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+     [ -n "$id" ] && break; sleep 2
+   done
    gh run watch "$id" --exit-status > /dev/null 2>&1
    gh run view "$id" --json conclusion,headSha --jq '.conclusion + " " + .headSha[0:7]'
    ```

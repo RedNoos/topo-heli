@@ -3,7 +3,7 @@
 //   npm run build:physical            -> every map in PHYSICAL
 //   npm run build:physical -- serbia  -> one map
 //
-// Raw Overpass responses are cached in .cache/ (git-ignored). Output goes to
+// Raw Overpass responses are cached in .cache/ (git-ignored, see overpass.mjs). Output goes to
 // src/maps/<id>/physical.json (lon/lat; simplified).
 
 import fs from 'node:fs/promises';
@@ -12,6 +12,7 @@ import mapshaper from 'mapshaper';
 import { PROVINCES, SERBIA_REGIONS, GERMANY_REGIONS } from './provinces.mjs';
 import { toCyrillic, latinLeft, addFeatureNames, SERBIAN_FEATURE_NAMES } from './serbian.mjs';
 import { INSETS, shiftGeoJSON, shiftOsm } from './insets.mjs';
+import { overpass as overpassRaw } from './overpass.mjs';
 
 /** Province maps: rivers with less than this inside the province are not asked. */
 const MIN_PROVINCE_RIVER_KM = 8;
@@ -20,12 +21,6 @@ const MOUNTAIN_INSIDE_KM = 4;
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const CACHE = path.join(ROOT, '.cache');
-// Public Overpass instances, tried in order (the main one is often busy).
-const OVERPASS = [
-  'https://overpass-api.de/api/interpreter',
-  'https://overpass.private.coffee/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter',
-];
 
 // `level` is the game level from which the feature can be asked (1 = best known).
 // Rivers: 'Name', ['Name', [minLon, minLat, maxLon, maxLat]] to keep only the parts in that
@@ -477,48 +472,12 @@ async function overpass(key, query) {
   return shiftOsm(await overpassRaw(key, query), insets);
 }
 
-async function overpassRaw(key, query) {
-  const file = path.join(CACHE, `overpass-${key}.json`);
-  try {
-    return JSON.parse(await fs.readFile(file, 'utf8'));
-  } catch {
-    let res;
-    // Public servers are flaky: up to three rounds over all servers, pausing in between.
-    const attempts = [...OVERPASS, ...OVERPASS, ...OVERPASS];
-    for (const [i, url] of attempts.entries()) {
-      if (i > 0 && i % OVERPASS.length === 0) await new Promise((r) => setTimeout(r, 15000));
-      console.log(`  querying ${new URL(url).host} (${key})...`);
-      try {
-        res = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            Accept: 'application/json',
-            'User-Agent': 'topo-heli-map-builder/0.1 (hobby geography game)',
-          },
-          body: new URLSearchParams({ data: query }),
-        });
-      } catch (e) {
-        console.warn(`  ! ${e.cause?.code ?? e.message}, trying next server`);
-        res = { ok: false, status: 'no answer', text: async () => '' };
-        continue;
-      }
-      // An empty answer is usually a server hiccup: try the next server instead of caching it.
-      if (res.ok) {
-        const text = await res.clone().text();
-        if (JSON.parse(text).elements?.length) break;
-        console.warn(`  ! empty answer, trying next server`);
-        res = { ok: false, status: 'empty', text: async () => text };
-        continue;
-      }
-      console.warn(`  ! ${res.status}, trying next server`);
-    }
-    if (!res.ok) throw new Error(`Overpass failed (${res.status}): ${await res.text()}`);
-    const text = await res.text();
-    await fs.mkdir(CACHE, { recursive: true });
-    await fs.writeFile(file, text);
-    return JSON.parse(text);
-  }
+/** Targets of the map being built that were not found: the build fails before writing. */
+let notFound = [];
+/** Background water (`context` keys) only warns: it lists alternative spellings. */
+function missing(what, key = '') {
+  console.warn(`  ! ${what}`);
+  if (!key.startsWith('context')) notFound.push(what);
 }
 
 /** Builds a regex alternation matching Latin and Cyrillic spellings. */
@@ -633,7 +592,7 @@ async function buildRivers(id, cfg, key = 'rivers', waterways = 'river|canal') {
     for (const m of el.members ?? []) if (m.type === 'way' && m.role !== 'side_stream') add(m.ref, osmName, m.geometry, el.tags.waterway);
   }
   if (!ways.size) {
-    console.warn(`  ! no waterways found for ${key}`);
+    missing(`no waterways found for ${key}`, key);
     return [];
   }
   for (const { river, coords } of ways.values()) {
@@ -653,7 +612,7 @@ async function buildRivers(id, cfg, key = 'rivers', waterways = 'river|canal') {
   for (const { level, name, box, type } of entries) {
     const f = fc.features.find((x) => x.properties.feat === name);
     if (!f) {
-      console.warn(`  ! river not found: ${name}`);
+      missing(`river not found: ${name}`, key);
       continue;
     }
     const g = f.geometry;
@@ -703,7 +662,7 @@ async function buildLakes(id, cfg, key = 'lakes') {
   for (const { level, item: osmName, shown } of entries) {
     const f = fc.features.find((x) => x.properties.feat === osmName && x.geometry);
     if (!f) {
-      console.warn(`  ! lake not found: ${osmName}`);
+      missing(`lake not found: ${osmName}`, key);
       continue;
     }
     const g = f.geometry;
@@ -733,7 +692,7 @@ async function buildMountains(id, cfg) {
       .filter((el) => matchName(el.tags, [peak]))
       .sort((a, b) => (parseFloat(b.tags.ele) || 0) - (parseFloat(a.tags.ele) || 0));
     if (!hits.length) {
-      console.warn(`  ! peak not found: ${peak} (${name})`);
+      missing(`peak not found: ${peak} (${name})`);
       continue;
     }
     const h = hits[0];
@@ -875,7 +834,7 @@ async function buildAreas(id, cfg) {
     }
     if (item.outline) shapes = [featureOf([[...item.outline, item.outline[0]]])];
     if (!shapes.length) {
-      console.warn(`  ! area not found: ${item.name}`);
+      missing(`area not found: ${item.name}`);
       continue;
     }
     const out = await mapshaper.applyCommands(
@@ -884,7 +843,7 @@ async function buildAreas(id, cfg) {
     );
     const polys = polysOf(JSON.parse(out['out.json']));
     if (!polys.length) {
-      console.warn(`  ! area empty on land: ${item.name}`);
+      missing(`area empty on land: ${item.name}`);
       continue;
     }
     result.push({ name: item.name, level, ...(item.type ? { type: item.type } : {}), rings: round(polys.map((p) => p[0])), holes: round(polys.flatMap((p) => p.slice(1))) });
@@ -902,7 +861,7 @@ async function buildLines(id, cfg) {
       .filter((e) => e.type === 'way' && e.geometry)
       .map((e) => ({ type: 'Feature', properties: { feat: 1 }, geometry: { type: 'LineString', coordinates: e.geometry.map((p) => [p.lon, p.lat]) } }));
     if (!features.length) {
-      console.warn(`  ! line not found: ${item.name}`);
+      missing(`line not found: ${item.name}`);
       continue;
     }
     // Two carriageways: keep one line per stretch by simplifying the merged lines generously.
@@ -938,11 +897,12 @@ async function buildWaterAreas(id, cfg) {
   for (const { level, item } of entries) {
     const shapes = [];
     // An inland lake lies on the (Natural Earth) land: only its own islands are cut out.
-    const cut = item.inland ? { type: 'FeatureCollection', features: [] } : land;
+    // A copy: this area's islands must not stay in the land cut out of the next one.
+    const cut = { type: 'FeatureCollection', features: item.inland ? [] : [...land.features] };
     if (item.relation) {
       const rel = data.elements.find((e) => e.type === 'relation' && e.id === item.relation);
       if (!rel) {
-        console.warn(`  ! water area relation not found: ${item.name}`);
+        missing(`water area relation not found: ${item.name}`);
         continue;
       }
       const outer = (rel.members ?? []).filter((m) => m.type === 'way' && m.role !== 'inner' && m.geometry).map((m) => line(m.geometry));
@@ -966,7 +926,7 @@ async function buildWaterAreas(id, cfg) {
       else if (g?.type === 'MultiPolygon') polys.push(...g.coordinates);
     }
     if (!polys.length) {
-      console.warn(`  ! water area empty after cutting out land: ${item.name}`);
+      missing(`water area empty after cutting out land: ${item.name}`);
       continue;
     }
     // rings: outer rings; holes: islands (flying over an island is not over the water).
@@ -977,6 +937,7 @@ async function buildWaterAreas(id, cfg) {
 
 async function build(id, cfg) {
   console.log(`Building physical features for ${id}`);
+  notFound = [];
   const out = {
     rivers: await buildRivers(id, cfg),
     lakes: [...(await buildLakes(id, cfg)), ...(await buildWaterAreas(id, cfg))],
@@ -993,6 +954,8 @@ async function build(id, cfg) {
     mark(out.mountains);
     mark(out.areas, cfg.zonesCore === 'all');
     mark(out.landmarks, true);
+    const names = new Set([out.rivers, out.lakes, out.mountains, out.areas, out.landmarks].flatMap((list) => list?.map((x) => x.name) ?? []));
+    for (const name of cfg.core) if (!names.has(name)) missing(`core name not found: ${name}`);
   }
 
   // Background water (never asked): connections to the sea, river banks, harbours, …
@@ -1020,6 +983,7 @@ async function build(id, cfg) {
     water: await clipToHome(id, [...out.lakes.filter((l) => !l.holes).map((l) => l.rings), ...contextAreas], 'polygon'),
   };
 
+  if (notFound.length) throw new Error(`${id}: ${notFound.length} feature(s) not found (see the ! lines above); nothing written`);
   const file = path.join(ROOT, 'src', 'maps', id, 'physical.json');
   await fs.writeFile(file, JSON.stringify(out));
   const kb = ((await fs.stat(file)).size / 1024).toFixed(0);
@@ -1163,6 +1127,11 @@ async function buildDerived(id, fromId) {
 }
 
 const only = process.argv[2];
+const groups = ['provinces', 'regions', 'de-regions'];
+if (only && !PHYSICAL[only] && !groups.includes(only)) {
+  console.error(`Unknown map: ${only} (one of: ${[...Object.keys(PHYSICAL), ...groups].join(', ')})`);
+  process.exit(1);
+}
 for (const [id, cfg] of Object.entries(PHYSICAL)) {
   if (!only || only === id) await build(id, cfg);
 }

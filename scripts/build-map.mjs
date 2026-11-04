@@ -487,6 +487,10 @@ for (const r of GERMANY_REGIONS) {
 }
 
 const only = process.argv[2];
+if (only && !MAPS[only]) {
+  console.error(`Unknown map: ${only} (one of: ${Object.keys(MAPS).join(', ')})`);
+  process.exit(1);
+}
 for (const [id, cfg] of Object.entries(MAPS)) {
   if (!only || only === id) await buildMap(id, cfg);
 }

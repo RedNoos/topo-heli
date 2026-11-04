@@ -59,8 +59,8 @@ into `nl-provinces.json`, so always run it after `build:places`; `-- regions` / 
 rebuilds only the Serbian / German region files).
 
 - Sources: Natural Earth, CBS/PDOK (Dutch provinces, municipalities), OpenStreetMap via Overpass,
-  GeoNames. Downloads are cached in `.cache/`. The Overpass cache is keyed by name: bump the key
-  version when a query changes (or copy the old cache file if the query is identical).
+  GeoNames. Downloads are cached in `.cache/`. Overpass goes through `scripts/overpass.mjs`, which
+  stores each answer with its query and asks again when the query changes.
 - Curated input in `data/`:
   - `netherlands-cities.json`: Dutch places; `level` ≤ 2 = the 60 basislijst places (`core`).
   - `province-lists.json`: per province the well-known places added in "Alles vinden"

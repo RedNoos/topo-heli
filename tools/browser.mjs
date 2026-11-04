@@ -60,28 +60,30 @@ export async function openGame(browser, { map = 'netherlands', mode = 'free', la
   } catch {
     throw new Error(`Cannot open ${URL}: is the dev server running (npm run dev:lan)?`);
   }
+  // Both storage prefixes (live and test build, see src/env.ts), so a `dev:test` server works too.
   await page.evaluate(
     ({ lang, mode }) => {
       localStorage.clear();
-      localStorage.setItem('topo-heli:lang', lang);
-      localStorage.setItem('topo-heli:howto', 'closed');
-      if (mode.endsWith('physical')) localStorage.setItem('topo-heli:physical', '1');
-      if (mode.startsWith('discover')) localStorage.setItem('topo-heli:discover', '1');
-      if (mode === 'list') localStorage.setItem('topo-heli:practice', '1');
+      for (const p of ['topo-heli:', 'topo-heli-test:']) {
+        localStorage.setItem(`${p}lang`, lang);
+        localStorage.setItem(`${p}howto`, 'closed');
+        if (mode.endsWith('physical')) localStorage.setItem(`${p}physical`, '1');
+        if (mode.startsWith('discover')) localStorage.setItem(`${p}discover`, '1');
+        if (mode === 'list') localStorage.setItem(`${p}practice`, '1');
+      }
     },
     { lang, mode },
   );
   await page.reload({ waitUntil: 'networkidle0' });
-  // Map buttons are the top-level maps in MAPS order; provinces are chosen in the area select.
+  // Map buttons are the top-level maps; provinces/regions are chosen in the area select.
   const top = map.startsWith('nl-') ? 'netherlands' : map.startsWith('rs-') ? 'serbia' : map.startsWith('de-') ? 'germany' : map;
-  const index = { serbia: 0, netherlands: 1, germany: 2, finland: 3, 'new-zealand': 4, poland: 5, europe: 6 }[top];
-  await page.evaluate((i) => document.querySelectorAll('#map-select button')[i].click(), index);
-  await wait(900);
-  if (map !== top) {
-    await page.select('#region', map);
-    await wait(900);
-  }
-  await wait(600); // physical data loads lazily
+  const button = await page.$(`#map-select button[data-map="${top}"]`);
+  if (!button) throw new Error(`Unknown map: ${top}`);
+  await button.click();
+  if (map !== top) await page.select('#region', map);
+  // Wait until the map (and its physical data, which loads lazily) is in.
+  await page.waitForFunction((id) => window.__map().id === id && window.__map().ready, { timeout: 20000 }, map);
+  await wait(200); // a frame or two to draw
   return page;
 }
 

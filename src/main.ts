@@ -215,6 +215,7 @@ function renderMapSelect() {
   box.innerHTML = '';
   for (const m of MAPS.filter((x) => !x.parent)) {
     const b = document.createElement('button');
+    b.dataset.map = m.id;
     b.innerHTML = `${m.flag ? flagSvg(m.flag) : ''}<span>${mapName(m)}</span>`;
     b.classList.toggle('active', m === topMap(mapDef));
     b.onclick = () => void selectMap(m);
@@ -828,4 +829,11 @@ void selectMap(mapDef);
 requestAnimationFrame(frame);
 
 // Debug handle for automated tests / tinkering in the dev console.
-if (import.meta.env.DEV) Object.assign(window, { __game: () => game, __renderer: () => renderer });
+// `__map()`: the chosen map, and whether its data (with physical data when wanted) has loaded.
+if (import.meta.env.DEV) {
+  Object.assign(window, {
+    __game: () => game,
+    __renderer: () => renderer,
+    __map: () => ({ id: mapDef.id, ready: !!mapData && (!wantsPhysical() || !!mapData.physical) }),
+  });
+}

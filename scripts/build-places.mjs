@@ -24,6 +24,7 @@ import { unzipSync, strFromU8 } from 'fflate';
 import { PROVINCES, SERBIA_REGIONS, GERMANY_REGIONS } from './provinces.mjs';
 import { toCyrillic, latinLeft, osmSerbian, addFeatureNames, SERBIAN_FEATURE_NAMES, finnishToSerbian, isMaori, maoriToSerbian, polishToSerbian, germanToSerbian } from './serbian.mjs';
 import { INSETS, shiftOsm } from './insets.mjs';
+import { overpass } from './overpass.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const CACHE = path.join(ROOT, '.cache');
@@ -39,8 +40,6 @@ const osmPop = (tag) => parseInt((tag ?? '').replace(/\D/g, ''), 10) || 0;
 
 /** Municipality seats tagged with the population of the whole municipality. */
 const POP_FIX = { 'Velsen-Zuid': 1500, Borssele: 1500 };
-
-const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
 
 async function cached(file, fetcher) {
   const p = path.join(CACHE, file);
@@ -71,26 +70,6 @@ async function geonames(minPop = MIN_POP, country = 'NL') {
     .map((c) => ({ name: c[1], lat: +c[4], lon: +c[5], pop: +c[14] || 100, source: 'geonames' }));
 }
 
-/** Cached Overpass query (tried on every server, twice). */
-async function overpass(file, query, what) {
-  return cached(file, async () => {
-    console.log(`  querying Overpass for ${what}...`);
-    for (const [i, url] of [...OVERPASS, ...OVERPASS].entries()) {
-      if (i === OVERPASS.length) await new Promise((r) => setTimeout(r, 15000));
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json', 'User-Agent': 'topo-heli-map-builder/0.1 (hobby geography game)' },
-        body: new URLSearchParams({ data: query }),
-      });
-      if (res.ok) {
-        const text = await res.text();
-        if (JSON.parse(text).elements?.length) return text;
-      }
-    }
-    throw new Error(`Overpass failed for ${what}`);
-  });
-}
-
 /** Municipality seats ("admin_centre" of every gemeente) from OpenStreetMap. */
 async function seats() {
   const query = `[out:json][timeout:300];
@@ -98,8 +77,7 @@ area["ISO3166-1"="NL"]["admin_level"="2"]->.a;
 rel(area.a)["boundary"="administrative"]["admin_level"="8"]->.g;
 node(r.g:"admin_centre");
 out;`;
-  const raw = await overpass('overpass-netherlands-seats.json', query, 'municipality seats');
-  return JSON.parse(raw)
+  return (await overpass('netherlands-seats', query))
     .elements.filter((e) => e.type === 'node' && e.tags?.name && e.lon > 3) // not the Caribbean
     .map((e) => ({ name: e.tags.name, lat: e.lat, lon: e.lon, pop: osmPop(e.tags.population) || 1500, source: 'seat' }));
 }
@@ -294,7 +272,7 @@ const popLookup = (gnList) => (name, lat, lon, tag) => {
   return gn && (osm > 3 * gn || gn > 3 * osm) ? gn : osm;
 };
 const dePop = popLookup(await geonames(1, 'DE'));
-const deAll = JSON.parse(await overpass('overpass-germany-places.json', deQuery, 'German towns'))
+const deAll = (await overpass('germany-places', deQuery))
   .elements.filter((e) => e.tags?.name)
   .map((e) => {
     // name:de leaves out the Sorbian part ("Cottbus - Chóśebuz").
@@ -379,7 +357,7 @@ area["ISO3166-1"="FI"]["admin_level"="2"]->.a;
 node["place"~"^(city|town|village)$"](area.a);
 out;`;
 const fiPop = popLookup(await geonames(1, 'FI'));
-const fiAll = JSON.parse(await overpass('overpass-finland-places.json', fiQuery, 'Finnish towns'))
+const fiAll = (await overpass('finland-places', fiQuery))
   .elements.filter((e) => e.tags?.name && e.tags.place !== 'village')
   .map((e) => {
     // Finnish names, also where the Swedish one is the main name (Jakobstad: Pietarsaari).
@@ -435,7 +413,7 @@ node["place"~"^(city|town|village)$"](area.a);
 out;`;
 const nzPop = popLookup(await geonames(1, 'NZ'));
 const inNz = (e) => [NZ_BBOX, ...nzInsets.map((i) => i.box)].some(([w, s, e2, n]) => e.lon >= w && e.lon <= e2 && e.lat >= s && e.lat <= n);
-const nzRaw = JSON.parse(await overpass('overpass-new-zealand-places.json', nzQuery, 'New Zealand towns'));
+const nzRaw = await overpass('new-zealand-places', nzQuery);
 // Population before the shift (GeoNames has the real position).
 for (const e of nzRaw.elements) e.pop = nzPop(e.tags?.name, e.lat, e.lon, e.tags?.population);
 // Excluded and renamed places by their real position (before the inset shift).
@@ -492,7 +470,7 @@ area["ISO3166-1"="PL"]["admin_level"="2"]->.a;
 node["place"~"^(city|town)$"](area.a);
 out;`;
 const plPop = popLookup(await geonames(1, 'PL'));
-let plAll = JSON.parse(await overpass('overpass-poland-places.json', plQuery, 'Polish towns'))
+let plAll = (await overpass('poland-places', plQuery))
   .elements.filter((e) => e.tags?.name)
   .map((e) => ({ name: e.tags.name, lat: e.lat, lon: e.lon, pop: plPop(e.tags.name, e.lat, e.lon, e.tags.population), sr: osmSerbian(e.tags, e.tags.name) }))
   .filter((c) => c.pop >= PL_MIN_POP || poland.listed.includes(c.name))

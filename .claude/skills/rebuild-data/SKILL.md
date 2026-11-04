@@ -13,9 +13,10 @@ description: Rebuild Topo Heli's generated map data (geo, places, physical featu
      `nl-provinces.json`; `regions` / `de-regions` cut the Serbian / German regions from the
      country's data (`serbia` / `germany` rebuild both).
 2. Read the summary lines the scripts print (per province: places, rivers, waters, areas) and
-   compare them with before; `! ... not found` lines mean an Overpass name or query no longer matches.
-3. Overpass results are cached in `.cache/` by name: when a query changes, bump the cache key
-   version (or copy the old file if the query is identical); Overpass sometimes returns 500s,
-   so retry later instead of changing the query.
+   compare them with before. `! ... not found` lines (also core names) stop build:physical before
+   it writes the map: an Overpass name or query no longer matches, or a `core` name is misspelt.
+3. Overpass results are cached in `.cache/` with their query (`scripts/overpass.mjs`): a changed
+   query is asked again by itself. Overpass sometimes returns 500s or times out (the client tries
+   every server three times), so retry later instead of changing the query.
 4. `git diff --stat src/maps` should only touch the files you expected; then `npm run build`
    and `npm run playtest -- --map <affected map> --mode list` (or `physical`).
