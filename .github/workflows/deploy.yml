@@ -36,12 +36,19 @@ jobs:
         with:
           ref: test
           path: test-src
-      - if: steps.test-branch.outputs.exists == 'yes'
+      # A broken test branch must not block the live site: then the run deploys without /test/.
+      - id: test-build
+        if: steps.test-branch.outputs.exists == 'yes'
+        continue-on-error: true
         working-directory: test-src
         run: |
           npm ci
           npx tsc
           npx vite build --mode test --outDir ../dist/test --emptyOutDir
+      - if: steps.test-build.outcome == 'failure'
+        run: |
+          rm -rf dist/test
+          echo "::warning::Test branch build failed; deployed without /test/."
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
