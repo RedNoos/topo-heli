@@ -53,7 +53,7 @@ export interface PhysicalData {
   /** Located at the range's main peak. */
   mountains: { name: string; level: number; core?: boolean; lat: number; lon: number; ele: number | null }[];
   /** Regions found by flying into them (provinces, German states, Finnish regions, islands, Veluwe, ...). */
-  areas?: { name: string; level: number; type?: 'province' | 'state' | 'region' | 'island'; core?: boolean; rings: LonLat[][]; holes?: LonLat[][] }[];
+  areas?: { name: string; level: number; type?: 'province' | 'voivodeship' | 'state' | 'region' | 'island'; core?: boolean; rings: LonLat[][]; holes?: LonLat[][] }[];
   /** Point features other than mountains (Schiphol, Waitangi Treaty Grounds). */
   landmarks?: { name: string; level: number; type: 'airport' | 'historic'; core?: boolean; lat: number; lon: number }[];
   /**

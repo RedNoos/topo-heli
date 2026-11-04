@@ -177,8 +177,15 @@ function fitMapNames() {
     box.style.fontSize = `${Math.max(0.75, Math.floor((100 * span.clientWidth) / widest) / 100)}em`;
   }
 }
-// Also when the menu first gets its size (it may be hidden while rendering) and on resizes.
-new ResizeObserver(fitMapNames).observe($('map-select'));
+// Also when the menu first gets its size (it may be hidden while rendering) and when its width
+// changes. Only the width: fitMapNames changes the height itself. Deferred to the next frame, as
+// resizing the observed element inside its own callback is a ResizeObserver loop error.
+let mapSelectWidth = 0;
+new ResizeObserver(([entry]) => {
+  if (entry.contentRect.width === mapSelectWidth) return;
+  mapSelectWidth = entry.contentRect.width;
+  requestAnimationFrame(fitMapNames);
+}).observe($('map-select'));
 
 function renderMapSelect() {
   const box = $('map-select');
@@ -238,7 +245,7 @@ function renderMapSelect() {
         ? t('modeListDescAll', { n })
         : mapDef.practiceList === 'selection'
           ? t('modeListDescSelection', { n })
-          : t('modeListDesc', { n, list, extra: mapDef.parent ? t('modeListExtra') : '' });
+          : t('modeListDesc', { n, names: plural('names', n), list, extra: mapDef.parent ? t('modeListExtra') : '' });
   $('howto-levels').hidden = practiceOn || discoverOn;
   $('howto-flash').hidden = discoverOn;
   $('howto-discover').hidden = !discoverOn;
@@ -266,7 +273,7 @@ function renderMapSelect() {
         ? t('howtoPracticeAll', { n })
         : mapDef.practiceList === 'selection'
           ? t('howtoPracticeSelection', { n })
-          : t('howtoPractice', { n, list, extra: mapDef.parent ? t('practiceExtra') : '' });
+          : t('howtoPractice', { n, names: plural('names', n), list, extra: mapDef.parent ? t('practiceExtra') : '' });
     const best = getBestTime(scoreId());
     ui.best.innerHTML = best > 0 ? t('bestPractice', { map: mapName(mapDef), t: clock(best) }) : '';
     $('howto-practice').hidden = false;
@@ -375,7 +382,7 @@ function newGame(start: boolean) {
 }
 
 /** Texts per kind of target; subkinds (canal, sea, province, ...) have their own words. */
-const SUB = { canal: 'Canal', dike: 'Dike', water: 'Water', province: 'Province', state: 'State', region: 'Region', island: 'Island', airport: 'Airport', historic: 'Historic' } as const;
+const SUB = { canal: 'Canal', dike: 'Dike', water: 'Water', province: 'Province', voivodeship: 'Voivodeship', state: 'State', region: 'Region', island: 'Island', airport: 'Airport', historic: 'Historic' } as const;
 const KIND = { city: 'City', river: 'River', lake: 'Lake', mountain: 'Mountain', area: 'Area', landmark: 'Airport' } as const;
 const word = (t: Target) => (t.sub ? SUB[t.sub] : KIND[t.kind]);
 const flyToKey = (t: Target): StringKey => (t.kind === 'city' ? 'flyTo' : `flyTo${word(t)}`) as StringKey;
@@ -531,6 +538,7 @@ function translateStatic() {
   updateMuteLabel();
   if (game?.target) setTargetLabel(game.target);
   else if (shownHover) showHover();
+  ui.scoreLabel.textContent = plural('found', game?.found.length ?? 0);
   if (game) $('final-label').textContent = game.practice ? t('timeLabel') : plural('placesFound', game.found.length);
   renderOverGroups();
   renderLangPicker();

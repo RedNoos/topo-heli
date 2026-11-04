@@ -334,7 +334,7 @@ const PHYSICAL = {
           ['Dolnośląskie', 'Lower Silesian'], ['Pomorskie', 'Pomeranian'], ['Zachodniopomorskie', 'West Pomeranian'],
           ['Warmińsko-Mazurskie', 'Warmian-Masurian'], ['Podlaskie', 'Podlachian'], ['Kujawsko-Pomorskie', 'Kuyavian-Pomeranian'],
           ['Lubuskie', 'Lubusz'], ['Podkarpackie', 'Subcarpathian'], ['Świętokrzyskie', 'Świętokrzyskie'],
-        ].map(([name, ne]) => ({ name, type: 'province', admin1: ['POL', ne] })),
+        ].map(([name, ne]) => ({ name, type: 'voivodeship', admin1: ['POL', ne] })),
         // The Jura from Kraków to Częstochowa and Wieluń.
         { name: 'Wyżyna Krakowsko-Częstochowska', outline: [[19.95, 50.08], [20.05, 50.18], [19.65, 50.45], [19.4, 50.75], [19.2, 50.98], [18.95, 51.0], [18.95, 50.8], [19.2, 50.5], [19.45, 50.2], [19.7, 50.05]] },
         // Upper Silesia: Gliwice - Katowice - Sosnowiec.
@@ -1119,7 +1119,7 @@ async function buildDerived(id, fromId) {
     return grid.filter((p) => a.rings.some((r) => insideRingLL(p, r)));
   };
   const areas = (from.areas ?? []).filter((a) => {
-    if (a.type === 'province' || a.type === 'state') return false;
+    if (a.type === 'province' || a.type === 'state' || a.type === 'voivodeship') return false;
     const pts = interior(a);
     return pts.length > 0 && pts.filter(inHome).length >= 0.5 * pts.length;
   });

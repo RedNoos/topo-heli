@@ -479,9 +479,12 @@ if (missingPl.length) throw new Error(`Poland: listed places not found: ${missin
 console.log('Building Polish place list');
 const plSeen = new Set();
 const plCities = [];
+/** OSM name:sr of the kept towns only (not of a dropped smaller namesake). */
+const plSr = {};
 for (const c of plAll) {
   if (plSeen.has(c.name)) continue; // same name twice: keep the bigger one
   plSeen.add(c.name);
+  if (c.sr) plSr[c.name] = c.sr;
   plCities.push({ name: c.name, lat: round4(c.lat), lon: round4(c.lon), pop: c.pop, ...(poland.listed.includes(c.name) ? { listed: true } : {}) });
 }
 await fs.writeFile(path.join(ROOT, 'src', 'maps', 'poland', 'cities.json'), '[\n' + plCities.map((c) => JSON.stringify(c)).join(',\n') + '\n]\n');
@@ -491,7 +494,7 @@ console.log(`  Poland ${plCities.length} places (${plCities.filter((c) => c.list
 // physical features' names are added by scripts/build-physical.mjs).
 const plNames = { en: {}, nl: {}, de: {}, sr: {} };
 for (const c of plCities) plNames.sr[c.name] = toCyrillic(polishToSerbian(c.name));
-for (const c of plAll) if (c.sr) plNames.sr[c.name] = c.sr;
+Object.assign(plNames.sr, plSr);
 for (const [name, tr] of Object.entries(poland.names)) {
   for (const lang of ['en', 'nl', 'de']) if (tr[lang]) plNames[lang][name] = tr[lang];
   if (tr.sr) plNames.sr[name] = toCyrillic(tr.sr);
