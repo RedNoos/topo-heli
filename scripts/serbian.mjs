@@ -7,12 +7,16 @@ const LAT_CYR = [
   ['v', 'в'], ['z', 'з'], ['ž', 'ж'],
 ];
 
-/** Serbian Latin -> Cyrillic. */
-export function toCyrillic(s) {
+/**
+ * Serbian Latin -> Cyrillic. `digraphs: false` for names transcribed from languages where n+j,
+ * l+j, d+ž are two sounds (Finnish Kokemäenjoki: Кокеменјоки, not Кокемењоки).
+ */
+export function toCyrillic(s, { digraphs = true } = {}) {
+  const table = digraphs ? LAT_CYR : LAT_CYR.slice(3);
   let out = '';
   for (let i = 0; i < s.length; ) {
     const lower = s.slice(i).toLowerCase();
-    const hit = LAT_CYR.find(([l]) => lower.startsWith(l));
+    const hit = table.find(([l]) => lower.startsWith(l));
     if (!hit) {
       out += s[i++];
       continue;
@@ -23,6 +27,18 @@ export function toCyrillic(s) {
   }
   return out;
 }
+
+/** Latin letters left in a Cyrillic name (a typo in the data, or a letter Serbian has no rule for). */
+export const latinLeft = (s) => /[A-Za-zÀ-ɏ]/.test(s.replace(/ \([A-Z]{1,3}\)$/, ''));
+
+/**
+ * OSM name:sr without a qualifier the place's own name does not have ("Полковице (Пољска)",
+ * "Срем (град)"); kept where the name has one too ("Wetter (Ruhr)": "Ветер (Рур)").
+ */
+export const osmSerbian = (tags, name) => {
+  const sr = tags['name:sr'];
+  return sr && !/\)$/.test(name) ? sr.replace(/ \([^)]*\)$/, '') : sr;
+};
 
 const FINNISH_LETTERS = { ä: 'e', ö: 'e', y: 'i', å: 'o', w: 'v', x: 'ks', q: 'k', c: 'k' };
 
@@ -85,4 +101,54 @@ export function polishToSerbian(name) {
     s = s.replace(new RegExp(pattern, 'giu'), (m) => (m[0] === m[0].toLowerCase() ? sr : sr[0].toUpperCase() + sr.slice(1)));
   }
   return s;
+}
+
+/** Start of a word. */
+const DE_START = '(?<=^|[\\s-])';
+/**
+ * [pattern, Serbian] in order: c and z first (the s -> z below must stay z), long patterns
+ * before short ones; ch -> ĥ until the h after a vowel is dropped.
+ */
+const GERMAN_RULES = [
+  ['ck', 'k'], ['c(?![ehiy])', 'k'], ['tz', 'c'], ['z', 'c'],
+  ['tsch', 'č'], ['dsch', 'dž'], ['sch', 'š'], ['chs', 'ks'], [`${DE_START}ch`, 'k'], ['ch', 'ĥ'],
+  [`${DE_START}s(?=[pt])`, 'š'], [`${DE_START}s(?=[aeiouäöüy])`, 'z'], ['stadt', 'štat'], ['stein', 'štajn'],
+  ['(?<=[aeiouäöüy])s(?=[aeiouäöüy])', 'z'],
+  ['ei', 'aj'], ['ey', 'aj'], ['ai', 'aj'], ['ay', 'aj'], ['eu', 'oj'], ['äu', 'oj'], ['ie', 'i'],
+  ['(?<=[aeiouäöü])h(?![aeiouäöü])', ''], ['ä', 'e'], ['ö', 'e'], ['ü', 'i'], ['ß', 's'],
+  ['dt', 't'], ['th', 't'], ['ph', 'f'], ['qu', 'kv'],
+  ['v', 'f'], ['w', 'v'], ['x', 'ks'], ['y', 'i'], ['ow(?!\\p{L})', 'ov'], ['ĥ', 'h'],
+];
+
+/**
+ * German name -> Serbian Latin, as Serbian transcribes it: sch -> š, ei -> aj, eu -> oj, z -> c,
+ * w -> v, v -> f, ü/ö/ä -> i/e/e, s before a vowel at the start and between vowels -> z, st/sp at
+ * the start -> št/šp, double letters single (Wiesbaden: Vizbaden, Stuttgart: Štutgart).
+ */
+export function germanToSerbian(name) {
+  let s = name;
+  for (const [pattern, sr] of GERMAN_RULES) {
+    s = s.replace(new RegExp(pattern, 'giu'), (m) => (!sr || m[0] === m[0].toLowerCase() ? sr : sr[0].toUpperCase() + sr.slice(1)));
+  }
+  return s.replace(/(\p{L})\1+/giu, '$1');
+}
+
+/**
+ * Serbian names of the physical features, transcribed where the table has none (both
+ * build-places and build-physical write names.sr.json, so both add them); `locale` sorts the tables.
+ * New Zealand: only Māori names are transcribed (English ones are translated in data/).
+ */
+export const SERBIAN_FEATURE_NAMES = {
+  finland: { transcribe: finnishToSerbian, digraphs: false, locale: 'fi' },
+  'new-zealand': { transcribe: maoriToSerbian, only: isMaori, locale: 'en' },
+  poland: { transcribe: polishToSerbian, locale: 'pl' },
+  germany: { transcribe: germanToSerbian, digraphs: false, locale: 'de' },
+};
+
+/** Adds the transcribed names of the features in `physical` to `names`; returns the names still missing. */
+export function addFeatureNames(id, names, physical) {
+  const { transcribe, only = () => true, digraphs = true } = SERBIAN_FEATURE_NAMES[id];
+  const all = [...physical.rivers, ...physical.lakes, ...physical.mountains, ...(physical.areas ?? [])];
+  for (const x of all) if (!names[x.name] && only(x.name)) names[x.name] = toCyrillic(transcribe(x.name), { digraphs });
+  return all.filter((x) => !names[x.name]).map((x) => x.name);
 }

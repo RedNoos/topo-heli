@@ -73,7 +73,8 @@ rebuilds only the Serbian / German region files).
   - `poland.json`: the 60 listed Polish places (with 40 physical `core` names: 100; no official
     list exists) and translations; other Serbian names are transcribed (`polishToSerbian`).
   - `germany.json`: the 60 listed German places ("Find them all", with 40 physical `core` names
-    in build-physical: 100), OSM name fixes, and English/Dutch/Serbian (Latin) names.
+    in build-physical: 100), OSM name fixes, and English/Dutch/Serbian (Latin) names; other Serbian
+    names come from OSM `name:sr` or are transcribed (`germanToSerbian`).
 - `scripts/provinces.mjs`: province settings (CBS name, capital, `minPop`, `time`, `skipPhysical`),
   the Serbian regions (`SERBIA_REGIONS`: districts, capital, name key) and the German ones
   (`GERMANY_REGIONS`: Länder, capital, name key). Serbian region places are split from

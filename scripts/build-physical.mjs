@@ -10,7 +10,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import mapshaper from 'mapshaper';
 import { PROVINCES, SERBIA_REGIONS, GERMANY_REGIONS } from './provinces.mjs';
-import { toCyrillic, finnishToSerbian, isMaori, maoriToSerbian, polishToSerbian } from './serbian.mjs';
+import { toCyrillic, latinLeft, addFeatureNames, SERBIAN_FEATURE_NAMES } from './serbian.mjs';
 import { INSETS, shiftGeoJSON, shiftOsm } from './insets.mjs';
 
 /** Province maps: rivers with less than this inside the province are not asked. */
@@ -1024,27 +1024,18 @@ async function build(id, cfg) {
   await fs.writeFile(file, JSON.stringify(out));
   const kb = ((await fs.stat(file)).size / 1024).toFixed(0);
   console.log(`  ${out.rivers.length} rivers, ${out.lakes.length} lakes, ${out.mountains.length} mountains -> ${path.relative(ROOT, file)} (${kb} KB)`);
-  if (SERBIAN_FEATURE_NAMES[id]) await addSerbianNames(id, out, SERBIAN_FEATURE_NAMES[id]);
+  if (SERBIAN_FEATURE_NAMES[id]) await addSerbianNames(id, out);
 }
 
-/**
- * Serbian names of the features, transcribed where names.sr.json (build-places) has none.
- * New Zealand: only Māori names are transcribed (English ones are translated in data/).
- */
-const SERBIAN_FEATURE_NAMES = {
-  finland: { transcribe: finnishToSerbian, locale: 'fi' },
-  'new-zealand': { transcribe: maoriToSerbian, locale: 'en', only: isMaori },
-  poland: { transcribe: polishToSerbian, locale: 'pl' },
-};
-
-async function addSerbianNames(id, out, { transcribe, locale, only = () => true }) {
+/** Serbian names of the features, transcribed where names.sr.json (build-places) has none. */
+async function addSerbianNames(id, out) {
   const file = path.join(ROOT, 'src', 'maps', id, 'names.sr.json');
   const names = JSON.parse(await fs.readFile(file, 'utf8'));
-  const all = [...out.rivers, ...out.lakes, ...out.mountains, ...(out.areas ?? [])];
-  for (const x of all) if (!names[x.name] && only(x.name)) names[x.name] = toCyrillic(transcribe(x.name));
-  const missing = all.filter((x) => !names[x.name]).map((x) => x.name);
+  const missing = addFeatureNames(id, names, out);
   if (missing.length) console.warn(`  ! no Serbian name: ${missing.join(', ')}`);
-  const sorted = Object.fromEntries(Object.entries(names).sort(([x], [y]) => x.localeCompare(y, locale)));
+  const latin = Object.entries(names).filter(([, v]) => latinLeft(v));
+  if (latin.length) console.warn(`  ! Latin letters in Serbian names: ${latin.map(([k, v]) => `${k}: ${v}`).join(', ')}`);
+  const sorted = Object.fromEntries(Object.entries(names).sort(([x], [y]) => x.localeCompare(y, SERBIAN_FEATURE_NAMES[id].locale)));
   await fs.writeFile(file, JSON.stringify(sorted, null, 2) + '\n');
 }
 
