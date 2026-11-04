@@ -1,7 +1,7 @@
 import type { Lang } from './i18n';
 
 /** Tally feedback forms (tally.so, EU), one per language; responses are mailed to the maker. */
-const FORMS: Partial<Record<Lang, string>> = {
+const FORMS: Record<Lang, string> = {
   nl: '2jEa2V',
   en: 'kbdeVJ',
   de: '4aaK7Y',
@@ -38,7 +38,7 @@ function loadTally(): Promise<TallyApi | undefined> {
 }
 
 export async function openFeedback(context: FeedbackContext) {
-  const id = FORMS[context.lang] ?? FORMS.en!;
+  const id = FORMS[context.lang];
   const hiddenFields = {
     type: context.type,
     map: context.map,

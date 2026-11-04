@@ -159,20 +159,42 @@ const mapName = (m: MapDefinition) => (m.nameKey ? t(m.nameKey) : (m.name ?? m.i
 /** The top-level map a (sub-)map belongs to, e.g. the Netherlands for a province. */
 const topMap = (m: MapDefinition) => MAPS.find((x) => x.id === m.parent) ?? m;
 
+const measureCtx = document.createElement('canvas').getContext('2d')!;
+const widestCache = new Map<string, number>();
+
 /**
- * One font size for all map buttons, the same in every language: the longest map name of all
- * languages (Nieuw-Zeeland) must fit a half-width button. Only narrow screens get a smaller one.
+ * Width in px of the widest of these texts in the element's font (uppercased plus letter
+ * spacing for `upper`). Cached per font: the texts are the same in every language.
+ */
+function widestText(el: HTMLElement, key: string, texts: () => string[], upper = false): number {
+  const cs = getComputedStyle(el);
+  const font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  const cacheKey = `${key}|${font}`;
+  let w = widestCache.get(cacheKey);
+  if (w === undefined) {
+    measureCtx.font = font;
+    const spacing = upper ? parseFloat(cs.letterSpacing) || 0 : 0;
+    w = Math.ceil(Math.max(...texts().map((s) => measureCtx.measureText(upper ? s.toUpperCase() : s).width + spacing * s.length))) + 1;
+    widestCache.set(cacheKey, w);
+  }
+  return w;
+}
+
+/**
+ * One font size for all map buttons, the same in every language: the settings label column is
+ * as wide as the widest label of all languages, and the longest map name of all languages
+ * (Nieuw-Zeeland) must fit a half-width button. Only narrow screens get a smaller one.
  */
 function fitMapNames() {
   const box = $('map-select');
+  const label = document.querySelector<HTMLElement>('.settings .row-label')!;
+  const settings = label.parentElement!;
+  settings.style.setProperty('--label-width', `${widestText(label, 'labels', () => (['mapLabel', 'region', 'modeLabel'] as const).flatMap((k) => tAll(k)), true)}px`);
   box.style.fontSize = '';
   const span = box.querySelector<HTMLElement>('button > span');
   if (!span?.clientWidth) return; // hidden: the ResizeObserver calls again once it is shown
-  const cs = getComputedStyle(span);
-  const ctx = document.createElement('canvas').getContext('2d')!;
-  ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
-  const names = MAPS.filter((m) => !m.parent).flatMap((m) => (m.nameKey ? tAll(m.nameKey) : [mapName(m)]));
-  const widest = Math.max(...names.map((n) => ctx.measureText(n).width)) + 1;
+  const names = () => MAPS.filter((m) => !m.parent).flatMap((m) => (m.nameKey ? tAll(m.nameKey) : [mapName(m)]));
+  const widest = widestText(span, 'maps', names);
   if (widest > span.clientWidth) {
     box.style.fontSize = `${Math.max(0.75, Math.floor((100 * span.clientWidth) / widest) / 100)}em`;
   }

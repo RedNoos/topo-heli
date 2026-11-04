@@ -787,9 +787,9 @@ h1 {
 
 .settings {
   display: grid;
-  /* As wide as the widest label of all languages (Начин игре), so the map buttons and their
-     font size (fitMapNames) are the same in every language. */
-  grid-template-columns: minmax(84px, auto) 1fr;
+  /* --label-width: the widest label of all languages, set by fitMapNames, so the map buttons
+     and their font size are the same in every language. */
+  grid-template-columns: var(--label-width, auto) 1fr;
   align-items: center;
   gap: 10px 12px;
   text-align: left;
