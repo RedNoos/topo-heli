@@ -522,6 +522,7 @@ function endGame() {
 }
 
 function start() {
+  if (!mapData) return; // map still loading
   track(`start/${scoreId()}`);
   sfx.unlock();
   newGame(true);
@@ -529,7 +530,10 @@ function start() {
 
 function togglePause() {
   if (state === 'playing') show('paused');
-  else if (state === 'paused') show('playing');
+  else if (state === 'paused') {
+    sfx.unlock(); // the sound may have been stopped while the page was in the background
+    show('playing');
+  }
 }
 
 function toggleMute() {
@@ -691,6 +695,8 @@ async function share(button: HTMLElement) {
   try {
     await navigator.clipboard.writeText(`${text} ${url}`);
   } catch {
+    // No clipboard (http, permission denied): show the text to copy by hand.
+    prompt(button.textContent ?? '', `${text} ${url}`);
     return;
   }
   button.textContent = t('linkCopied');
@@ -722,6 +728,18 @@ window.addEventListener('resize', () => {
   renderer?.resize();
   updateInsets();
 });
+/** Moving the window to a screen with another pixel ratio does not always fire `resize`. */
+function watchPixelRatio() {
+  matchMedia(`(resolution: ${devicePixelRatio}dppx)`).addEventListener(
+    'change',
+    () => {
+      renderer?.resize();
+      watchPixelRatio();
+    },
+    { once: true },
+  );
+}
+watchPixelRatio();
 
 // ---------- Main loop ----------
 

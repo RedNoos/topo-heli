@@ -65,6 +65,14 @@ export function insideRing(p: Pt, ring: Pt[]) {
   return inside;
 }
 
+/** Inside a lake or area: even-odd over all rings and holes, so an island in a hole (Baarle) counts as inside. */
+function insideShape(t: Target, p: Pt) {
+  let inside = false;
+  for (const r of t.rings!) if (insideRing(p, r)) inside = !inside;
+  for (const h of t.holes ?? []) if (insideRing(p, h)) inside = !inside;
+  return inside;
+}
+
 /** Distance from a point to the target's outline (inside an area: how deep inside it is). */
 export function edgeDistance(t: Target, p: Pt): number {
   return polylineDistance(p, [...(t.rings ?? []), ...(t.holes ?? [])]);
@@ -73,11 +81,7 @@ export function edgeDistance(t: Target, p: Pt): number {
 /** Distance from a point to the target's geometry (0 inside a lake or area). */
 export function distanceTo(t: Target, p: Pt): number {
   if (t.lines) return polylineDistance(p, t.lines);
-  if (t.rings) {
-    const holes = t.holes ?? [];
-    const inside = t.rings.some((r) => insideRing(p, r)) && !holes.some((h) => insideRing(p, h));
-    return inside ? 0 : polylineDistance(p, [...t.rings, ...holes]);
-  }
+  if (t.rings) return insideShape(t, p) ? 0 : edgeDistance(t, p);
   return dist(p.x, p.y, t.x, t.y);
 }
 
@@ -114,13 +118,30 @@ function deepestPoint(t: Target): { x: number; y: number; depth: number } {
   let best = { x: (minX + maxX) / 2, y: (minY + maxY) / 2, depth: 0 };
   const tryAt = (x: number, y: number) => {
     const p = { x, y };
-    if (!t.rings!.some((r) => insideRing(p, r)) || t.holes?.some((h) => insideRing(p, h))) return;
+    if (!insideShape(t, p)) return;
     const depth = edgeDistance(t, p);
     if (depth > best.depth) best = { x, y, depth };
   };
   let step = Math.max(maxX - minX, maxY - minY) / 24;
   for (let x = minX + step / 2; x < maxX; x += step) {
     for (let y = minY + step / 2; y < maxY; y += step) tryAt(x, y);
+  }
+  // A long thin lake can fall between the grid points: then scan lines and try the middle of each stretch inside.
+  if (!best.depth) {
+    const edges = [...t.rings!, ...(t.holes ?? [])];
+    for (let k = 1; k < 100; k++) {
+      const y = minY + ((maxY - minY) * k) / 100;
+      const xs: number[] = [];
+      for (const r of edges) {
+        for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+          const a = r[i];
+          const b = r[j];
+          if (a.y > y !== b.y > y) xs.push(((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x);
+        }
+      }
+      xs.sort((a, b) => a - b);
+      for (let i = 1; i < xs.length; i += 2) tryAt((xs[i - 1] + xs[i]) / 2, y);
+    }
   }
   for (let round = 0; round < 4; round++) {
     const { x: cx, y: cy } = best;

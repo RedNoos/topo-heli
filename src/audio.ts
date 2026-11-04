@@ -3,10 +3,10 @@ export class Sfx {
   private ctx: AudioContext | null = null;
   muted = false;
 
-  /** Must be called from a user gesture (browser autoplay rules). */
+  /** Must be called from a user gesture (browser autoplay rules); also after backgrounding ('interrupted' on iOS). */
   unlock() {
     this.ctx ??= new AudioContext();
-    if (this.ctx.state === 'suspended') void this.ctx.resume();
+    if (this.ctx.state !== 'running') this.ctx.resume().catch(() => {});
   }
 
   private tone(freq: number, start: number, dur: number, type: OscillatorType = 'sine', gain = 0.15) {
