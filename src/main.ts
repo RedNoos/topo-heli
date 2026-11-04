@@ -141,6 +141,7 @@ function show(next: State) {
   ui.over.hidden = next !== 'over';
   ui.hud.hidden = next === 'menu';
   input.reset();
+  input.active = next === 'playing';
   updateInsets();
 }
 
@@ -323,17 +324,22 @@ async function selectMap(def: MapDefinition) {
   discoverOn = loadOption(DISCOVER_KEY);
   practiceOn = !discoverOn && !!def.practice && loadOption(PRACTICE_KEY);
   renderMapSelect();
+  const withPhysical = wantsPhysical();
   const [data, physical, serbianNames, dutchNames, germanNames, polishNames, englishNames] = await Promise.all([
     def.load(),
-    wantsPhysical() ? def.loadPhysical?.() : undefined,
+    withPhysical ? def.loadPhysical?.() : undefined,
     def.loadSerbianNames?.(),
     def.loadDutchNames?.(),
     def.loadGermanNames?.(),
     def.loadPolishNames?.(),
     def.loadEnglishNames?.(),
   ]);
+  // Ignore if the player picked another map while this one loaded.
+  if (def !== mapDef) return;
   setPlaceNames(def.placeNames, serbianNames, dutchNames, germanNames, polishNames, englishNames);
   mapData = { ...data, physical };
+  // Physical ticked while the map loaded: load it now (optionChanged also renders and redraws).
+  if (wantsPhysical() && !withPhysical) return optionChanged();
   renderMapSelect();
   // A non-started game gives the menu a live map in the background.
   newGame(false);
@@ -643,7 +649,8 @@ async function optionChanged() {
     mapData = { ...mapData, physical };
     renderMapSelect(); // the Basislijst count includes the waters and areas
   }
-  newGame(false); // redraw the menu background with/without the detailed water
+  // Not while a game started during the load is running: the new data is for the next game.
+  if (state === 'menu') newGame(false); // redraw the menu background with/without the detailed water
 }
 $('btn-again').onclick = start;
 $('btn-menu').onclick = () => {
@@ -693,11 +700,16 @@ $('btn-share').onclick = (e) => void share(e.currentTarget as HTMLElement);
 $('btn-share-over').onclick = $('btn-share').onclick;
 
 window.addEventListener('keydown', (e) => {
-  if (e.repeat) return;
+  if (e.repeat || e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.code === 'Escape' || e.code === 'KeyP') togglePause();
   else if (e.code === 'KeyN' && state === 'playing') game?.skip();
   else if (e.code === 'KeyM') toggleMute();
-  else if ((e.code === 'Enter' || e.code === 'Space') && (state === 'menu' || state === 'over')) {
+  else if (
+    (e.code === 'Enter' || e.code === 'Space') &&
+    (state === 'menu' || state === 'over') &&
+    // On a focused button, list or link the key is that control's own action.
+    !(e.target as Element).closest?.('button, select, input, summary, a, [role=option]')
+  ) {
     e.preventDefault();
     start();
   }
@@ -778,7 +790,11 @@ try {
 } catch {
   howtoBox.open = true;
 }
+// Setting `open` above also fires a toggle event; only store what the player changed.
+let howtoOpen = howtoBox.open;
 howtoBox.ontoggle = () => {
+  if (howtoBox.open === howtoOpen) return;
+  howtoOpen = howtoBox.open;
   try {
     localStorage.setItem(HOWTO_KEY, howtoBox.open ? 'open' : 'closed');
   } catch {

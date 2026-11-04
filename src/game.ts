@@ -270,6 +270,8 @@ export class Game {
     } else {
       this.timeLeft = Math.max(0, this.timeLeft - CONFIG.skipPenalty);
     }
+    // The time spent on a skipped name does not count for the next one found.
+    this.lastFoundAt = this.elapsed;
     this.emit({ type: 'skipped', target: this.target });
     this.nextTarget();
   }

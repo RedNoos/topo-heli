@@ -22,9 +22,13 @@ export class Input {
   private pressed = new Set<string>();
   private touchId: number | null = null;
   joystick: Joystick | null = null;
+  /** Keys only steer (and keep the page from scrolling) while a game is being played. */
+  active = false;
 
   constructor(surface: HTMLElement) {
     window.addEventListener('keydown', (e) => {
+      // Shortcuts such as Cmd+S get no keyup on macOS, so the key would stick.
+      if (!this.active || e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.code in KEYS) {
         this.pressed.add(e.code);
         e.preventDefault();
