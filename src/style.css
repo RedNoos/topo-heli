@@ -38,6 +38,8 @@ body {
   height: 100%;
   display: block;
   touch-action: none;
+  /* Click to fly. */
+  cursor: crosshair;
 }
 
 /* ---------- HUD ---------- */

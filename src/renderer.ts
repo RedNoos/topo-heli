@@ -307,6 +307,15 @@ export class Renderer {
     return { x: (x - this.cam.x) * this.scale + this.w / 2, y: (y - this.cam.y) * this.scale + this.h / 2 };
   }
 
+  /** Map point (km) under a screen point (client px), with the camera of the last frame. */
+  toWorld(clientX: number, clientY: number) {
+    const r = this.canvas.getBoundingClientRect();
+    return {
+      x: (clientX - r.left - this.w / 2) / this.scale + this.cam.x,
+      y: (clientY - r.top - this.h / 2) / this.scale + this.cam.y,
+    };
+  }
+
   render(dt: number, joystick: Joystick | null) {
     const { ctx, game } = this;
     this.time += dt;
@@ -399,6 +408,7 @@ export class Renderer {
     this.drawFoundCities();
     if (!game.over && game.target && game.targetVisible) this.drawTarget(game.target);
     this.drawEffects(dt);
+    if (game.flyTo && !game.over) this.drawFlyTo(game.flyTo);
     this.drawHeli();
     if (joystick) this.drawJoystick(joystick);
     this.drawMinimap();
@@ -920,6 +930,27 @@ export class Renderer {
     ctx.fillStyle = '#666';
     ctx.fill();
     ctx.restore();
+    ctx.restore();
+  }
+
+  /** Small crosshair where a click or tap sent the helicopter; white, so it is not taken for the red target dot. */
+  private drawFlyTo(p: { x: number; y: number }) {
+    const ctx = this.ctx;
+    const { x, y } = this.toScreen(p.x, p.y);
+    const r = 9 + Math.sin(this.time * 6) * 1.5;
+    ctx.save();
+    ctx.lineCap = 'round';
+    for (const [color, width] of [['rgba(0,0,0,0.35)', 4], ['rgba(255,255,255,0.95)', 2]] as const) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        ctx.moveTo(x + dx * (r - 4), y + dy * (r - 4));
+        ctx.lineTo(x + dx * (r + 4), y + dy * (r + 4));
+      }
+      ctx.stroke();
+    }
     ctx.restore();
   }
 

@@ -58,6 +58,8 @@ export class Game {
   readonly bounds: Bounds;
 
   heli = { x: 0, y: 0, vx: 0, vy: 0, heading: -Math.PI / 2 };
+  /** Clicked or tapped point (km) the helicopter flies to; null when keys or the joystick steer. */
+  flyTo: { x: number; y: number } | null = null;
   timeLeft: number;
   /** Extra seconds per level. */
   readonly levelBonus: number;
@@ -276,6 +278,33 @@ export class Game {
     this.nextTarget();
   }
 
+  /** Sets the point to fly to (km), kept inside the bounds the helicopter can reach. */
+  setFlyTo(x: number, y: number) {
+    const b = this.bounds;
+    this.flyTo = { x: Math.min(b.maxX, Math.max(b.minX, x)), y: Math.min(b.maxY, Math.max(b.minY, y)) };
+  }
+
+  /** Stick direction towards `p`, slowing down near it; ends the flight on arrival. */
+  private steerTo(p: { x: number; y: number }): { x: number; y: number } {
+    const h = this.heli;
+    const maxSpeed = this.maxSpeed;
+    if (
+      Math.hypot(p.x - h.x, p.y - h.y) < CONFIG.flyTo.arriveKm * this.distScale &&
+      Math.hypot(h.vx, h.vy) < maxSpeed * 0.05
+    ) {
+      this.flyTo = null;
+      return { x: 0, y: 0 };
+    }
+    // Steer from where the inertia (see update) carries the helicopter, so it brakes in time.
+    const lead = 1 / CONFIG.heli.responsiveness;
+    const dx = p.x - (h.x + h.vx * lead);
+    const dy = p.y - (h.y + h.vy * lead);
+    const d = Math.hypot(dx, dy);
+    if (d === 0) return { x: 0, y: 0 };
+    const power = Math.min(1, (d * CONFIG.flyTo.gain) / maxSpeed);
+    return { x: (dx / d) * power, y: (dy / d) * power };
+  }
+
   update(dt: number, input: { x: number; y: number }) {
     if (this.over || (!this.target && !this.discover)) return;
     this.elapsed += dt;
@@ -291,6 +320,7 @@ export class Game {
     const h = this.heli;
     const { responsiveness, turnRate } = CONFIG.heli;
     const maxSpeed = this.maxSpeed;
+    if (this.flyTo) input = this.steerTo(this.flyTo);
     const k = 1 - Math.exp(-responsiveness * dt);
     h.vx += (input.x * maxSpeed - h.vx) * k;
     h.vy += (input.y * maxSpeed - h.vy) * k;

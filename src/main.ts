@@ -792,6 +792,12 @@ function frame(now: number) {
   lastFrame = now;
   if (game && renderer) {
     if (state === 'playing') {
+      if (input.steering) game.flyTo = null;
+      const aim = input.takeAim();
+      if (aim) {
+        const p = renderer.toWorld(aim.x, aim.y);
+        game.setFlyTo(p.x, p.y);
+      }
       game.update(dt, input.direction());
       updateHud();
     }

@@ -17,6 +17,13 @@ export const CONFIG = {
     turnRate: 8,
   },
 
+  /**
+   * Click / tap to fly: speed near the point is `gain` × distance (per second; higher brakes
+   * later), measured from where the inertia carries the helicopter, so it does not overshoot.
+   * The flight ends within `arriveKm` once it has nearly stopped.
+   */
+  flyTo: { gain: 3, arriveKm: 0.5 },
+
   /** How close the helicopter must be to the target to count as found. */
   catchRadius: 7,
   /**
