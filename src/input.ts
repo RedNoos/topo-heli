@@ -30,11 +30,15 @@ const JOYSTICK_FULL_SPEED = 30;
 /** A touch that lifts within TAP_MS and moves less than TAP_SLOP px is a tap, not the joystick. */
 const TAP_MS = 250;
 const TAP_SLOP = 10;
+/** A tap this soon after a joystick drag is the thumb re-gripping, not a point to fly to. */
+const REGRIP_MS = 400;
 
 export class Input {
   private pressed = new Set<string>();
   private touchId: number | null = null;
   private touchStart = { x: 0, y: 0, time: 0, moved: false };
+  /** When the last joystick drag ended (ms). */
+  private stickEnd = -Infinity;
   private mouseId: number | null = null;
   private aim: Aim | null = null;
   private stick: Joystick | null = null;
@@ -98,7 +102,9 @@ export class Input {
       }
       if (e.pointerId !== this.touchId) return;
       const s = this.touchStart;
-      if (e.type === 'pointerup' && this.active && !s.moved && performance.now() - s.time < TAP_MS) {
+      const now = performance.now();
+      if (this.joystick) this.stickEnd = now;
+      else if (e.type === 'pointerup' && this.active && s.time - this.stickEnd > REGRIP_MS) {
         this.aim = { x: s.x, y: s.y, held: false };
       }
       this.touchId = null;
@@ -110,7 +116,8 @@ export class Input {
 
   /**
    * The joystick once it is really one: the finger moved, or stayed down longer than a tap.
-   * Until then a touch may still turn out to be a tap, so it neither shows nor steers.
+   * Until then a touch may still turn out to be a tap, so it is not drawn and does not cancel
+   * a flight (it does steer at once, see direction).
    */
   get joystick(): Joystick | null {
     const s = this.touchStart;
@@ -131,7 +138,9 @@ export class Input {
 
   /** Desired direction, length 0..1. */
   direction(): { x: number; y: number } {
-    const j = this.joystick;
+    // The stick itself, not `joystick`: waiting for a tap would make every drag start late.
+    // While flying to a point the game ignores it until the touch turns out to be a drag.
+    const j = this.stick;
     if (j) {
       const dx = j.knobX - j.baseX;
       const dy = j.knobY - j.baseY;
