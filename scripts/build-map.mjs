@@ -8,12 +8,10 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import mapshaper from 'mapshaper';
 import { PROVINCES, SERBIA_REGIONS, GERMANY_REGIONS } from './provinces.mjs';
 import { INSETS, shiftGeoJSON, insetFrames } from './insets.mjs';
+import { ROOT, NZ_BBOX, CBS_COUNTRY_INTERVAL, cbsLandFile, cachedJson, mapshaperRun } from './lib.mjs';
 
-const ROOT = path.resolve(import.meta.dirname, '..');
-const CACHE = path.join(ROOT, '.cache');
 const NE = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson';
 
 const SOURCES = {
@@ -74,7 +72,7 @@ const MAPS = {
     home: ['NZL'],
     // Mainland and Stewart Island; the Chatham Islands come in as an inset (scripts/insets.mjs).
     // Leaves out the Kermadecs, the subantarctic islands and Tokelau.
-    bbox: [165, -47.9, 179.9, -33.6],
+    bbox: NZ_BBOX,
     projection: { type: 'laea', lon0: 173, lat0: -41.2, rect: [-600, -760, 580, 830] },
     districtOf: (p) => p.name,
     simplify: '45%',
@@ -114,29 +112,10 @@ const MAPS = {
   },
 };
 
-async function source(name) {
-  const file = path.join(CACHE, `${name}.geojson`);
-  try {
-    return JSON.parse(await fs.readFile(file, 'utf8'));
-  } catch {
-    console.log(`  downloading ${name}...`);
-    const res = await fetch(`${NE}/${name}.geojson`);
-    if (!res.ok) throw new Error(`Download failed: ${name} (${res.status})`);
-    const text = await res.text();
-    await fs.mkdir(CACHE, { recursive: true });
-    await fs.writeFile(file, text);
-    return JSON.parse(text);
-  }
-}
+/** A Natural Earth layer (cached in .cache/). */
+const source = (name) => cachedJson(`${name}.geojson`, `${NE}/${name}.geojson`);
 
-async function shape(geojson, commands) {
-  const out = await mapshaper.applyCommands(
-    `-i in.json ${commands} -o out.json format=geojson`,
-    { 'in.json': geojson },
-  );
-  const fc = JSON.parse(out['out.json']);
-  return fc.type === 'FeatureCollection' ? fc : { type: 'FeatureCollection', features: fc.geometries?.map((geometry) => ({ type: 'Feature', properties: {}, geometry })) ?? [] };
-}
+const shape = (geojson, commands) => mapshaperRun(`-i in.json ${commands}`, { 'in.json': geojson });
 
 const round = (c) => (typeof c[0] === 'number' ? [+c[0].toFixed(4), +c[1].toFixed(4)] : c.map(round));
 
@@ -159,16 +138,7 @@ function parts(fc) {
  * game can draw them (bright / muted) without clipping every frame.
  */
 async function splitByHome(features, home) {
-  const run = async (cmd) => {
-    const out = await mapshaper.applyCommands(`-i in.json ${cmd} home.json -o out.json format=geojson`, {
-      'in.json': { type: 'FeatureCollection', features },
-      'home.json': home,
-    });
-    const fc = JSON.parse(out['out.json']);
-    if (fc.type === 'FeatureCollection') return fc;
-    // Without attributes mapshaper writes a GeometryCollection.
-    return { type: 'FeatureCollection', features: (fc.geometries ?? []).map((geometry) => ({ type: 'Feature', properties: {}, geometry })) };
-  };
+  const run = (cmd) => mapshaperRun(`-i in.json ${cmd} home.json`, { 'in.json': { type: 'FeatureCollection', features }, 'home.json': home });
   if (!features.length) return { inside: { features: [] }, outside: { features: [] } };
   return { inside: await run('-clip'), outside: await run('-erase') };
 }
@@ -206,22 +176,6 @@ function colorCountries(features, count) {
 
 const PDOK = 'https://service.pdok.nl/cbs';
 
-/** Cached download of a PDOK (CBS) WFS layer as GeoJSON in lon/lat. */
-async function pdok(file, url) {
-  const p = path.join(CACHE, file);
-  try {
-    return JSON.parse(await fs.readFile(p, 'utf8'));
-  } catch {
-    console.log(`  downloading ${file}...`);
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`PDOK download failed (${res.status}): ${url}`);
-    const text = await res.text();
-    await fs.mkdir(CACHE, { recursive: true });
-    await fs.writeFile(p, text);
-    return JSON.parse(text);
-  }
-}
-
 /**
  * Dutch provinces as land only: CBS province borders minus the CBS "water" neighbourhoods
  * (Westerschelde, Haringvliet, Grevelingen, North Sea strip, …), so islands are separate.
@@ -229,7 +183,7 @@ async function pdok(file, url) {
  */
 /** @param interval simplification in metres: finer for province maps (zoomed in) than for the country. */
 async function cbsLand(interval) {
-  const cachedFile = path.join(CACHE, `cbs-province-land-${interval}.json`);
+  const cachedFile = cbsLandFile(interval);
   try {
     return JSON.parse(await fs.readFile(cachedFile, 'utf8'));
   } catch {
@@ -237,17 +191,16 @@ async function cbsLand(interval) {
   }
   const wfs = (service, layer, extra = '') =>
     `${PDOK}/${service}/2024/wfs/v1_0?service=WFS&version=2.0.0&request=GetFeature&typeNames=${layer}&outputFormat=application/json&srsName=EPSG:4326&count=5000${extra}`;
-  const provinces = await pdok('cbs-provincie-2024.json', wfs('gebiedsindelingen', 'gebiedsindelingen:provincie_gegeneraliseerd'));
+  const provinces = await cachedJson('cbs-provincie-2024.json', wfs('gebiedsindelingen', 'gebiedsindelingen:provincie_gegeneraliseerd'));
   const filter = encodeURIComponent('<Filter xmlns="http://www.opengis.net/fes/2.0"><PropertyIsEqualTo><ValueReference>water</ValueReference><Literal>JA</Literal></PropertyIsEqualTo></Filter>');
-  const water = await pdok('cbs-waterbuurten-2024.json', wfs('wijkenbuurten', 'wijkenbuurten:buurten', `&filter=${filter}`));
+  const water = await cachedJson('cbs-waterbuurten-2024.json', wfs('wijkenbuurten', 'wijkenbuurten:buurten', `&filter=${filter}`));
   // (field 'prov': mapshaper reads 'name' as an option keyword)
   for (const f of provinces.features) f.properties = { prov: f.properties.statnaam };
   for (const f of water.features) f.properties = {};
-  const out = await mapshaper.applyCommands(
-    `-i prov.json -erase water.json -simplify interval=${interval} keep-shapes -filter-islands min-area=0.1km2 -filter-slivers -o out.json format=geojson`,
+  const land = await mapshaperRun(
+    `-i prov.json -erase water.json -simplify interval=${interval} keep-shapes -filter-islands min-area=0.1km2 -filter-slivers`,
     { 'prov.json': provinces, 'water.json': water },
   );
-  const land = JSON.parse(out['out.json']);
   await fs.writeFile(cachedFile, JSON.stringify(land));
   return land;
 }
@@ -259,7 +212,7 @@ async function cbsLand(interval) {
  */
 async function cbsShapes(cfg) {
   // One screen pixel is ~200 m on the country map and ~115 m on a province map.
-  const land = await cbsLand(cfg.province ? 80 : 150);
+  const land = await cbsLand(cfg.province ? 80 : CBS_COUNTRY_INTERVAL);
   const isHome = (f) => !cfg.province || f.properties.prov === cfg.province;
   const home = land.features.filter(isHome).map((f) => ({ ...f, properties: { code: 'HOME', home: true, prov: f.properties.prov } }));
   if (!home.length) throw new Error(`CBS province not found: ${cfg.province}`);

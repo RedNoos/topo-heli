@@ -25,9 +25,8 @@ import { PROVINCES, SERBIA_REGIONS, GERMANY_REGIONS } from './provinces.mjs';
 import { toCyrillic, latinLeft, osmSerbian, addFeatureNames, SERBIAN_FEATURE_NAMES, finnishToSerbian, isMaori, maoriToSerbian, polishToSerbian, germanToSerbian } from './serbian.mjs';
 import { INSETS, shiftOsm } from './insets.mjs';
 import { overpass } from './overpass.mjs';
+import { ROOT, NZ_BBOX, cachedDownload, insideRing } from './lib.mjs';
 
-const ROOT = path.resolve(import.meta.dirname, '..');
-const CACHE = path.join(ROOT, '.cache');
 const MIN_POP = 2000;
 /** In the whole-country map the added places only come up from this level on. */
 const EXTRA_MIN_LEVEL = 6;
@@ -41,26 +40,9 @@ const osmPop = (tag) => parseInt((tag ?? '').replace(/\D/g, ''), 10) || 0;
 /** Municipality seats tagged with the population of the whole municipality. */
 const POP_FIX = { 'Velsen-Zuid': 1500, Borssele: 1500 };
 
-async function cached(file, fetcher) {
-  const p = path.join(CACHE, file);
-  try {
-    return await fs.readFile(p);
-  } catch {
-    const data = await fetcher();
-    await fs.mkdir(CACHE, { recursive: true });
-    await fs.writeFile(p, data);
-    return data;
-  }
-}
-
 /** GeoNames country dump (populated places with population), default the Netherlands. */
 async function geonames(minPop = MIN_POP, country = 'NL') {
-  const zip = await cached(`geonames-${country}.zip`, async () => {
-    console.log(`  downloading GeoNames ${country}...`);
-    const res = await fetch(`https://download.geonames.org/export/dump/${country}.zip`);
-    if (!res.ok) throw new Error(`GeoNames download failed (${res.status})`);
-    return Buffer.from(await res.arrayBuffer());
-  });
+  const zip = await cachedDownload(`geonames-${country}.zip`, `https://download.geonames.org/export/dump/${country}.zip`);
   const text = strFromU8(unzipSync(new Uint8Array(zip))[`${country}.txt`]);
   return text
     .split('\n')
@@ -88,18 +70,15 @@ const R = 6371;
 const D = Math.PI / 180;
 const km = (a, b) => R * Math.hypot((b.lon - a.lon) * D * Math.cos(((a.lat + b.lat) / 2) * D), (b.lat - a.lat) * D);
 
-function insideRing([x, y], ring) {
-  let inside = false;
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const [xi, yi] = ring[i];
-    const [xj, yj] = ring[j];
-    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
-  }
-  return inside;
-}
 const insidePolys = (pt, polys) => polys.some((poly) => insideRing(pt, poly[0]) && !poly.slice(1).some((h) => insideRing(pt, h)));
 /** Distance (km) from a point to the nearest vertex of the polygons: fallback for coastal places. */
 const nearDistance = (p, polys) => Math.min(...polys.flat(2).map(([lon, lat]) => km(p, { lon, lat })));
+/** Zoom of a sub-map: `share` of the larger side (km) of its bbox, within [min, max]. */
+function viewKmOf([w, s, e, n], share, min, max) {
+  const widthKm = (e - w) * 111 * Math.cos(((s + n) / 2) * D);
+  const heightKm = (n - s) * 111;
+  return Math.round(Math.min(max, Math.max(min, share * Math.max(widthKm, heightKm))));
+}
 
 /**
  * Writes a map's name tables (`names.<lang>.json`). The Serbian one also gets the physical
@@ -165,8 +144,6 @@ if (lowPop.length) {
     if (cand.pop >= MIN_POP) continue;
     const p = provinceOf(cand);
     if (!lowPop.includes(p) || cand.pop < p.minPop) continue;
-    // Small villages close together are often parts of one place: be stricter than for towns.
-    if (all.some((c) => km(c, cand) < 1.2)) continue;
     if (addPlace(cand, { extra: true, provinceOnly: true, province: p })) small++;
   }
 }
@@ -210,10 +187,7 @@ for (const p of provinces) {
   await fs.writeFile(path.join(ROOT, 'src', 'maps', p.id, 'cities.json'), '[\n' + cities.map((c) => JSON.stringify(c)).join(',\n') + '\n]\n');
 
   // Zoom: show under half of the province's larger side (within limits), so you have to fly.
-  const [w, s, e, n] = p.bbox;
-  const widthKm = (e - w) * 111 * Math.cos(((s + n) / 2) * D);
-  const heightKm = (n - s) * 111;
-  const viewKm = Math.round(Math.min(80, Math.max(40, 0.45 * Math.max(widthKm, heightKm))));
+  const viewKm = viewKmOf(p.bbox, 0.45, 40, 80);
   manifest.push({ id: p.id, name: p.name, viewKm, ...(p.time ? { time: p.time } : {}) });
   console.log(`  ${p.name.padEnd(14)} ${String(cities.length).padStart(3)} places (capital ${p.capital}), view ${viewKm} km`);
 }
@@ -240,10 +214,7 @@ for (const r of regions) {
   const cities = list.map((c) => ({ ...c, ...(c.name === r.capital ? { level: 1 } : {}) }));
   await fs.writeFile(path.join(ROOT, 'src', 'maps', r.id, 'cities.json'), '[\n' + cities.map((c) => JSON.stringify(c)).join(',\n') + '\n]\n');
   // Zoom: about half of the region's larger side (within limits), so you have to fly.
-  const [w, s, e, n] = r.bbox;
-  const widthKm = (e - w) * 111 * Math.cos(((s + n) / 2) * D);
-  const heightKm = (n - s) * 111;
-  const viewKm = Math.round(Math.min(130, Math.max(70, 0.5 * Math.max(widthKm, heightKm))));
+  const viewKm = viewKmOf(r.bbox, 0.5, 70, 130);
   regionManifest.push({ id: r.id, nameKey: r.nameKey, viewKm });
   console.log(`  ${r.name.padEnd(18)} ${String(cities.length).padStart(3)} places (capital ${r.capital}), view ${viewKm} km`);
 }
@@ -316,10 +287,7 @@ for (const r of deRegions) {
   if (!cities.some((c) => c.name === r.capital)) throw new Error(`Capital ${r.capital} not found in ${r.name}`);
   for (const c of cities) if (cities.filter((x) => x.listed).length < DE_REGION_LIST) c.listed = true;
   await fs.writeFile(path.join(ROOT, 'src', 'maps', r.id, 'cities.json'), '[\n' + cities.map((c) => JSON.stringify(c)).join(',\n') + '\n]\n');
-  const [w, s, e, n] = r.bbox;
-  const widthKm = (e - w) * 111 * Math.cos(((s + n) / 2) * D);
-  const heightKm = (n - s) * 111;
-  const viewKm = Math.round(Math.min(180, Math.max(60, 0.5 * Math.max(widthKm, heightKm))));
+  const viewKm = viewKmOf(r.bbox, 0.5, 60, 180);
   deManifest.push({ id: r.id, nameKey: r.nameKey, viewKm });
   console.log(`  ${r.name.padEnd(24)} ${String(cities.length).padStart(3)} places (capital ${r.capital}), view ${viewKm} km`);
 }
@@ -402,8 +370,6 @@ const NZ_MIN_POP = 3000;
 /** A town this close to a place at least SUBURB_FACTOR times its size is a suburb of it. */
 const SUBURB_KM = 8;
 const SUBURB_FACTOR = 4;
-/** Mainland and Stewart Island; the Chatham Islands come from their inset. */
-const NZ_BBOX = [165, -47.9, 179.9, -33.6];
 
 const nz = JSON.parse(await fs.readFile(path.join(ROOT, 'data', 'new-zealand.json'), 'utf8'));
 const nzInsets = INSETS['new-zealand'];

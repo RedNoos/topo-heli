@@ -8,19 +8,16 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import mapshaper from 'mapshaper';
 import { PROVINCES, SERBIA_REGIONS, GERMANY_REGIONS } from './provinces.mjs';
 import { toCyrillic, latinLeft, addFeatureNames, SERBIAN_FEATURE_NAMES } from './serbian.mjs';
 import { INSETS, shiftGeoJSON, shiftOsm } from './insets.mjs';
 import { overpass as overpassRaw } from './overpass.mjs';
+import { ROOT, CACHE, NZ_BBOX, CBS_COUNTRY_INTERVAL, cbsLandFile, cachedJson, mapshaperRun, polygonsOf, linesOf, insideRing } from './lib.mjs';
 
 /** Province maps: rivers with less than this inside the province are not asked. */
 const MIN_PROVINCE_RIVER_KM = 8;
 /** Region maps: a peak just outside the region is moved this far inside it. */
 const MOUNTAIN_INSIDE_KM = 4;
-
-const ROOT = path.resolve(import.meta.dirname, '..');
-const CACHE = path.join(ROOT, '.cache');
 
 // `level` is the game level from which the feature can be asked (1 = best known).
 // Rivers: 'Name', ['Name', [minLon, minLat, maxLon, maxLat]] to keep only the parts in that
@@ -200,7 +197,7 @@ const PHYSICAL = {
     areas: ['NZ'],
     nameKeys: ['name'],
     // Mainland and Stewart Island; the Chatham Islands are shifted into their inset (scripts/insets.mjs).
-    bbox: [165, -47.9, 179.9, -33.6],
+    bbox: NZ_BBOX,
     // Names as in OSM: official dual names where they exist (Clutha River / Mata-Au).
     rivers: {
       1: ['Waikato River', 'Clutha River / Mata-Au', 'Whanganui River', 'Waitaki River', 'Waimakariri River'],
@@ -525,26 +522,11 @@ async function clipToHome(id, geometries, kind) {
     properties: {},
     geometry: { type: kind === 'line' ? 'LineString' : 'Polygon', coordinates },
   }));
-  const out = await mapshaper.applyCommands('-i in.json -clip home.json -o out.json format=geojson', {
-    'in.json': { type: 'FeatureCollection', features },
-    'home.json': await homeShape(id),
-  });
-  const fc = JSON.parse(out['out.json']);
-  const result = [];
-  // Without attributes mapshaper writes a GeometryCollection instead of features.
-  for (const g of fc.features?.map((f) => f.geometry) ?? fc.geometries ?? []) {
-    if (!g) continue;
-    if (g.type === 'LineString' || g.type === 'Polygon') result.push(g.coordinates);
-    else if (g.type === 'MultiLineString' || g.type === 'MultiPolygon') result.push(...g.coordinates);
-  }
-  return round(result);
+  const fc = await mapshaperRun('-i in.json -clip home.json', { 'in.json': { type: 'FeatureCollection', features }, 'home.json': await homeShape(id) });
+  return round(kind === 'line' ? linesOf(fc) : polygonsOf(fc));
 }
 
-async function simplifyGeo(fc, cmd) {
-  const out = await mapshaper.applyCommands(`-i in.json ${cmd} -o out.json format=geojson`, { 'in.json': fc });
-  const res = JSON.parse(out['out.json']);
-  return res.type === 'FeatureCollection' ? res : { type: 'FeatureCollection', features: (res.geometries ?? []).map((geometry) => ({ type: 'Feature', properties: {}, geometry })) };
-}
+const simplifyGeo = (fc, cmd) => mapshaperRun(`-i in.json ${cmd}`, { 'in.json': fc });
 
 const round = (c) => (typeof c[0] === 'number' ? [+c[0].toFixed(4), +c[1].toFixed(4)] : c.map(round));
 const byLevel = (obj) => Object.entries(obj).flatMap(([level, list]) => list.map((item) => ({ level: +level, item })));
@@ -602,11 +584,11 @@ async function buildRivers(id, cfg, key = 'rivers', waterways = 'river|canal') {
   const marginOf = (river) => entries.find((en) => en.name === river)?.margin ?? 2;
   const fc = { features: [] };
   for (const margin of new Set(features.map((x) => marginOf(x.properties.feat)))) {
-    const out = await mapshaper.applyCommands(
-      '-i in.json -clip clip.json -dissolve feat -simplify interval=400 -o out.json format=geojson',
+    const out = await mapshaperRun(
+      '-i in.json -clip clip.json -dissolve feat -simplify interval=400',
       { 'in.json': { type: 'FeatureCollection', features: features.filter((x) => marginOf(x.properties.feat) === margin) }, 'clip.json': await countryClip(id, margin) },
     );
-    fc.features.push(...JSON.parse(out['out.json']).features);
+    fc.features.push(...out.features);
   }
   const result = [];
   for (const { level, name, box, type } of entries) {
@@ -735,63 +717,32 @@ async function buildSurfaces(id, cfg) {
     }
   }
   const clip = await countryClip(id, 0.5);
-  const result = await mapshaper.applyCommands(
-    `-i outer.json -dissolve2 -erase inner.json -explode -filter "this.area > ${minKm2 * 1e6}" -simplify interval=${interval} keep-shapes -clip clip.json -o out.json format=geojson`,
+  const polys = polygonsOf(await mapshaperRun(
+    `-i outer.json -dissolve2 -erase inner.json -explode -filter "this.area > ${minKm2 * 1e6}" -simplify interval=${interval} keep-shapes -clip clip.json`,
     {
       'outer.json': { type: 'FeatureCollection', features: outer },
       'inner.json': { type: 'FeatureCollection', features: inner },
       'clip.json': clip,
     },
-  );
-  const fc = JSON.parse(result['out.json']);
-  const polys = [];
-  for (const f of fc.features ?? fc.geometries?.map((geometry) => ({ geometry })) ?? []) {
-    const g = f.geometry;
-    if (g?.type === 'Polygon') polys.push(g.coordinates);
-    else if (g?.type === 'MultiPolygon') polys.push(...g.coordinates);
-  }
+  ));
   console.log(`  water surfaces: ${outer.length} shapes, ${inner.length} islands -> ${polys.length} polygons`);
   return round(polys);
 }
 
 /** CBS land per province (made by build-map.mjs) and CBS municipalities (PDOK). */
 async function cbsData() {
-  const land = JSON.parse(await fs.readFile(path.join(CACHE, 'cbs-province-land-150.json'), 'utf8').catch(() => {
-    throw new Error('Run "npm run build:map" first (it builds .cache/cbs-province-land-150.json).');
+  const landFile = cbsLandFile(CBS_COUNTRY_INTERVAL);
+  const land = JSON.parse(await fs.readFile(landFile, 'utf8').catch(() => {
+    throw new Error(`Run "npm run build:map" first (it builds ${path.relative(ROOT, landFile)}).`);
   }));
-  const file = path.join(CACHE, 'cbs-gemeente-2024.json');
-  let municipalities;
-  try {
-    municipalities = JSON.parse(await fs.readFile(file, 'utf8'));
-  } catch {
-    console.log('  downloading CBS municipalities...');
-    const res = await fetch('https://service.pdok.nl/cbs/gebiedsindelingen/2024/wfs/v1_0?service=WFS&version=2.0.0&request=GetFeature&typeNames=gebiedsindelingen:gemeente_gegeneraliseerd&outputFormat=application/json&srsName=EPSG:4326&count=5000');
-    if (!res.ok) throw new Error(`PDOK download failed (${res.status})`);
-    const text = await res.text();
-    await fs.writeFile(file, text);
-    municipalities = JSON.parse(text);
-  }
+  const municipalities = await cachedJson(
+    'cbs-gemeente-2024.json',
+    'https://service.pdok.nl/cbs/gebiedsindelingen/2024/wfs/v1_0?service=WFS&version=2.0.0&request=GetFeature&typeNames=gebiedsindelingen:gemeente_gegeneraliseerd&outputFormat=application/json&srsName=EPSG:4326&count=5000',
+  );
   return { land, municipalities };
 }
 
-const polysOf = (fc) => {
-  const polys = [];
-  for (const g of fc.features?.map((f) => f.geometry) ?? fc.geometries ?? []) {
-    if (g?.type === 'Polygon') polys.push(g.coordinates);
-    else if (g?.type === 'MultiPolygon') polys.push(...g.coordinates);
-  }
-  return polys;
-};
 const featureOf = (coordinates) => ({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates } });
-function insideRingLL([x, y], ring) {
-  let inside = false;
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const [xi, yi] = ring[i];
-    const [xj, yj] = ring[j];
-    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
-  }
-  return inside;
-}
 
 /**
  * Land of a map that is not built from CBS data: its own playable area (geo.json), and its
@@ -823,7 +774,7 @@ async function buildAreas(id, cfg) {
     // [country, region]; [country] alone: all its regions (Åland).
     if (item.admin1) shapes = admin1.features.filter((f) => f.properties.adm0_a3 === item.admin1[0] && (!item.admin1[1] || f.properties.name === item.admin1[1]));
     if (item.landAt) {
-      const part = polysOf(land).find((p) => insideRingLL(item.landAt, p[0]));
+      const part = polygonsOf(land).find((p) => insideRing(item.landAt, p[0]));
       if (part) shapes = [featureOf(part)];
     }
     if (item.municipalities) shapes = municipalities.features.filter((f) => item.municipalities.includes(f.properties.statnaam));
@@ -837,11 +788,10 @@ async function buildAreas(id, cfg) {
       missing(`area not found: ${item.name}`);
       continue;
     }
-    const out = await mapshaper.applyCommands(
-      '-i area.json -dissolve -clip land.json -simplify interval=250 keep-shapes -filter-slivers -o out.json format=geojson',
+    const polys = polygonsOf(await mapshaperRun(
+      '-i area.json -dissolve -clip land.json -simplify interval=250 keep-shapes -filter-slivers',
       { 'area.json': { type: 'FeatureCollection', features: shapes.map((f) => ({ ...f, properties: {} })) }, 'land.json': landFc },
-    );
-    const polys = polysOf(JSON.parse(out['out.json']));
+    ));
     if (!polys.length) {
       missing(`area empty on land: ${item.name}`);
       continue;
@@ -915,16 +865,10 @@ async function buildWaterAreas(id, cfg) {
       }
     }
     if (item.outline) shapes.push({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[...item.outline, item.outline[0]]] } });
-    const out = await mapshaper.applyCommands(
-      '-i area.json -dissolve -erase land.json -simplify interval=150 keep-shapes -filter-slivers -o out.json format=geojson',
+    const polys = polygonsOf(await mapshaperRun(
+      '-i area.json -dissolve -erase land.json -simplify interval=150 keep-shapes -filter-slivers',
       { 'area.json': { type: 'FeatureCollection', features: shapes.map((f) => ({ ...f, properties: {} })) }, 'land.json': cut },
-    );
-    const fc = JSON.parse(out['out.json']);
-    const polys = [];
-    for (const g of fc.features?.map((f) => f.geometry) ?? fc.geometries ?? []) {
-      if (g?.type === 'Polygon') polys.push(g.coordinates);
-      else if (g?.type === 'MultiPolygon') polys.push(...g.coordinates);
-    }
+    ));
     if (!polys.length) {
       missing(`water area empty after cutting out land: ${item.name}`);
       continue;
@@ -1023,19 +967,11 @@ async function buildDerived(id, fromId) {
     return L;
   };
   const rivers = [];
-  const clipLines = async (r, area) => {
-    const out = await mapshaper.applyCommands('-i in.json -clip clip.json -o out.json format=geojson', {
+  const clipLines = async (r, area) =>
+    linesOf(await mapshaperRun('-i in.json -clip clip.json', {
       'in.json': { type: 'FeatureCollection', features: r.lines.map((coordinates) => ({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates } })) },
       'clip.json': area,
-    });
-    const fc = JSON.parse(out['out.json']);
-    const lines = [];
-    for (const g of fc.features?.map((f) => f.geometry) ?? fc.geometries ?? []) {
-      if (g?.type === 'LineString') lines.push(g.coordinates);
-      else if (g?.type === 'MultiLineString') lines.push(...g.coordinates);
-    }
-    return lines;
-  };
+    }));
   for (const r of from.rivers) {
     if (lengthKm(await clipLines(r, clipNear)) < MIN_PROVINCE_RIVER_KM) continue;
     rivers.push({ ...r, lines: round(await clipLines(r, clip)) });
@@ -1050,7 +986,7 @@ async function buildDerived(id, fromId) {
   // Some waters touch a province only at its edge (Noord-Brabant and the Oosterschelde).
   const skip = PROVINCES.find((p) => p.id === id)?.skipPhysical ?? [];
   // Areas mostly inside the province (not the provinces themselves); points inside it.
-  const inHome = (pt) => home.some((poly) => insideRingLL(pt, poly[0]));
+  const inHome = (pt) => home.some((poly) => insideRing(pt, poly[0]));
   // Lakes inside the land (Serbia) or next to it (Dutch waters lie outside the CBS land).
   const lakes = from.lakes.filter((l) => (near(l.rings) || l.rings.some((r) => r.some(inHome))) && !skip.includes(l.name));
   // Test points inside the area (a grid), not its outline: outline points lie on the very border.
@@ -1060,7 +996,7 @@ async function buildDerived(id, fromId) {
     const [y0, y1] = [Math.min(...pts.map((p) => p[1])), Math.max(...pts.map((p) => p[1]))];
     const grid = [];
     for (let i = 0.5; i < 12; i++) for (let j = 0.5; j < 12; j++) grid.push([x0 + ((x1 - x0) * i) / 12, y0 + ((y1 - y0) * j) / 12]);
-    return grid.filter((p) => a.rings.some((r) => insideRingLL(p, r)));
+    return grid.filter((p) => a.rings.some((r) => insideRing(p, r)));
   };
   const areas = (from.areas ?? []).filter((a) => {
     if (a.type === 'province' || a.type === 'state' || a.type === 'voivodeship') return false;
