@@ -45,8 +45,9 @@ export async function launch() {
 }
 
 /**
- * Opens the game with a clean state. `map`: 'serbia', 'netherlands', 'europe' or a province/region id
- * ('nl-utrecht', 'rs-vojvodina'); `mode`: 'free' (default), 'physical' (waters/mountains on), 'list' (Alles vinden),
+ * Opens the game with a clean state. `map`: a map id as in src/maps/index.ts, a whole country
+ * ('netherlands', 'germany', 'finland', ..., 'europe') or a province/region ('nl-utrecht',
+ * 'rs-vojvodina', 'de-bayern'); `mode`: 'free' (default), 'physical' (waters/mountains on), 'list' (Alles vinden),
  * 'discover' or 'discover-physical'.
  * Collects page errors in `page.errors`.
  */

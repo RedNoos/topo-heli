@@ -91,7 +91,8 @@ rebuilds only the Serbian / German region files).
 - `npm run playtest -- --map <id> --mode free|physical|list`: plays a map through by teleporting to
   each target; reports targets that cannot be found and page errors.
 - `npm run shots -- --map <id> --mode ... --lang nl|en|de|pl|sr-Latn|sr-Cyrl`: menu, game and end
-  screen on desktop and phone into `.shots/` (gitignored). Read the PNGs to check.
+  screen on desktop and phone into `.shots/` (gitignored). Read the PNGs to check. Modes as for
+  playtest plus `discover` / `discover-physical` (a `hover` shot instead of the end screen).
 - In the dev build `window.__game()` and `window.__renderer()` expose the live game for scripts.
 
 ## Conventions
