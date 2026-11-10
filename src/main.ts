@@ -26,9 +26,7 @@ const ui = {
   targetName: $('target-name'),
   targetHint: $('target-hint'),
   progress: $('river-progress'),
-  physicalToggle: $('physical-toggle'),
   physicalOption: $<HTMLInputElement>('opt-physical'),
-  modeBox: $('mode-box'),
   modeFree: $('mode-free'),
   modeList: $<HTMLButtonElement>('mode-list'),
   modeDiscover: $('mode-discover'),
@@ -69,7 +67,28 @@ let shownAlso = '';
 
 // ---------- Best scores ----------
 
+/** Stored value, or null when there is none or storage is unavailable (blocked, private mode). */
+function read(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+/** Stores a value; without storage it just isn't remembered. */
+function write(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* not remembered */
+  }
+}
+
+/** Best score (places found) per score id; 0 = none yet. */
 const bestKey = (id: string) => `${STORAGE_PREFIX}best:${id}`;
+/** Basislijst mode: fastest time in seconds per score id (0 = none yet). */
+const bestTimeKey = (id: string) => `${STORAGE_PREFIX}besttime:${id}`;
+const readNumber = (key: string) => Number(read(key)) || 0;
 /** Score key for the current map + mode. */
 const scoreId = () => (discoverOn ? `${mapDef.id}+discover` : practiceOn ? `${mapDef.id}+list` : physicalOn ? `${mapDef.id}+physical` : mapDef.id);
 
@@ -77,36 +96,8 @@ const scoreId = () => (discoverOn ? `${mapDef.id}+discover` : practiceOn ? `${ma
 const OPTION_KEY = `${STORAGE_PREFIX}physical`;
 const PRACTICE_KEY = `${STORAGE_PREFIX}practice`;
 const DISCOVER_KEY = `${STORAGE_PREFIX}discover`;
-function loadOption(key = OPTION_KEY) {
-  try {
-    return localStorage.getItem(key) === '1';
-  } catch {
-    return false;
-  }
-}
-function saveOption(on: boolean, key = OPTION_KEY) {
-  try {
-    localStorage.setItem(key, on ? '1' : '0');
-  } catch {
-    /* not remembered */
-  }
-}
-/** Basislijst mode: fastest time in seconds (0 = none yet). */
-const bestTimeKey = (id: string) => `${STORAGE_PREFIX}besttime:${id}`;
-function getBestTime(id: string): number {
-  try {
-    return Number(localStorage.getItem(bestTimeKey(id))) || 0;
-  } catch {
-    return 0;
-  }
-}
-function setBestTime(id: string, secs: number) {
-  try {
-    localStorage.setItem(bestTimeKey(id), String(secs));
-  } catch {
-    /* not remembered */
-  }
-}
+const loadOption = (key = OPTION_KEY) => read(key) === '1';
+const saveOption = (on: boolean, key = OPTION_KEY) => write(key, on ? '1' : '0');
 /** Physical data is needed for the physical option and for the Basislijst mode (waters, areas). */
 const wantsPhysical = () => physicalOn || practiceOn;
 /** Number of names in the Basislijst mode for the loaded map. */
@@ -117,20 +108,26 @@ function practiceCount() {
   const physical = p ? [...p.rivers, ...p.lakes, ...p.mountains, ...(p.areas ?? []), ...(p.landmarks ?? [])].filter((x) => all || x.core).length : 0;
   return mapData.cities.filter((c) => all || c.listed).length + physical;
 }
-function getBest(id: string): number {
-  try {
-    return Number(localStorage.getItem(bestKey(id))) || 0;
-  } catch {
-    return 0;
-  }
+/** Basislijst mode texts with the number of names, per kind of list (MapDefinition.practiceList). */
+function practiceText(key: 'modeListDesc' | 'howtoPractice', extra: StringKey, n: number) {
+  if (!n) return '';
+  if (mapDef.practiceList === 'all') return t(`${key}All`, { n });
+  if (mapDef.practiceList === 'selection') return t(`${key}Selection`, { n });
+  const list = '<i>basislijst topografie</i>';
+  return t(key, { n, names: plural('names', n), list, extra: mapDef.parent ? t(extra) : '' });
 }
-function setBest(id: string, score: number) {
-  try {
-    localStorage.setItem(bestKey(id), String(score));
-  } catch {
-    /* storage unavailable: best score just isn't remembered */
-  }
-}
+
+/**
+ * Per kind of physical features (MapDefinition.physicalKind; the Netherlands: waters, areas):
+ * the suffix of its text keys, its how-to lines and its name in the feedback form.
+ */
+const PHYSICAL_KINDS = {
+  default: { suffix: '', howto: ['howtoPhysical'], feedback: 'bergen-rivieren' },
+  waters: { suffix: 'Waters', howto: ['howtoPhysicalWaters'], feedback: 'wateren' },
+  watersAreas: { suffix: 'WatersAreas', howto: ['howtoPhysicalWaters', 'howtoPhysicalAreas'], feedback: 'wateren' },
+  all: { suffix: 'All', howto: ['howtoPhysical', 'howtoPhysicalAreas'], feedback: 'alles' },
+} as const;
+const physicalKind = () => PHYSICAL_KINDS[mapDef.physicalKind ?? 'default'];
 
 // ---------- Screens ----------
 
@@ -239,9 +236,6 @@ function renderMapSelect() {
   const subs = MAPS.filter((x) => x.parent === top.id);
   // Every settings row is always there (what does not apply is disabled), so the menu keeps
   // its layout when switching maps and modes.
-  $('region-box').hidden = false;
-  $('region-label').hidden = false;
-  $('region-label').textContent = t('region');
   const select = $<HTMLSelectElement>('region');
   select.innerHTML = '';
   select.disabled = subs.length === 0;
@@ -256,8 +250,6 @@ function renderMapSelect() {
   $('howto-levels').innerHTML = t('howtoLevels', { bonus: clock(mapDef.time?.levelBonus ?? CONFIG.levelTimeBonus) });
   // Game mode (Dutch maps): "Find them all" (Basislijst) always has its waters and areas, so
   // no physical switch then.
-  ui.modeBox.hidden = false;
-  $('mode-label').hidden = false;
   ui.modeList.disabled = !mapDef.practice;
   ui.modeList.title = mapDef.practice ? '' : t('modeListUnavailable');
   for (const [b, on] of [
@@ -268,33 +260,19 @@ function renderMapSelect() {
     b.classList.toggle('active', on);
     b.setAttribute('aria-pressed', String(on));
   }
-  const list = '<i>basislijst topografie</i>';
   const n = practiceCount();
-  $('mode-desc').innerHTML = discoverOn
-    ? t('modeDiscoverDesc')
-    : !practiceOn
-    ? t('modeFreeDesc')
-    : !n
-      ? ''
-      : mapDef.practiceList === 'all'
-        ? t('modeListDescAll', { n })
-        : mapDef.practiceList === 'selection'
-          ? t('modeListDescSelection', { n })
-          : t('modeListDesc', { n, names: plural('names', n), list, extra: mapDef.parent ? t('modeListExtra') : '' });
+  $('mode-desc').innerHTML = discoverOn ? t('modeDiscoverDesc') : !practiceOn ? t('modeFreeDesc') : practiceText('modeListDesc', 'modeListExtra', n);
   $('howto-levels').hidden = practiceOn || discoverOn;
   $('howto-flash').hidden = discoverOn;
   $('howto-discover').hidden = !discoverOn;
   $('btn-skip').textContent = t(practiceOn ? 'skipPractice' : 'skip');
   // Physical features: off for maps without them; always on (fixed) in "Find them all".
-  ui.physicalToggle.hidden = false;
-  $('physical-row').hidden = false;
   ui.physicalOption.disabled = !mapDef.loadPhysical || practiceOn;
   ui.physicalOption.checked = !!mapDef.loadPhysical && (physicalOn || practiceOn);
   // The Netherlands: "Waters" or "Waters & areas" instead of mountains, rivers & lakes.
-  const kind = mapDef.physicalKind;
-  $('physical-label').innerHTML = t(kind === 'all' ? 'physicalOptionAll' : kind === 'watersAreas' ? 'physicalOptionWatersAreas' : kind ? 'physicalOptionWaters' : 'physicalOption');
-  $('howto-physical').innerHTML =
-    kind === 'all' ? t('howtoPhysical') + ' ' + t('howtoPhysicalAreas') : kind ? t('howtoPhysicalWaters') + (kind === 'watersAreas' ? ' ' + t('howtoPhysicalAreas') : '') : t('howtoPhysical');
+  const kind = physicalKind();
+  $('physical-label').innerHTML = t(`physicalOption${kind.suffix}`);
+  $('howto-physical').innerHTML = kind.howto.map((k) => t(k)).join(' ');
   $('howto-physical').hidden = !physicalOn && !(practiceOn && mapDef.loadPhysical);
   if (discoverOn) {
     $('howto-practice').hidden = true;
@@ -302,31 +280,15 @@ function renderMapSelect() {
     return;
   }
   if (practiceOn) {
-    $('howto-practice').innerHTML = !n
-      ? ''
-      : mapDef.practiceList === 'all'
-        ? t('howtoPracticeAll', { n })
-        : mapDef.practiceList === 'selection'
-          ? t('howtoPracticeSelection', { n })
-          : t('howtoPractice', { n, names: plural('names', n), list, extra: mapDef.parent ? t('practiceExtra') : '' });
-    const best = getBestTime(scoreId());
+    $('howto-practice').innerHTML = practiceText('howtoPractice', 'practiceExtra', n);
+    const best = readNumber(bestTimeKey(scoreId()));
     ui.best.innerHTML = best > 0 ? t('bestPractice', { map: mapName(mapDef), t: clock(best) }) : '';
     $('howto-practice').hidden = false;
     return;
   }
   $('howto-practice').hidden = true;
-  const best = getBest(scoreId());
-  const params = { map: mapName(mapDef), n: best };
-  const bestKey: StringKey = !physicalOn
-    ? 'best'
-    : kind === 'all'
-      ? 'bestPhysicalAll'
-      : kind === 'watersAreas'
-        ? 'bestPhysicalWatersAreas'
-        : kind
-          ? 'bestPhysicalWaters'
-          : 'bestPhysical';
-  ui.best.innerHTML = best > 0 ? t(bestKey, params) : '';
+  const best = readNumber(bestKey(scoreId()));
+  ui.best.innerHTML = best > 0 ? t(physicalOn ? `bestPhysical${kind.suffix}` : 'best', { map: mapName(mapDef), n: best }) : '';
 }
 
 async function selectMap(def: MapDefinition) {
@@ -492,8 +454,8 @@ function endPractice(game: Game) {
   sfx.levelUp();
   const secs = Math.round(game.elapsed);
   track(`finish/${scoreId()}/${Math.floor(secs / 60)}m`);
-  const prevBest = getBestTime(scoreId());
-  if (!prevBest || secs < prevBest) setBestTime(scoreId(), secs);
+  const prevBest = readNumber(bestTimeKey(scoreId()));
+  if (!prevBest || secs < prevBest) write(bestTimeKey(scoreId()), String(secs));
   $('over-title').dataset.i18n = 'done';
   $('over-title').textContent = t('done');
   $('final-score').textContent = clock(secs);
@@ -516,8 +478,8 @@ function endGame() {
   sfx.over();
   const score = game.found.length;
   track(`finish/${scoreId()}/${scoreBucket(score)}`);
-  const prevBest = getBest(scoreId());
-  if (score > prevBest) setBest(scoreId(), score);
+  const prevBest = readNumber(bestKey(scoreId()));
+  if (score > prevBest) write(bestKey(scoreId()), String(score));
 
   $('final-score').textContent = String(score);
   $('final-label').textContent = plural('placesFound', score);
@@ -706,14 +668,11 @@ ui.mute.onclick = toggleMute;
 /** Feedback form, told which map and mode the player was on. */
 const feedback = (type: 'feedback' | 'map-request' = 'feedback') => {
   track(type);
-  const mode = discoverOn ? 'ontdekken' : practiceOn ? 'basislijst' : !physicalOn ? 'vrij' : mapDef.physicalKind === 'all' ? 'alles' : mapDef.physicalKind ? 'wateren' : 'bergen-rivieren';
+  const mode = discoverOn ? 'ontdekken' : practiceOn ? 'basislijst' : !physicalOn ? 'vrij' : physicalKind().feedback;
   void openFeedback({ type, map: mapDef.id, mode, lang: getLang() });
 };
-$('btn-feedback').onclick = (e) => {
-  e.preventDefault();
-  feedback();
-};
-$('btn-feedback-over').onclick = () => feedback();
+$('btn-feedback').onclick = () => feedback();
+$('btn-feedback-over').onclick = $('btn-feedback').onclick;
 
 /** Share the game: the share sheet on phones, otherwise the text and link go to the clipboard. */
 async function share(button: HTMLElement) {
@@ -844,22 +803,14 @@ function frame(now: number) {
 // "How to play" is open until the player has seen it once, then stays as they leave it.
 const HOWTO_KEY = `${STORAGE_PREFIX}howto`;
 const howtoBox = $<HTMLDetailsElement>('howto-box');
-try {
-  howtoBox.open = localStorage.getItem(HOWTO_KEY) !== 'closed';
-  if (!localStorage.getItem(HOWTO_KEY)) localStorage.setItem(HOWTO_KEY, 'closed');
-} catch {
-  howtoBox.open = true;
-}
+howtoBox.open = read(HOWTO_KEY) !== 'closed';
+if (!read(HOWTO_KEY)) write(HOWTO_KEY, 'closed');
 // Setting `open` above also fires a toggle event; only store what the player changed.
 let howtoOpen = howtoBox.open;
 howtoBox.ontoggle = () => {
   if (howtoBox.open === howtoOpen) return;
   howtoOpen = howtoBox.open;
-  try {
-    localStorage.setItem(HOWTO_KEY, howtoBox.open ? 'open' : 'closed');
-  } catch {
-    /* not remembered */
-  }
+  write(HOWTO_KEY, howtoBox.open ? 'open' : 'closed');
 };
 
 document.documentElement.lang = getLang();

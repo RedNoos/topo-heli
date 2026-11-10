@@ -29,7 +29,7 @@
       </div>
       <div class="hud-bottom">
         <button class="btn small ghost" id="btn-pause" title="P / Esc" data-i18n="pause">Pause</button>
-        <button class="btn small ghost" id="btn-skip" title="N" data-i18n="skip">Skip −10s</button>
+        <button class="btn small ghost" id="btn-skip" title="N">Skip −10s</button>
         <button class="btn small ghost" id="btn-mute" title="M">Sound on</button>
       </div>
       <canvas id="minimap"></canvas>
@@ -46,10 +46,10 @@
         <div class="settings">
           <span class="row-label" data-i18n="mapLabel">Map</span>
           <div class="map-select" id="map-select"></div>
-          <label class="row-label" for="region" id="region-label" hidden>Province</label>
-          <div class="row-value" id="region-box" hidden><select id="region"></select></div>
-          <span class="row-label" id="mode-label" data-i18n="modeLabel" hidden>Mode</span>
-          <div class="row-value" id="mode-box" hidden>
+          <label class="row-label" for="region" data-i18n="region">Region</label>
+          <div class="row-value" id="region-box"><select id="region"></select></div>
+          <span class="row-label" id="mode-label" data-i18n="modeLabel">Mode</span>
+          <div class="row-value">
             <div class="segmented">
               <button type="button" id="mode-free" data-i18n="modeFree">Against the clock</button>
               <button type="button" id="mode-list" data-i18n="modeList">Find them all</button>
@@ -57,8 +57,8 @@
             </div>
             <p class="mode-desc" id="mode-desc"></p>
           </div>
-          <span class="row-label" id="physical-row" hidden></span>
-          <label class="toggle row-value" id="physical-toggle" hidden>
+          <span class="row-label" id="physical-row"></span>
+          <label class="toggle row-value">
             <input type="checkbox" id="opt-physical" />
             <span class="switch"></span>
             <span id="physical-label">Mountains, rivers &amp; lakes</span>

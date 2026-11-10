@@ -90,6 +90,8 @@ export class Game {
   private covered = new Set<number>();
 
   private asked = new Set<Target>();
+  /** targetDistance of the last position asked: it is read several times per frame. */
+  private distCache = { target: undefined as Target | undefined, x: NaN, y: NaN, d: Infinity };
   private listeners: ((e: GameEvent) => void)[] = [];
 
   /** Scale for the distances in CONFIG (see CONFIG.referenceViewKm). */
@@ -168,7 +170,12 @@ export class Game {
   }
 
   get targetDistance() {
-    return this.target ? distanceTo(this.target, this.heli) : Infinity;
+    const c = this.distCache;
+    const { x, y } = this.heli;
+    if (c.target !== this.target || c.x !== x || c.y !== y) {
+      Object.assign(c, { target: this.target, x, y, d: this.target ? distanceTo(this.target, this.heli) : Infinity });
+    }
+    return c.d;
   }
 
   get targetVisible() {
@@ -204,11 +211,6 @@ export class Game {
     if (!this.discover) this.nextTarget();
   }
 
-  /** Basislijst mode: number of names left to find (the current one included). */
-  get remaining() {
-    return this.targets.length - this.found.length;
-  }
-
   /** Basislijst mode: any name not found yet; skipped ones only once the rest is done. */
   private nextPracticeTarget() {
     const found = new Set(this.found.map((f) => f.target));
@@ -222,12 +224,9 @@ export class Game {
     let pool = left.filter((t) => t !== this.target && !this.later.has(t));
     if (pool.length === 0) pool = left.filter((t) => t !== this.target);
     if (pool.length === 0) pool = left;
-    const farEnough = pool.filter((t) => distanceTo(t, this.heli) >= CONFIG.minTargetDistance * this.distScale);
-    if (farEnough.length > 0) pool = farEnough;
-    this.target = pool[Math.floor(Math.random() * pool.length)];
-    this.later.delete(this.target);
-    this.covered.clear();
-    this.emit({ type: 'target', target: this.target });
+    const target = this.pick(pool);
+    this.later.delete(target);
+    this.setTarget(target);
   }
 
   private nextTarget() {
@@ -254,13 +253,22 @@ export class Game {
     // Listed (basislijst) items first, as long as the level has some left.
     const listed = pool.filter((t) => t.listed);
     if (listed.length > 0) pool = listed;
+    const target = this.pick(pool);
+    this.asked.add(target);
+    this.setTarget(target);
+  }
+
+  /** A random target from the pool, not close to the helicopter when the pool allows. */
+  private pick(pool: Target[]): Target {
     const farEnough = pool.filter((t) => distanceTo(t, this.heli) >= CONFIG.minTargetDistance * this.distScale);
     if (farEnough.length > 0) pool = farEnough;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
 
-    this.target = pool[Math.floor(Math.random() * pool.length)];
-    this.asked.add(this.target);
+  private setTarget(target: Target) {
+    this.target = target;
     this.covered.clear();
-    this.emit({ type: 'target', target: this.target });
+    this.emit({ type: 'target', target });
   }
 
   skip() {

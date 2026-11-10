@@ -24,6 +24,44 @@ const COLORS = {
   countryBorder: 'rgba(70, 58, 40, 0.75)',
 };
 
+/**
+ * Helicopter parts in its own px (nose along +x), built once and shared by the helicopter and
+ * its shadow. The blades turn around their hub (origin, at HUB), the tail rotor around its axle
+ * (origin, at TAIL_AXLE).
+ */
+const HELI = (() => {
+  const boom = new Path2D();
+  boom.moveTo(-6, -3);
+  boom.lineTo(-36, -1.5);
+  boom.lineTo(-36, 1.5);
+  boom.lineTo(-6, 3);
+  boom.closePath();
+  const fin = new Path2D();
+  fin.rect(-38, -6, 5, 12);
+  const skids = new Path2D();
+  skids.rect(-12, -12, 26, 2);
+  skids.rect(-12, 10, 26, 2);
+  const hull = new Path2D();
+  hull.ellipse(2, 0, 16, 9.5, 0, 0, Math.PI * 2);
+  const cockpit = new Path2D();
+  cockpit.ellipse(10, 0, 7, 7, 0, -Math.PI / 2, Math.PI / 2);
+  const glint = new Path2D();
+  glint.ellipse(11, -2.5, 3, 1.6, 0.3, 0, Math.PI * 2);
+  const disc = new Path2D();
+  disc.arc(2, 0, 30, 0, Math.PI * 2);
+  // Both blades in one path, so where they cross is filled once (no darker spot in the shadow).
+  const blades = new Path2D();
+  blades.roundRect(-31, -2, 62, 4, 2);
+  blades.roundRect(-2, -31, 4, 62, 2);
+  const hub = new Path2D();
+  hub.arc(0, 0, 3, 0, Math.PI * 2);
+  const tailRotor = new Path2D();
+  tailRotor.rect(-6, -1, 12, 2);
+  return { boom, fin, skids, hull, cockpit, glint, disc, blades, hub, tailRotor };
+})();
+const HUB = { x: 2, y: 0 };
+const TAIL_AXLE = { x: -36, y: 7 };
+
 /** Fills for multi-country maps; neighbouring countries get different indexes. */
 const COUNTRY_COLORS = ['#f1d9a8', '#cfe2b4', '#f4c6b6', '#dccdea', '#f6eba6', '#bfe0d4'];
 
@@ -185,19 +223,21 @@ export class Renderer {
   private targetPaths = new Map<Target, Path2D>();
   /** Discover mode: dot radius per city, bigger for the bigger places. */
   private dotSizes: Map<Target, number> | null = null;
+  /** Discover mode: the targets in drawing order (see drawDiscover). */
+  private discoverOrder: Target[] | null = null;
   /** Offscreen canvas for the helicopter shadow (see drawHeliShadow). */
   private shadowCanvas: HTMLCanvasElement | null = null;
+  private shadowCtx: CanvasRenderingContext2D | null = null;
+  /** Helicopter body fill, made once for this canvas. */
+  private bodyFill: CanvasGradient | null = null;
+  /** Minimap width in css px; read once after a resize (reading it every frame forces a layout). */
+  private minimapW = 0;
   private w = 0;
   private h = 0;
   private dpr = 1;
   /** Pixels per km. */
   private scale = 1;
   private cam = { x: 0, y: 0 };
-  /**
-   * Calm camera (dead zone) instead of one that follows the helicopter all the time.
-   * No menu option yet; a preferences menu could offer the follow camera later.
-   */
-  calm = true;
   private rotor = 0;
   private time = 0;
   /** Screen space covered by HUD bars (px); the camera keeps the map clear of them. */
@@ -229,6 +269,7 @@ export class Renderer {
     // Small screens (phones) are treated as at least MIN_VIEW_PX wide, so they zoom in further.
     this.scale = Math.max(Math.min(this.w, this.h), MIN_VIEW_PX) / this.viewKm;
     this.minimapStatic = null;
+    this.minimapW = 0;
   }
 
   setInsets(top: number, bottom: number) {
@@ -266,21 +307,12 @@ export class Renderer {
     this.cam.y = clamp(this.cam.y, b.minY + top, b.maxY - bottom);
   }
 
-  /** Camera follows the helicopter, leading a little in the flying direction. */
-  private followCamera(dt: number) {
-    const h = this.game.heli;
-    const lead = 0.6;
-    const k = 1 - Math.exp(-4 * dt);
-    this.cam.x += (h.x + h.vx * lead - this.cam.x) * k;
-    // Keep the helicopter centred in the area between the HUD bars.
-    const offsetY = (this.insets.top - this.insets.bottom) / 2 / this.scale;
-    this.cam.y += (h.y + h.vy * lead - offsetY - this.cam.y) * k;
-  }
-
   /**
    * Calm camera: stands still while the helicopter is inside a dead zone in the middle of the
    * play area (between the HUD bars) and only scrolls, eased, once it flies out of it.
    * At speed it keeps a point ahead of the helicopter in the zone, so there is more map ahead.
+   * (A camera that always follows the helicopter was here until 2026-11; a settings menu could
+   * bring it back as an option.)
    */
   private calmCamera(dt: number) {
     const h = this.game.heli;
@@ -321,8 +353,7 @@ export class Renderer {
     this.time += dt;
     this.rotor += dt * 28;
 
-    if (this.calm) this.calmCamera(dt);
-    else this.followCamera(dt);
+    this.calmCamera(dt);
     this.clampCamera();
 
     const s = this.scale;
@@ -570,9 +601,11 @@ export class Renderer {
     const { ctx, game } = this;
     const hovered = game.hovered;
     // Lakes and areas first, so the dots of the places in them stay on top.
-    const order = (t: Target) => (t.kind === 'area' ? 0 : t.kind === 'lake' ? 1 : 2);
-    for (const t of [...game.targets].sort((a, b) => order(a) - order(b))) {
-      if (t.kind === 'river') continue;
+    if (!this.discoverOrder) {
+      const order = (t: Target) => (t.kind === 'area' ? 0 : t.kind === 'lake' ? 1 : 2);
+      this.discoverOrder = game.targets.filter((t) => t.kind !== 'river').sort((a, b) => order(a) - order(b));
+    }
+    for (const t of this.discoverOrder) {
       const p = this.toScreen(t.x, t.y);
       if (p.x < -20 || p.y < -20 || p.x > this.w + 20 || p.y > this.h + 20) continue;
       const on = t === hovered;
@@ -631,7 +664,6 @@ export class Renderer {
     ctx.stroke();
   }
 
-  /** Landmark symbol: a plane (airport) or a flag on a pole (historic site). */
   /** Area marker (Discover mode): a diamond, `r` from the centre to a corner. */
   private diamondIcon(x: number, y: number, r: number, fill: string) {
     const ctx = this.ctx;
@@ -663,6 +695,7 @@ export class Renderer {
     ctx.stroke();
   }
 
+  /** Landmark symbol: a plane (airport) or a flag on a pole (historic site). */
   private landmarkIcon(t: Target, x: number, y: number, size: number, fill: string, stroke = '#fff') {
     if (t.sub === 'historic') this.flagIcon(x, y, size, fill, stroke);
     else this.planeIcon(x, y, size, fill, stroke);
@@ -801,55 +834,33 @@ export class Renderer {
     if (!this.shadowCanvas || this.shadowCanvas.width !== side) {
       this.shadowCanvas = document.createElement('canvas');
       this.shadowCanvas.width = this.shadowCanvas.height = side;
+      // CPU-backed: drawing this tiny canvas is cheaper than syncing a GPU canvas every frame.
+      this.shadowCtx = this.shadowCanvas.getContext('2d', { willReadFrequently: true })!;
     }
-    // CPU-backed: drawing this tiny canvas is cheaper than syncing a GPU canvas every frame.
-    const s = this.shadowCanvas.getContext('2d', { willReadFrequently: true })!;
+    const s = this.shadowCtx!;
     s.setTransform(1, 0, 0, 1, 0, 0);
     s.clearRect(0, 0, side, side);
     s.setTransform(this.dpr * size, 0, 0, this.dpr * size, side / 2, side / 2);
     s.rotate(heading);
     s.fillStyle = '#000';
 
-    // Rotor disc with the blades a little darker (one path, so crossing blades don't add up).
+    // Rotor disc with the blades a little darker.
     s.globalAlpha = 0.3;
-    s.beginPath();
-    s.arc(2, 0, 30, 0, Math.PI * 2);
-    s.fill();
-    const blade = new Path2D();
-    blade.roundRect(-31, -2, 62, 4, 2);
-    const blades = new Path2D();
-    const deg = (rad: number) => (rad * 180) / Math.PI;
-    for (const a of [this.rotor + Math.PI / 2, this.rotor + Math.PI]) {
-      blades.addPath(blade, new DOMMatrix().translate(2, 0).rotate(deg(a)));
-    }
+    s.fill(HELI.disc);
+    s.save();
+    s.translate(HUB.x, HUB.y);
+    s.rotate(this.rotor);
     s.globalAlpha = 0.4;
-    s.fill(blades);
+    s.fill(HELI.blades);
+    s.restore();
 
     // Body, tail, fin, skids and tail rotor, opaque. Each part is filled on its own: merged
     // into one path, parts drawn in opposite directions would cancel out where they overlap.
-    const parts: Path2D[] = [];
-    const boom = new Path2D();
-    boom.moveTo(-6, -3);
-    boom.lineTo(-36, -1.5);
-    boom.lineTo(-36, 1.5);
-    boom.lineTo(-6, 3);
-    boom.closePath();
-    parts.push(boom);
-    for (const [px, py, pw, ph] of [[-38, -6, 5, 12], [-12, -12, 26, 2], [-12, 10, 26, 2]]) {
-      const r = new Path2D();
-      r.rect(px, py, pw, ph);
-      parts.push(r);
-    }
-    const hull = new Path2D();
-    hull.ellipse(2, 0, 16, 9.5, 0, 0, Math.PI * 2);
-    parts.push(hull);
-    const tailRotor = new Path2D();
-    tailRotor.rect(-6, -1, 12, 2);
-    const tail = new Path2D();
-    tail.addPath(tailRotor, new DOMMatrix().translate(-36, 7).rotate(deg(this.rotor * 1.7)));
-    parts.push(tail);
     s.globalAlpha = 1;
-    for (const part of parts) s.fill(part);
+    for (const part of [HELI.boom, HELI.fin, HELI.skids, HELI.hull]) s.fill(part);
+    s.translate(TAIL_AXLE.x, TAIL_AXLE.y);
+    s.rotate(this.rotor * 1.7);
+    s.fill(HELI.tailRotor);
 
     const ctx = this.ctx;
     ctx.save();
@@ -865,71 +876,45 @@ export class Renderer {
     ctx.rotate(heading);
     ctx.scale(size * pitch, size);
 
-    // Tail boom + fin.
+    // Tail boom + fin, skids.
     ctx.fillStyle = '#b8321c';
-    ctx.beginPath();
-    ctx.moveTo(-6, -3);
-    ctx.lineTo(-36, -1.5);
-    ctx.lineTo(-36, 1.5);
-    ctx.lineTo(-6, 3);
-    ctx.fill();
-    ctx.fillRect(-38, -6, 5, 12);
+    ctx.fill(HELI.boom);
+    ctx.fill(HELI.fin);
+    ctx.fillStyle = '#3b3b3b';
+    ctx.fill(HELI.skids);
 
-    // Skids.
-    ctx.strokeStyle = '#3b3b3b';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(-12, -11); ctx.lineTo(14, -11);
-    ctx.moveTo(-12, 11); ctx.lineTo(14, 11);
-    ctx.stroke();
-
-    // Body.
-    ctx.beginPath();
-    ctx.ellipse(2, 0, 16, 9.5, 0, 0, Math.PI * 2);
-    const g = ctx.createLinearGradient(0, -10, 0, 10);
-    g.addColorStop(0, '#ff7b5c');
-    g.addColorStop(0.5, '#e5482b');
-    g.addColorStop(1, '#a92f19');
-    ctx.fillStyle = g;
-    ctx.fill();
+    // Body (the gradient is in the helicopter's own px, so it can be made once).
+    if (!this.bodyFill) {
+      this.bodyFill = ctx.createLinearGradient(0, -10, 0, 10);
+      this.bodyFill.addColorStop(0, '#ff7b5c');
+      this.bodyFill.addColorStop(0.5, '#e5482b');
+      this.bodyFill.addColorStop(1, '#a92f19');
+    }
+    ctx.fillStyle = this.bodyFill;
+    ctx.fill(HELI.hull);
     // Cockpit glass.
-    ctx.beginPath();
-    ctx.ellipse(10, 0, 7, 7, 0, -Math.PI / 2, Math.PI / 2);
     ctx.fillStyle = '#9fd8f5';
-    ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(11, -2.5, 3, 1.6, 0.3, 0, Math.PI * 2);
+    ctx.fill(HELI.cockpit);
     ctx.fillStyle = 'rgba(255,255,255,0.8)';
-    ctx.fill();
+    ctx.fill(HELI.glint);
 
     // Tail rotor.
     ctx.save();
-    ctx.translate(-36, 7);
+    ctx.translate(TAIL_AXLE.x, TAIL_AXLE.y);
     ctx.rotate(this.rotor * 1.7);
     ctx.fillStyle = '#333';
-    ctx.fillRect(-6, -1, 12, 2);
+    ctx.fill(HELI.tailRotor);
     ctx.restore();
 
     // Main rotor: motion-blur disc + two blades.
-    ctx.beginPath();
-    ctx.arc(2, 0, 30, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(40,40,40,0.10)';
-    ctx.fill();
-    ctx.save();
-    ctx.translate(2, 0);
+    ctx.fill(HELI.disc);
+    ctx.translate(HUB.x, HUB.y);
     ctx.rotate(this.rotor);
     ctx.fillStyle = '#2b2b2b';
-    for (let i = 0; i < 2; i++) {
-      ctx.rotate(Math.PI / 2);
-      ctx.beginPath();
-      ctx.roundRect(-31, -2, 62, 4, 2);
-      ctx.fill();
-    }
-    ctx.beginPath();
-    ctx.arc(0, 0, 3, 0, Math.PI * 2);
+    ctx.fill(HELI.blades);
     ctx.fillStyle = '#666';
-    ctx.fill();
-    ctx.restore();
+    ctx.fill(HELI.hub);
     ctx.restore();
   }
 
@@ -974,7 +959,9 @@ export class Renderer {
     const mm = this.minimap;
     const ctx = this.minimapCtx;
     const b = this.game.bounds;
-    const cssW = mm.clientWidth;
+    // 0 while the HUD is hidden (menu): asked again until it is shown.
+    if (!this.minimapW) this.minimapW = mm.clientWidth;
+    const cssW = this.minimapW;
     if (cssW === 0) return;
     const cssH = cssW * ((b.maxY - b.minY) / (b.maxX - b.minX));
     const ms = cssW / (b.maxX - b.minX);

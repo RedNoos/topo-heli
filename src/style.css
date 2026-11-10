@@ -413,15 +413,6 @@ h1 {
   cursor: pointer;
 }
 
-.region {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-weight: 600;
-}
-
-.region select,
 #region-box select {
   font: inherit;
   font-weight: 600;
@@ -454,32 +445,6 @@ h1 {
   border-color: var(--ink);
   background: var(--ink);
   color: #fff;
-}
-
-/* Game mode (Dutch maps): two buttons like the map choice, the chosen one described below. */
-.mode {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.mode-desc {
-  margin: 0;
-  font-size: 13px;
-  color: var(--muted);
-}
-
-/* Game mode (Dutch maps): two buttons like the map choice, the chosen one described below. */
-.mode {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.mode-desc {
-  margin: 0;
-  font-size: 13px;
-  color: var(--muted);
 }
 
 .toggle {
@@ -534,15 +499,12 @@ h1 {
   outline-offset: 2px;
 }
 
-.best {
-  margin: -4px 0 0;
-  color: var(--muted);
-  font-size: 14px;
-}
-
 /* Keeps its line when empty, so nothing below moves. */
 .best {
+  margin: -4px 0 0;
   min-height: 1.4em;
+  color: var(--muted);
+  font-size: 14px;
 }
 
 .best:empty {
@@ -595,16 +557,6 @@ h1 {
 
 .howto li {
   margin: 4px 0;
-}
-
-.credits {
-  margin: 0;
-  font-size: 11px;
-  color: var(--muted);
-}
-
-.credits a {
-  color: inherit;
 }
 
 .final {
@@ -680,12 +632,6 @@ h1 {
 
 .over-groups .found .found-list {
   max-height: 120px;
-}
-
-.over-actions {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
 }
 
 @media (max-width: 640px) {
