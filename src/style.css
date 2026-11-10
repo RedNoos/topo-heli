@@ -28,8 +28,9 @@ body {
   -webkit-user-select: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
-  /* Pinch zoom stays possible, but quick taps on HUD buttons do not double-tap zoom. */
-  touch-action: manipulation;
+  /* No pinch or double-tap zoom, also on iOS (which ignores user-scalable=no): a page zoomed in
+     the menu would stay zoomed in the game, where the canvas takes the pinch to zoom back. */
+  touch-action: pan-x pan-y;
 }
 
 [hidden] {
