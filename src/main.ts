@@ -135,6 +135,7 @@ function setBest(id: string, score: number) {
 // ---------- Screens ----------
 
 function show(next: State) {
+  const prev = state;
   state = next;
   ui.menu.hidden = next !== 'menu';
   ui.pause.hidden = next !== 'paused';
@@ -143,6 +144,10 @@ function show(next: State) {
   input.reset();
   input.active = next === 'playing';
   updateInsets();
+  // Keyboard focus to the screen's main button, so it is not left on a hidden one.
+  if (next === prev) return;
+  if (next === 'playing') (document.activeElement as HTMLElement | null)?.blur();
+  else $(next === 'paused' ? 'btn-resume' : next === 'over' ? 'btn-again' : 'btn-start').focus({ preventScroll: true });
 }
 
 /** Tells the renderer how much of the screen the HUD bars cover. */
@@ -218,6 +223,7 @@ function renderMapSelect() {
     b.dataset.map = m.id;
     b.innerHTML = `${m.flag ? flagSvg(m.flag) : ''}<span>${mapName(m)}</span>`;
     b.classList.toggle('active', m === topMap(mapDef));
+    b.setAttribute('aria-pressed', String(m === topMap(mapDef)));
     b.onclick = () => void selectMap(m);
     box.append(b);
   }
@@ -254,9 +260,14 @@ function renderMapSelect() {
   $('mode-label').hidden = false;
   ui.modeList.disabled = !mapDef.practice;
   ui.modeList.title = mapDef.practice ? '' : t('modeListUnavailable');
-  ui.modeFree.classList.toggle('active', !practiceOn && !discoverOn);
-  ui.modeList.classList.toggle('active', practiceOn);
-  ui.modeDiscover.classList.toggle('active', discoverOn);
+  for (const [b, on] of [
+    [ui.modeFree, !practiceOn && !discoverOn],
+    [ui.modeList, practiceOn],
+    [ui.modeDiscover, discoverOn],
+  ] as const) {
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-pressed', String(on));
+  }
   const list = '<i>basislijst topografie</i>';
   const n = practiceCount();
   $('mode-desc').innerHTML = discoverOn
@@ -603,21 +614,45 @@ function renderLangPicker() {
     const choose = () => {
       setLang(l.id);
       track(`language/${l.id}`);
+      // The picker was rendered anew: focus back on its button.
+      document.querySelector<HTMLElement>('.lang-current')?.focus();
     };
     item.onclick = choose;
-    item.onkeydown = (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), choose());
     list.append(item);
   }
+  const items = [...list.children] as HTMLElement[];
+  const open = (on: boolean) => {
+    list.hidden = !on;
+    button.setAttribute('aria-expanded', String(on));
+    if (on) items[LANGS.indexOf(current)].focus();
+  };
   button.onclick = (e) => {
     e.stopPropagation();
-    list.hidden = !list.hidden;
-    button.setAttribute('aria-expanded', String(!list.hidden));
+    open(list.hidden);
   };
+  button.onkeydown = (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') (e.preventDefault(), open(true));
+  };
+  // Arrows / Home / End move through the list, Enter or Space picks, Escape closes it.
+  list.onkeydown = (e) => {
+    const i = items.indexOf(e.target as HTMLElement);
+    const next = { ArrowDown: i + 1, ArrowUp: i - 1, Home: 0, End: items.length - 1 }[e.key];
+    if (next !== undefined) items[Math.max(0, Math.min(items.length - 1, next))].focus();
+    else if (e.key === 'Enter' || e.key === ' ') items[i]?.click();
+    else if (e.key === 'Escape') (open(false), button.focus());
+    else return;
+    e.preventDefault();
+  };
+  // Tabbing out of the list closes it.
+  list.addEventListener('focusout', (e) => {
+    if (!list.contains(e.relatedTarget as Node | null)) open(false);
+  });
   box.append(button, list);
 }
 document.addEventListener('click', () => {
   const list = document.querySelector<HTMLElement>('.lang-list');
   if (list) list.hidden = true;
+  document.querySelector('.lang-current')?.setAttribute('aria-expanded', 'false');
 });
 onLangChange(translateStatic);
 

@@ -8,6 +8,9 @@
   --shadow: 0 6px 24px rgba(30, 40, 30, 0.22);
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  /* Notch / rounded corners on a phone in landscape. */
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
 }
 
 * {
@@ -25,6 +28,8 @@ body {
   -webkit-user-select: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+  /* Pinch zoom stays possible, but quick taps on HUD buttons do not double-tap zoom. */
+  touch-action: manipulation;
 }
 
 [hidden] {
@@ -53,8 +58,8 @@ body {
 .hud-top {
   position: absolute;
   top: calc(12px + var(--safe-top));
-  left: 12px;
-  right: 12px;
+  left: calc(12px + var(--safe-left));
+  right: calc(12px + var(--safe-right));
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -209,7 +214,7 @@ body {
 
 .hud-bottom {
   position: absolute;
-  left: 12px;
+  left: calc(12px + var(--safe-left));
   bottom: calc(12px + var(--safe-bottom));
   display: flex;
   gap: 8px;
@@ -218,7 +223,7 @@ body {
 
 #minimap {
   position: absolute;
-  right: 12px;
+  right: calc(12px + var(--safe-right));
   bottom: calc(12px + var(--safe-bottom));
   width: 150px;
   border-radius: 10px;
@@ -256,10 +261,10 @@ body {
   inset: 0;
   display: grid;
   place-items: center;
-  padding: 16px;
+  padding: 16px calc(16px + var(--safe-right)) calc(16px + var(--safe-bottom)) calc(16px + var(--safe-left));
   /* Anchored near the top, not centred: a panel that changes height then does not move. */
   align-items: start;
-  padding-top: max(16px, 6vh);
+  padding-top: max(16px, 6vh, calc(16px + var(--safe-top)));
   background: rgba(40, 60, 70, 0.35);
   backdrop-filter: blur(3px);
   overflow-y: auto;
@@ -700,8 +705,8 @@ h1 {
   /* One compact row: timer | target | score. */
   .hud-top {
     top: calc(8px + var(--safe-top));
-    left: 8px;
-    right: 8px;
+    left: calc(8px + var(--safe-left));
+    right: calc(8px + var(--safe-right));
     gap: 6px;
     align-items: stretch;
   }
@@ -747,13 +752,13 @@ h1 {
     font-size: 11px;
   }
   .hud-bottom {
-    left: 8px;
+    left: calc(8px + var(--safe-left));
     bottom: calc(8px + var(--safe-bottom));
     gap: 6px;
   }
   #minimap {
     width: 96px;
-    right: 8px;
+    right: calc(8px + var(--safe-right));
     bottom: calc(8px + var(--safe-bottom));
   }
 }
@@ -909,7 +914,7 @@ h1 {
 /* Test build only (vite.config.ts): marks topoheli.com/test/. */
 .test-badge {
   position: fixed;
-  right: env(safe-area-inset-right);
+  right: var(--safe-right);
   top: 50%;
   transform: translate(50%, -50%) rotate(90deg) translateY(50%);
   z-index: 100;
